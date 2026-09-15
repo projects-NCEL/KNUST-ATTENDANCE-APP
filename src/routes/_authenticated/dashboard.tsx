@@ -22,15 +22,15 @@ import { useAuth } from "@/lib/auth";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — QRoll" },
+      { title: "Dashboard — KNUST-ATTENDANCE-APP" },
       {
         name: "description",
-        content: "Live QRoll dashboard: students, courses, sessions and scan activity at a glance.",
+        content: "Live KNUST-ATTENDANCE-APP dashboard: students, courses, sessions and scan activity at a glance.",
       },
-      { property: "og:title", content: "Dashboard — QRoll" },
+      { property: "og:title", content: "Dashboard — KNUST-ATTENDANCE-APP" },
       {
         property: "og:description",
-        content: "Live QRoll dashboard: students, courses, sessions and scan activity at a glance.",
+        content: "Live KNUST-ATTENDANCE-APP dashboard: students, courses, sessions and scan activity at a glance.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

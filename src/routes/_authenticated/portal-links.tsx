@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import QRCode from "qrcode";
 
 export const Route = createFileRoute("/_authenticated/portal-links")({
-  head: () => ({ meta: [{ title: "Student QR Portal — QRoll" }] }),
+  head: () => ({ meta: [{ title: "Student QR Portal — KNUST-ATTENDANCE-APP" }] }),
   component: PortalLinksPage,
 });
 
@@ -94,7 +94,7 @@ export function PortalLinksPage() {
         const qr = await QRCode.toDataURL(portalUrl, {
           width: 320,
           margin: 2,
-          color: { dark: "#1e3a8a", light: "#ffffff" },
+          color: { dark: "#00552b", light: "#ffffff" },
         });
         setQrDataUrl(qr);
       } catch (err: any) {
@@ -137,7 +137,7 @@ export function PortalLinksPage() {
     if (!qrDataUrl) return;
     const a = document.createElement("a");
     a.href = qrDataUrl;
-    a.download = `qroll-student-portal-qr.png`;
+    a.download = `knust-student-portal-qr.png`;
     a.click();
   };
 

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { PAYMENTS_LIVE, PLANS, type PlanCode } from "@/lib/billing";
 import { firestoreAdmin } from "@/integrations/firebase/admin.server";
 
-const PAYSTACK_LIVE_SECRET = "sk_live_44b99be16eb314c1643a8b3f7cd8294279ac9c46";
+const PAYSTACK_LIVE_SECRET = process.env["PAYSTACK_SECRET_KEY"] || "";
 
 /**
  * Starts a Paystack checkout for the signed-in account.

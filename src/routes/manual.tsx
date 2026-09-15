@@ -28,16 +28,19 @@ import {
   ArrowRight,
 } from "lucide-react";
 
+import { KnustEmblem } from "@/components/KnustEmblem";
+import { PublicFooter } from "@/components/PublicFooter";
+
 export const Route = createFileRoute("/manual")({
   head: () => ({
     meta: [
-      { title: "User Manual & System Guide — QRoll" },
+      { title: "User Manual & System Guide — KNUST-ATTENDANCE-APP" },
       {
         name: "description",
         content:
-          "Comprehensive step-by-step user manual for lecturers, administrators, and students using QRoll.",
+          "Comprehensive step-by-step user manual for lecturers, administrators, and students using KNUST-ATTENDANCE-APP.",
       },
-      { property: "og:title", content: "User Manual & System Guide — QRoll" },
+      { property: "og:title", content: "User Manual & System Guide — KNUST-ATTENDANCE-APP" },
       {
         property: "og:description",
         content: "Step-by-step guide for QR code attendance, grading, scanning, and reports.",
@@ -202,7 +205,7 @@ const SECTIONS: GuideSection[] = [
       },
       {
         title: "10-Mark Attendance Grading Formula",
-        desc: "QRoll automatically computes the standard university 10-mark continuous assessment score based on attended sessions over total sessions.",
+        desc: "KNUST-ATTENDANCE-APP automatically computes the standard university 10-mark continuous assessment score based on attended sessions over total sessions.",
       },
       {
         title: "Identify At-Risk Students",
@@ -244,26 +247,26 @@ const SECTIONS: GuideSection[] = [
   {
     id: "billing-plans",
     category: "admin",
-    title: "8. Billing, Plans & Subscription",
-    badge: "Billing",
-    icon: CreditCard,
-    summary: "Free trial details, plans, and payment methods.",
+    title: "8. 100% Free & Open Academic Platform",
+    badge: "Free Access",
+    icon: CheckCircle2,
+    summary: "Completely free platform with no subscription fees or trial expiration limits.",
     steps: [
       {
-        title: "7-Day Free Trial with All Features",
-        desc: "Every newly registered lecturer or institution receives a full 7-day free trial with unlimited students, courses, scanning, and exports.",
+        title: "100% Free Forever",
+        desc: "KNUST-ATTENDANCE-APP is completely free for all university faculty, lecturers, teaching assistants, and students.",
       },
       {
-        title: "Choose a Subscription Plan",
-        desc: "Go to 'Billing & Plans'. Select from Monthly (GHS 45.00), Per Semester (GHS 120.00), or Yearly (GHS 450.00).",
+        title: "Unlimited Usage",
+        desc: "Enjoy unlimited courses, unlimited class sessions, unlimited student enrolments, and unlimited attendance QR code generation.",
       },
       {
-        title: "Pay via Mobile Money or Card",
-        desc: "Payments are processed securely. Supports MTN Mobile Money, Telecel Cash, AT Money, Visa, Mastercard, and Bank Transfer.",
+        title: "Complete Feature Set Unlocked",
+        desc: "All analytics, real-time multi-camera scanner, dynamic rotating projector QR codes, and 10-mark continuous assessment computations are fully unlocked.",
       },
       {
-        title: "Instant Activation",
-        desc: "Upon successful payment, your account is immediately verified and upgraded with no waiting period.",
+        title: "Full Excel & PDF Exporting",
+        desc: "Export attendance sheets, continuous assessment grade books, and student rosters to Excel, CSV, or formatted PDF at any time without fees.",
       },
     ],
   },
@@ -329,12 +332,10 @@ function ManualPage() {
       <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur px-4 py-3 sm:px-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground font-bold">
-              <BookOpen className="size-5" />
-            </div>
+            <KnustEmblem size={36} />
             <div>
               <h1 className="text-base sm:text-lg font-bold leading-tight">
-                QRoll System User Manual
+                KNUST-ATTENDANCE-APP System Manual
               </h1>
               <p className="text-xs text-muted-foreground hidden sm:block">
                 Complete walkthrough for lecturers, administrators & students
@@ -343,7 +344,7 @@ function ManualPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <a href="/app-manual.pdf" download="QRoll-User-Manual.pdf">
+            <a href="/app-manual.pdf" download="KNUST-Attendance-User-Manual.pdf">
               <Button variant="outline" size="sm" className="text-xs">
                 <Download className="size-3.5 mr-1" />
                 <span className="hidden sm:inline">Download PDF</span>
@@ -366,18 +367,22 @@ function ManualPage() {
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Banner / Introduction */}
         <div className="rounded-2xl bg-knust-gradient text-primary-foreground p-6 sm:p-8 shadow-sm">
-          <div className="max-w-3xl space-y-2">
-            <Badge variant="secondary" className="text-xs font-semibold uppercase tracking-wider">
-              Official Documentation
-            </Badge>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Welcome to the QRoll Knowledge Base
-            </h2>
-            <p className="text-sm sm:text-base text-primary-foreground/85 leading-relaxed">
-              Find detailed explanations for every tool in the QRoll suite: session creation, QR
-              code generation, classroom projection, camera scanning, Excel reports, and
-              subscription plans.
-            </p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="max-w-3xl space-y-2">
+              <Badge variant="secondary" className="text-xs font-semibold uppercase tracking-wider">
+                Official Documentation
+              </Badge>
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+                Welcome to the KNUST-ATTENDANCE-APP Knowledge Base
+              </h2>
+              <p className="text-sm sm:text-base text-primary-foreground/85 leading-relaxed">
+                Find detailed explanations for every tool in the suite: session creation, QR
+                code generation, classroom projection, camera scanning, and Excel continuous assessment reports.
+              </p>
+            </div>
+            <div className="shrink-0 bg-white/10 backdrop-blur p-3 rounded-2xl border border-white/20 hidden md:block">
+              <KnustEmblem size={72} />
+            </div>
           </div>
 
           {/* Search Bar */}
@@ -524,6 +529,7 @@ function ManualPage() {
           </div>
         </div>
       </main>
+      <PublicFooter />
     </div>
   );
 }

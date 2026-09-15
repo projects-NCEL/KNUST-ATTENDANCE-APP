@@ -13,11 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
-import qrollLogo from "@/assets/qroll-logo.png";
-import qrollLogin from "@/assets/qroll-login.png";
+import { KnustEmblem } from "@/components/KnustEmblem";
+import knustStudentsHero from "@/assets/knust-students-hero.jpg";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Sign in — QRoll" }] }),
+  head: () => ({ meta: [{ title: "Sign in — KNUST-ATTENDANCE-APP" }] }),
   component: AuthPage,
 });
 
@@ -68,22 +68,21 @@ function AuthPage() {
   return (
     <div className="relative min-h-screen grid lg:grid-cols-2 bg-background">
       {/* Left branding column */}
-      <div className="hidden lg:flex relative flex-col justify-between p-10 text-primary-foreground overflow-hidden">
+      <div className="hidden lg:flex relative flex-col justify-between p-10 text-primary-foreground overflow-hidden bg-[#001f0f]">
         <img
-          src={qrollLogin}
-          alt="QRoll classroom attendance"
-          className="absolute inset-0 h-full w-full object-cover object-center"
+          src={knustStudentsHero}
+          alt="KNUST university students"
+          className="absolute inset-0 h-full w-full object-cover object-center brightness-95"
+          referrerPolicy="no-referrer"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-primary/80" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-[#00381c]/50 to-black/30" />
 
         <div className="relative z-10 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
-            <img
-              src={qrollLogo}
-              alt="QRoll logo"
-              className="size-10 rounded-full bg-white object-contain p-0.5 shadow-md"
-            />
-            <span className="font-bold text-xl tracking-tight text-white drop-shadow">QRoll</span>
+            <div className="size-10 rounded-full bg-white/10 flex items-center justify-center p-0.5 shadow-md border border-white/20">
+              <KnustEmblem size={36} />
+            </div>
+            <span className="font-bold text-xl tracking-tight text-white drop-shadow">KNUST-ATTENDANCE-APP</span>
           </Link>
           <Link to="/">
             <Button
@@ -111,7 +110,7 @@ function AuthPage() {
           </p>
         </div>
         <div className="relative z-10 text-xs text-white/70">
-          © {new Date().getFullYear()} QRoll
+          © {new Date().getFullYear()} KNUST-ATTENDANCE-APP
         </div>
       </div>
 
@@ -119,24 +118,23 @@ function AuthPage() {
       <div className="relative flex items-center justify-center p-0 md:p-12">
         <div className="relative w-full max-w-md space-y-4 pb-6 md:pb-0">
           {/* Mobile and Tablet banner */}
-          <div className="lg:hidden relative h-60 w-full overflow-hidden rounded-b-3xl bg-knust-gradient">
+          <div className="lg:hidden relative h-60 w-full overflow-hidden rounded-b-3xl bg-[#001f0f]">
             <img
-              src={qrollLogin}
-              alt="Student checking in with a QR code"
-              className="absolute inset-0 h-full w-full object-cover object-top"
+              src={knustStudentsHero}
+              alt="KNUST university students"
+              className="absolute inset-0 h-full w-full object-cover object-center brightness-95"
+              referrerPolicy="no-referrer"
             />
             <div
-              className="absolute inset-0 bg-gradient-to-b from-primary/50 via-black/40 to-background"
+              className="absolute inset-0 bg-gradient-to-b from-[#00381c]/50 via-black/40 to-background"
               aria-hidden="true"
             />
             <div className="absolute inset-x-0 top-0 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 p-4">
               <Link to="/" className="flex min-w-0 items-center gap-2 text-primary-foreground">
-                <img
-                  src={qrollLogo}
-                  alt="QRoll logo"
-                  className="h-9 w-auto shrink-0 object-contain rounded-full bg-white p-0.5"
-                />
-                <span className="truncate font-semibold drop-shadow text-white">QRoll</span>
+                <div className="size-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20">
+                  <KnustEmblem size={28} />
+                </div>
+                <span className="truncate font-semibold drop-shadow text-white">KNUST-ATTENDANCE-APP</span>
               </Link>
               <Link to="/">
                 <Button variant="secondary" size="sm" className="shrink-0">
@@ -158,7 +156,7 @@ function AuthPage() {
           <div className="px-4 md:px-0">
             <Card className="border-border/60 shadow-lg">
               <CardHeader className="space-y-1 text-center pb-4">
-                <CardTitle className="text-2xl font-bold">Welcome to QRoll</CardTitle>
+                <CardTitle className="text-2xl font-bold">Welcome to KNUST-ATTENDANCE-APP</CardTitle>
                 <CardDescription>
                   Sign in to manage courses, attendance sessions, and student rolls.
                 </CardDescription>
@@ -267,7 +265,7 @@ function AuthPage() {
                     </Button>
 
                     <p className="text-center text-xs text-muted-foreground leading-relaxed pt-1">
-                      New to QRoll? Sign in with your Google account to automatically set up your
+                      New to KNUST-ATTENDANCE-APP? Sign in with your Google account to automatically set up your
                       lecturer profile in seconds.
                     </p>
 

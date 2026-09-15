@@ -33,13 +33,13 @@ import { exportToExcel, exportToCSV, exportToPDF } from "@/lib/exporters";
 export const Route = createFileRoute("/_authenticated/history")({
   head: () => ({
     meta: [
-      { title: "Academic History — QRoll" },
+      { title: "Academic History — KNUST-ATTENDANCE-APP" },
       {
         name: "description",
         content:
           "Search attendance history across every academic year and semester, including archived terms, and export historical course or student records.",
       },
-      { property: "og:title", content: "Academic History — QRoll" },
+      { property: "og:title", content: "Academic History — KNUST-ATTENDANCE-APP" },
       {
         property: "og:description",
         content:

@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { KnustEmblem } from "@/components/KnustEmblem";
+import { PublicFooter } from "@/components/PublicFooter";
 
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
-      { title: "Privacy Policy — QRoll" },
-      { name: "description", content: "Privacy policy for the QRoll QR system." },
+      { title: "Privacy Policy — KNUST-ATTENDANCE-APP" },
+      { name: "description", content: "Privacy policy for KNUST-ATTENDANCE-APP." },
     ],
   }),
   component: PrivacyPage,
@@ -12,29 +14,38 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex justify-between items-center">
-          <Link to={"/" as string} className="font-bold text-primary">
-            QRoll
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="border-b bg-background/95 backdrop-blur sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-6 py-3.5 flex justify-between items-center">
+          <Link to={"/" as string} className="flex items-center gap-2.5 font-bold text-primary">
+            <KnustEmblem size={32} />
+            <span className="tracking-tight">KNUST-ATTENDANCE-APP</span>
           </Link>
           <div className="flex gap-4 text-sm">
-            <Link to={"/terms" as string} className="hover:text-primary">
+            <Link to={"/terms" as string} className="hover:text-primary transition-colors">
               Terms
             </Link>
-            <Link to={"/manual" as string} className="hover:text-primary">
+            <Link to={"/manual" as string} className="hover:text-primary transition-colors">
               Manual
             </Link>
           </div>
         </div>
       </header>
-      <main className="max-w-3xl mx-auto px-6 py-10 prose prose-sm md:prose-base">
-        <h1 className="text-3xl font-bold mb-2">Privacy Policy</h1>
+      <main className="flex-1 max-w-3xl w-full mx-auto px-6 py-10 prose prose-sm md:prose-base">
+        <div className="flex items-center gap-4 pb-4 border-b not-prose mb-6">
+          <KnustEmblem size={52} />
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold m-0 text-foreground">Privacy Policy</h1>
+            <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
+              Kwame Nkrumah University of Science and Technology · Academic Attendance Platform
+            </p>
+          </div>
+        </div>
         <p className="text-muted-foreground text-sm">Last updated: 4 July 2026</p>
 
         <h2 className="text-xl font-semibold mt-8">1. Who we are</h2>
         <p>
-          QRoll is a QR-based attendance-tracking Service operated by QRoll for the Kwame Nkrumah
+          KNUST-ATTENDANCE-APP is a QR-based attendance-tracking Service designed for the Kwame Nkrumah
           University of Science and Technology community.
         </p>
 
@@ -104,7 +115,7 @@ function PrivacyPage() {
         </p>
 
         <h2 className="text-xl font-semibold mt-8">10. Contact</h2>
-        <p>Direct any privacy request to your Master Admin lecturer or to the QRoll executive.</p>
+        <p>Direct any privacy request to your Master Admin lecturer or to the KNUST-ATTENDANCE-APP administrators.</p>
 
         <p className="mt-10 text-sm">
           <Link to={"/" as string} className="text-primary hover:underline">
@@ -112,6 +123,7 @@ function PrivacyPage() {
           </Link>
         </p>
       </main>
+      <PublicFooter />
     </div>
   );
 }

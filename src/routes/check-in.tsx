@@ -7,16 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, GraduationCap, MapPin } from "lucide-react";
+import { CheckCircle2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { PublicFooter } from "@/components/PublicFooter";
+import { KnustEmblem } from "@/components/KnustEmblem";
 
 const search = z.object({ session: z.string().optional() });
 
 export const Route = createFileRoute("/check-in")({
   ssr: false,
   validateSearch: search,
-  head: () => ({ meta: [{ title: "Check in — QRoll" }] }),
+  head: () => ({ meta: [{ title: "Check in — KNUST-ATTENDANCE-APP" }] }),
   component: CheckInPage,
 });
 
@@ -191,9 +192,9 @@ function CheckInPage() {
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col">
       <div className="flex-1 flex flex-col items-center p-6">
-        <div className="flex items-center gap-2 mb-6 mt-4">
-          <GraduationCap className="size-7 text-primary" />
-          <h1 className="text-2xl font-bold">QRoll Self Check-in</h1>
+        <div className="flex items-center gap-3 mb-6 mt-4">
+          <KnustEmblem size={36} />
+          <h1 className="text-2xl font-bold">KNUST Student Check-in</h1>
         </div>
 
         {!done ? (

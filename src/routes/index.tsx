@@ -1,37 +1,34 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { QrCode, ShieldCheck, BarChart3, CalendarCheck, PlayCircle } from "lucide-react";
+import { QrCode, ShieldCheck, BarChart3, CalendarCheck } from "lucide-react";
 import { useEffect } from "react";
 import { firebaseAuth } from "@/integrations/firebase/config";
-import qrollLogo from "@/assets/qroll-logo.png";
-import heroImage from "@/assets/9315935.webp";
-import promoLandscape from "@/assets/qroll-promo-landscape.mp4";
-import promoPortrait from "@/assets/qroll-promo-portrait.mp4";
-import { BrandVideo } from "@/components/BrandVideo";
+import heroImage from "@/assets/knust-students-hero.jpg";
+import { KnustEmblem } from "@/components/KnustEmblem";
 import { PublicFooter } from "@/components/PublicFooter";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "QRoll — QR Attendance Made Easy" },
+      { title: "KNUST-ATTENDANCE-APP — Official Student Attendance System" },
       {
         name: "description",
         content:
-          "QRoll is a secure QR attendance system for universities. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
+          "KNUST-ATTENDANCE-APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
       },
-      { property: "og:title", content: "QRoll — QR Attendance Made Easy" },
+      { property: "og:title", content: "KNUST-ATTENDANCE-APP — Official Student Attendance System" },
       {
         property: "og:description",
         content:
-          "QRoll is a secure QR attendance system for universities. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
+          "KNUST-ATTENDANCE-APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "QRoll — QR Attendance Made Easy" },
+      { name: "twitter:title", content: "KNUST-ATTENDANCE-APP — Official Student Attendance System" },
       {
         name: "twitter:description",
         content:
-          "QRoll is a secure QR attendance system for universities. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
+          "KNUST-ATTENDANCE-APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
       },
     ],
   }),
@@ -50,105 +47,101 @@ function Landing() {
       <header className="border-b">
         <div className="max-w-6xl mx-auto px-6 py-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            <img src={qrollLogo} alt="QRoll logo" className="h-9 w-auto shrink-0 object-contain" />
+            <div className="size-10 rounded-xl bg-muted/40 p-0.5 shadow-xs border flex items-center justify-center shrink-0">
+              <KnustEmblem size={34} />
+            </div>
             <div className="leading-tight min-w-0">
-              <div className="font-bold truncate">QRoll</div>
-              <div className="text-xs text-muted-foreground truncate">Scan. Verify. Attend.</div>
+              <div className="font-bold truncate text-foreground">KNUST-ATTENDANCE-APP</div>
+              <div className="text-xs text-muted-foreground truncate">Kwame Nkrumah University of Science and Technology</div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Link to={"/student" as string}>
-              <Button variant="outline">Student page</Button>
+              <Button variant="outline">Student Portal</Button>
             </Link>
             <Link to={"/auth" as string}>
-              <Button>Sign in</Button>
+              <Button>Lecturer Sign In</Button>
             </Link>
           </div>
         </div>
       </header>
 
-      <section className="relative bg-knust-gradient text-primary-foreground overflow-hidden">
+      <section className="relative bg-[#001f0f] text-primary-foreground overflow-hidden min-h-[460px] md:min-h-[520px] flex items-center">
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
           <img
             src={heroImage}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover object-center"
+            alt="Real KNUST students on campus"
+            className="absolute inset-0 w-full h-full object-cover object-[center_35%] brightness-100"
+            referrerPolicy="no-referrer"
           />
-          <div className="absolute inset-0 bg-primary/35" />
-          <div className="absolute inset-0 bg-linear-to-r from-primary/45 via-primary/25 to-primary/10" />
+          {/* Subtle directional gradient on left only — students on center and right remain completely visible */}
+          <div className="absolute inset-0 bg-linear-to-r from-black/75 via-black/40 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-black/10" />
         </div>
 
-        <div className="relative max-w-6xl mx-auto px-6 py-20 md:py-28 grid md:grid-cols-2 gap-10 items-center">
-          <div>
-            <div className="text-gold uppercase tracking-widest text-xs font-semibold mb-3">
-              Scan. Verify. Attend.
+        <div className="relative max-w-6xl mx-auto px-6 py-16 md:py-24 w-full">
+          <div className="max-w-lg">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 text-gold text-xs font-semibold uppercase tracking-wider mb-4">
+              <span className="size-2 rounded-full bg-gold animate-pulse" />
+              KNUST Smart Campus Attendance
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold leading-tight drop-shadow-md">
-              QRoll — attendance made easy for every class, event, and gathering.
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-tight text-white drop-shadow-md">
+              Digital Attendance for KNUST
             </h1>
-            <p className="mt-5 text-primary-foreground/90 text-lg max-w-lg drop-shadow">
-              Secure UUID QR codes, geofenced self check-in, live dashboards, and Excel & PDF
-              reports.
+            <p className="mt-3.5 text-white/90 text-base sm:text-lg leading-relaxed drop-shadow max-w-md">
+              Fast QR check-ins, automated 75% exam eligibility tracking, and instant reports for lecturers and students.
             </p>
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link to={"/auth" as string}>
-                <Button size="lg" className="bg-gold text-gold-foreground hover:bg-gold/90">
-                  Get started
-                </Button>
-              </Link>
-              <Link to={"/manual" as string}>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-white/40 bg-white/0 text-primary-foreground hover:bg-white/10"
-                >
-                  Read the manual
+                <Button size="lg" className="bg-gold text-gold-foreground hover:bg-gold/90 font-semibold shadow-md">
+                  Lecturer Portal
                 </Button>
               </Link>
               <Link to={"/student" as string}>
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-white/40 bg-white/0 text-primary-foreground hover:bg-white/10"
+                  className="border-white/50 bg-black/30 backdrop-blur-xs text-white hover:bg-white/20 font-semibold"
                 >
-                  Student page
+                  Student Portal
+                </Button>
+              </Link>
+              <Link to={"/manual" as string}>
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  className="text-white/90 hover:text-white hover:bg-white/10"
+                >
+                  User Guide
                 </Button>
               </Link>
             </div>
           </div>
-          <div className="hidden md:grid grid-cols-2 gap-4">
-            {[
-              { i: QrCode, t: "Secure QR", d: "Random UUIDs — no names embedded." },
-              { i: ShieldCheck, t: "Role-based", d: "Admins, organisers, assistants." },
-              { i: BarChart3, t: "Reports", d: "Excel, CSV, PDF exports." },
-              { i: CalendarCheck, t: "Any occasion", d: "Classes, events, meetings." },
-            ].map((f) => (
-              <div
-                key={f.t}
-                className="rounded-xl bg-white/15 backdrop-blur p-5 border border-white/20"
-              >
-                <f.i className="size-6 text-gold mb-3" />
-                <div className="font-semibold">{f.t}</div>
-                <div className="text-sm text-primary-foreground/80">{f.d}</div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
-      <section className="max-w-4xl mx-auto w-full px-6 py-14">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <PlayCircle className="size-6 text-primary" /> See QRoll in action
-        </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          A quick look at how attendance is captured in seconds.
-        </p>
-        <div className="mt-5 rounded-xl border shadow-sm bg-black overflow-hidden flex justify-center">
-          <BrandVideo
-            landscape={promoLandscape}
-            portrait={promoPortrait}
-            className="w-full max-h-[60vh] lg:max-h-[70vh] object-contain"
-          />
+      {/* Feature cards placed cleanly below the hero image so they don't obstruct the students */}
+      <section className="border-b bg-muted/40 py-12">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              { i: QrCode, t: "Universal QR Pass", d: "One personal pass valid for all courses & class sessions." },
+              { i: ShieldCheck, t: "Exam Threshold", d: "Mandatory 75% attendance tracking and instant alerts." },
+              { i: BarChart3, t: "Instant Reports", d: "Automated Excel, CSV, and official PDF exam rosters." },
+              { i: CalendarCheck, t: "Multi-Mode Scan", d: "Projector broadcast, live camera scan, or mobile." },
+            ].map((f) => (
+              <div
+                key={f.t}
+                className="rounded-xl bg-card p-5 border shadow-2xs hover:shadow-xs transition-shadow"
+              >
+                <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-3">
+                  <f.i className="size-5 text-primary" />
+                </div>
+                <div className="font-semibold text-foreground text-base mb-1">{f.t}</div>
+                <div className="text-sm text-muted-foreground leading-relaxed">{f.d}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

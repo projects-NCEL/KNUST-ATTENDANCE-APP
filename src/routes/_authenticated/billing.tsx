@@ -1,276 +1,152 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { firestoreDb } from "@/integrations/firebase/config";
-import { collection, query, where, getDocs } from "firebase/firestore";
-
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { toast } from "sonner";
 import {
-  Check,
-  CreditCard,
-  Home as HomeIcon,
-  ShieldCheck,
   CheckCircle2,
-  RefreshCw,
+  Gift,
+  Home as HomeIcon,
+  Sparkles,
+  Check,
+  GraduationCap,
+  ScanLine,
+  FileBarChart,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/billing")({
   head: () => ({
     meta: [
-      { title: "Billing & Plans — QRoll" },
+      { title: "Free Academic Access — KNUST-ATTENDANCE-APP" },
       {
         name: "description",
         content:
-          "Manage your QRoll subscription: 7-day free trial, then monthly, per-semester, or yearly premium plans.",
+          "KNUST-ATTENDANCE-APP is completely free for all lecturers, faculty, and students with no subscriptions or fees.",
       },
-      { property: "og:title", content: "Billing & Plans — QRoll" },
+      { property: "og:title", content: "Free Academic Access — KNUST-ATTENDANCE-APP" },
       {
         property: "og:description",
-        content: "7-day free trial, then monthly, per-semester, or yearly QRoll plans.",
+        content: "100% free university attendance system with unlimited courses, sessions, and exports.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: BillingPage,
+  component: FreeAccessPage,
 });
 
-import { PLANS, TRIAL_DAYS, PAYMENTS_LIVE, type PlanCode } from "@/lib/billing";
-import { startCheckout, verifyCheckout } from "@/lib/paystack.functions";
-
-function formatGhs(amount: number) {
-  return `GHS ${amount.toFixed(2)}`;
-}
-
-function BillingPage() {
+function FreeAccessPage() {
   const { user } = useAuth();
-  const [verifying, setVerifying] = useState(false);
-  const [sub, setSub] = useState<{
-    plan_code: string;
-    status: string;
-    days_remaining: number;
-    is_active: boolean;
-    current_period_end: string | null;
-    trial_ends_at: string | null;
-  } | null>(null);
 
-  const fetchSubscription = async () => {
-    if (!user?.id) return;
-    const q = query(collection(firestoreDb, "subscriptions"), where("owner_id", "==", user.id));
-    const snap = await getDocs(q);
-    if (snap.empty) return;
-    const docData = snap.docs[0].data() as any;
-    const periodEnd = docData.current_period_end ? new Date(docData.current_period_end) : null;
-    const daysRemaining = periodEnd
-      ? Math.max(0, Math.ceil((periodEnd.getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
-      : 0;
-
-    setSub({
-      plan_code: docData.plan_code || "monthly",
-      status: docData.status || "active",
-      days_remaining: daysRemaining,
-      is_active: docData.status === "active",
-      current_period_end: docData.current_period_end || null,
-      trial_ends_at: docData.trial_ends_at || null,
-    });
-  };
-
-  useEffect(() => {
-    void fetchSubscription();
-  }, [user?.id]);
-
-  // Handle Paystack callback reference in URL (?reference=... or ?trxref=...)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const reference = params.get("reference") || params.get("trxref");
-    if (!reference) return;
-
-    // Clean URL so refresh doesn't re-trigger
-    window.history.replaceState({}, document.title, window.location.pathname);
-
-    setVerifying(true);
-    verifyCheckout({ data: { reference, userId: user?.id } })
-      .then((res) => {
-        setVerifying(false);
-        if (res.success) {
-          toast.success("Payment confirmed! Your QRoll plan is now active.", {
-            description: "Thank you for subscribing. You have full access to all features.",
-          });
-          void fetchSubscription();
-        } else {
-          toast.error("Payment was not completed or failed verification.");
-        }
-      })
-      .catch((err) => {
-        setVerifying(false);
-        console.error("Verification error:", err);
-      });
-  }, [user?.id]);
-
-  const trial = useMemo(() => {
-    const endsRaw = sub?.trial_ends_at ?? sub?.current_period_end;
-    const created = user?.created_at ? new Date(user.created_at) : new Date();
-    const ends = endsRaw
-      ? new Date(endsRaw)
-      : new Date(created.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
-    const daysLeft =
-      sub?.days_remaining ??
-      Math.max(0, Math.ceil((ends.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
-    return { ends, daysLeft };
-  }, [user?.created_at, sub]);
-
-  const planLabel = sub?.status === "active" ? (sub.plan_code ?? "Premium") : "Free trial";
-
-  const [busy, setBusy] = useState<PlanCode | null>(null);
-  const [chosen, setChosen] = useState<PlanCode | null>(null);
-
-  useEffect(() => {
-    const saved = typeof window !== "undefined" ? window.localStorage.getItem("qroll:plan") : null;
-    if (saved) setChosen(saved as PlanCode);
-  }, []);
-
-  const checkout = async (code: PlanCode, planName: string) => {
-    if (!PAYMENTS_LIVE) {
-      setChosen(code);
-      window.localStorage.setItem("qroll:plan", code);
-      toast.success(`${planName} plan saved as your preferred plan.`);
-      return;
-    }
-    setBusy(code);
-    try {
-      const r = await startCheckout({
-        data: {
-          plan: code,
-          callbackUrl: `${window.location.origin}/billing`,
-          userId: user?.id,
-          email: user?.email || undefined,
-        },
-      });
-      if (r.url) window.location.href = r.url;
-      else toast.info(r.message);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not start checkout");
-    } finally {
-      setBusy(null);
-    }
-  };
+  const perks = [
+    {
+      title: "Unlimited Class Sessions & Courses",
+      desc: "Create and manage as many courses, class groups, and lecture sessions as needed across all semesters.",
+      icon: GraduationCap,
+    },
+    {
+      title: "Unlimited Students & Unique QR Passes",
+      desc: "Import complete student rosters via Excel or CSV with instant generation of universal attendance QR codes.",
+      icon: Users,
+    },
+    {
+      title: "Instant Multi-Camera Scanner & Live Projector",
+      desc: "High-speed camera scanning on laptops, tablets, and smartphones, plus dynamic rotating projector QR codes.",
+      icon: ScanLine,
+    },
+    {
+      title: "Automated Continuous Assessment & Analytics",
+      desc: "Real-time attendance rates, 10-mark continuous assessment calculation, at-risk flags, and one-click PDF/Excel export.",
+      icon: FileBarChart,
+    },
+  ];
 
   return (
     <AppShell>
-      <div className="space-y-6 max-w-5xl mx-auto w-full">
+      <div className="space-y-6 max-w-4xl mx-auto w-full">
+        {/* Header banner */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Billing & Plans</h1>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-2">
+              <Gift className="size-3.5" />
+              100% Free & Open Academic Platform
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">University Access & Plan</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Every account starts with a <b>7-day free trial</b> with all features included.
-              Upgrade anytime with Mobile Money or Bank Cards.
+              KNUST-ATTENDANCE-APP is completely free for all university faculty, lecturers, and students.
             </p>
           </div>
           <Link to={"/dashboard" as string} className="w-full sm:w-auto">
             <Button className="w-full">
-              <HomeIcon className="size-4 mr-1" />
+              <HomeIcon className="size-4 mr-1.5" />
               Dashboard
             </Button>
           </Link>
         </div>
 
-        {verifying && (
-          <Alert className="border-primary/40 bg-primary/5">
-            <RefreshCw className="size-4 animate-spin text-primary" />
-            <AlertTitle>Verifying your payment...</AlertTitle>
-            <AlertDescription>
-              Please wait a moment while we activate your subscription.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <Alert className="border-emerald-500/30 bg-emerald-500/5">
-          <ShieldCheck className="size-4 text-emerald-600" />
-          <AlertTitle className="text-emerald-800 dark:text-emerald-300 font-semibold">
-            Live Payments Connected
-          </AlertTitle>
-          <AlertDescription className="text-emerald-700 dark:text-emerald-400 text-xs">
-            Secure, instant payment processing via Ghana Mobile Money (MTN MoMo, Telecel Cash, AT
-            Money), Visa, Mastercard, and Bank Transfer.
-          </AlertDescription>
-        </Alert>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="size-5 text-primary" /> Your current status
-            </CardTitle>
-            <CardDescription>{user?.email}</CardDescription>
+        {/* Free Plan Status Card */}
+        <Card className="border-primary/30 bg-card shadow-sm overflow-hidden">
+          <div className="h-2 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-500" />
+          <CardHeader className="p-5 sm:p-6 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle className="text-xl font-bold flex items-center gap-2">
+                  <CheckCircle2 className="size-5 text-emerald-600 shrink-0" />
+                  All Features Fully Unlocked
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Account: <span className="font-semibold text-foreground">{user?.email || "Lecturer"}</span>
+                </CardDescription>
+              </div>
+              <Badge className="bg-emerald-600 text-white hover:bg-emerald-700 px-3 py-1 text-xs self-start sm:self-auto">
+                <Sparkles className="size-3 mr-1" /> Completely Free Forever
+              </Badge>
+            </div>
           </CardHeader>
-          <CardContent className="flex flex-wrap items-center gap-3">
-            <Badge variant="secondary" className="text-sm capitalize font-medium">
-              {planLabel}
-            </Badge>
-            <span className="text-sm text-muted-foreground">
-              {sub?.is_active
-                ? `Active subscription · ${sub.days_remaining} day${sub.days_remaining === 1 ? "" : "s"} remaining`
-                : `${trial.daysLeft} of ${TRIAL_DAYS} trial days remaining · ends ${trial.ends.toLocaleDateString()}`}
-            </span>
+          <CardContent className="p-5 sm:p-6 pt-0 space-y-6">
+            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-950 dark:text-emerald-200 text-xs sm:text-sm leading-relaxed">
+              <strong>Zero Subscriptions, Zero Fees:</strong> There are no paywalls, recurring charges,
+              or trial expiration dates. You have unrestricted access to all current and future attendance
+              features for teaching and continuous assessment.
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {perks.map((p, i) => (
+                <div
+                  key={i}
+                  className="p-3.5 rounded-xl border bg-muted/20 flex items-start gap-3"
+                >
+                  <div className="size-8 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0 mt-0.5">
+                    <p.icon className="size-4" />
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="font-semibold text-xs sm:text-sm text-foreground">{p.title}</div>
+                    <div className="text-[11px] sm:text-xs text-muted-foreground leading-normal">
+                      {p.desc}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-3 border-t">
+              <Link to={"/sessions" as string} className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full text-xs">
+                  View Class Sessions
+                </Button>
+              </Link>
+              <Link to={"/scan" as string} className="w-full sm:w-auto">
+                <Button className="w-full text-xs bg-primary text-primary-foreground hover:bg-primary/90">
+                  <ScanLine className="size-4 mr-1.5" /> Launch Attendance Scanner
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          {PLANS.map((p) => (
-            <Card
-              key={p.code}
-              className={`relative transition-all hover:-translate-y-0.5 hover:shadow-lg ${chosen === p.code ? "border-primary ring-2 ring-primary/30 shadow-lg" : p.highlight ? "border-primary shadow-md" : ""}`}
-            >
-              {p.highlight && <Badge className="absolute -top-2 right-4">Most popular</Badge>}
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {p.name}
-                  {chosen === p.code && (
-                    <Badge variant="secondary" className="text-[10px]">
-                      Your pick
-                    </Badge>
-                  )}
-                </CardTitle>
-                <CardDescription>{p.note}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="text-3xl font-bold">{formatGhs(p.amountGhs)}</div>
-                  <div className="text-xs text-muted-foreground">{p.cadence}</div>
-                </div>
-                <ul className="space-y-1.5">
-                  {p.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm">
-                      <Check className="size-4 text-primary mt-0.5 shrink-0" /> {f}
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className="w-full font-medium"
-                  variant={chosen === p.code ? "default" : p.highlight ? "default" : "outline"}
-                  disabled={busy === p.code || verifying}
-                  onClick={() => void checkout(p.code, p.name)}
-                >
-                  <CreditCard className="size-4 mr-1.5" />{" "}
-                  {busy === p.code
-                    ? "Redirecting to checkout…"
-                    : `Pay ${formatGhs(p.amountGhs)} (MoMo / Card)`}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <p className="text-xs text-muted-foreground text-center">
-          Payment is processed securely. All prices in Ghana Cedis (GHS). Automatic receipts are
-          sent to your registered email.
-        </p>
       </div>
     </AppShell>
   );
 }
+

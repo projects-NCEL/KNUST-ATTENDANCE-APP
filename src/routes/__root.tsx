@@ -10,9 +10,8 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { SplashScreen } from "@/components/SplashScreen";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import qrollLogo from "@/assets/qroll-logo.png";
+import { registerPushServiceWorker } from "@/lib/push-client";
 
 function NotFoundComponent() {
   return (
@@ -79,50 +78,41 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "theme-color", content: "#0f2544" },
-      { title: "QRoll — QR Attendance Made Easy" },
+      { name: "theme-color", content: "#00552b" },
+      { title: "KNUST-ATTENDANCE-APP — Official Student Attendance System" },
       {
         name: "description",
         content:
-          "QRoll is a secure QR attendance system for universities. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
+          "KNUST-ATTENDANCE-APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
       },
-      { property: "og:title", content: "QRoll — QR Attendance Made Easy" },
+      { property: "og:title", content: "KNUST-ATTENDANCE-APP — Official Student Attendance System" },
       {
         property: "og:description",
         content:
-          "QRoll is a secure QR attendance system for universities. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
+          "KNUST-ATTENDANCE-APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "QRoll — QR Attendance Made Easy" },
+      { name: "twitter:title", content: "KNUST-ATTENDANCE-APP — Official Student Attendance System" },
       {
         name: "twitter:description",
         content:
-          "QRoll is a secure QR attendance system for universities. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
-      },
-      {
-        property: "og:image",
-        content:
-          "https://storage.googleapis.com/gpt-engineer-file-uploads/71J2W22O5zQ9RML7tTBnqENAV3Z2/social-images/social-1785652190827-social-image.webp",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://storage.googleapis.com/gpt-engineer-file-uploads/71J2W22O5zQ9RML7tTBnqENAV3Z2/social-images/social-1785652190827-social-image.webp",
+          "KNUST-ATTENDANCE-APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
       },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", href: "/knust-logo.svg", type: "image/svg+xml" },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
-      { rel: "apple-touch-icon", href: "/favicon.png" },
+      { rel: "apple-touch-icon", href: "/knust-logo.svg" },
     ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
-});
+  });
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
@@ -141,9 +131,15 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    // Register PWA Web Push service worker in browser
+    if (typeof window !== "undefined") {
+      registerPushServiceWorker().catch(() => {});
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
-      <SplashScreen />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>

@@ -8,7 +8,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Laptop, Smartphone, Tablet, Trash2, LogOut, ShieldAlert } from "lucide-react";
+import {
+  Laptop,
+  Smartphone,
+  Tablet,
+  Trash2,
+  LogOut,
+  ShieldAlert,
+} from "lucide-react";
 import {
   revokeDevice,
   registerOrVerifyDevice,
@@ -25,7 +32,12 @@ interface DeviceLimitDialogProps {
   onResolved: () => void;
 }
 
-export function DeviceLimitDialog({ open, userId, devices, onResolved }: DeviceLimitDialogProps) {
+export function DeviceLimitDialog({
+  open,
+  userId,
+  devices,
+  onResolved,
+}: DeviceLimitDialogProps) {
   const [deviceList, setDeviceList] = useState<UserDevice[]>(devices);
   const [revoking, setRevoking] = useState<string | null>(null);
 
@@ -55,14 +67,19 @@ export function DeviceLimitDialog({ open, userId, devices, onResolved }: DeviceL
   };
 
   const getDeviceIcon = (type: string) => {
-    if (type === "mobile") return <Smartphone className="size-5 text-primary shrink-0" />;
-    if (type === "tablet") return <Tablet className="size-5 text-primary shrink-0" />;
+    if (type === "mobile")
+      return <Smartphone className="size-5 text-primary shrink-0" />;
+    if (type === "tablet")
+      return <Tablet className="size-5 text-primary shrink-0" />;
     return <Laptop className="size-5 text-primary shrink-0" />;
   };
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent
+        className="sm:max-w-md"
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <div className="mx-auto size-12 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 grid place-items-center mb-2">
             <ShieldAlert className="size-6" />
@@ -71,8 +88,9 @@ export function DeviceLimitDialog({ open, userId, devices, onResolved }: DeviceL
             Device Limit Reached (Max {MAX_DEVICES_PER_ACCOUNT})
           </DialogTitle>
           <DialogDescription className="text-center text-xs text-muted-foreground">
-            Your QRoll account is currently signed in on {deviceList.length} devices (the maximum
-            allowed). Please remove an old device below to continue on this device.
+            Your KNUST Attendance account is currently signed in on {deviceList.length}{" "}
+            devices (the maximum allowed). Please remove an old device below to
+            continue on this device.
           </DialogDescription>
         </DialogHeader>
 
@@ -85,7 +103,9 @@ export function DeviceLimitDialog({ open, userId, devices, onResolved }: DeviceL
               <div className="flex items-center gap-3 min-w-0">
                 {getDeviceIcon(d.device_type)}
                 <div className="min-w-0">
-                  <div className="font-semibold truncate text-xs sm:text-sm">{d.device_name}</div>
+                  <div className="font-semibold truncate text-xs sm:text-sm">
+                    {d.device_name}
+                  </div>
                   <div className="text-[11px] text-muted-foreground truncate">
                     Last active: {new Date(d.last_active).toLocaleString()}
                   </div>
@@ -107,7 +127,11 @@ export function DeviceLimitDialog({ open, userId, devices, onResolved }: DeviceL
         </div>
 
         <div className="flex flex-col gap-2 pt-2 border-t">
-          <Button variant="outline" className="w-full text-xs" onClick={handleSignOut}>
+          <Button
+            variant="outline"
+            className="w-full text-xs"
+            onClick={handleSignOut}
+          >
             <LogOut className="size-3.5 mr-1.5" /> Sign Out Instead
           </Button>
         </div>

@@ -41,18 +41,19 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PublicFooter } from "@/components/PublicFooter";
+import { KnustEmblem } from "@/components/KnustEmblem";
 
 export const Route = createFileRoute("/portal/$token/register")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Student Registration — QRoll" },
+      { title: "Student Registration — KNUST-ATTENDANCE-APP" },
       {
         name: "description",
         content:
-          "New students register themselves and instantly receive their personal QRoll attendance QR code.",
+          "New students register themselves and instantly receive their personal KNUST attendance QR code.",
       },
-      { property: "og:title", content: "Student Registration — QRoll" },
+      { property: "og:title", content: "Student Registration — KNUST-ATTENDANCE-APP" },
       {
         property: "og:description",
         content: "Register once and get your personal attendance QR code.",
@@ -275,7 +276,7 @@ function RegisterPage() {
         await QRCode.toDataURL(row.qr_uuid, {
           width: 360,
           margin: 2,
-          color: { dark: "#1e3a8a", light: "#ffffff" },
+          color: { dark: "#00552b", light: "#ffffff" },
         }),
       );
       toast.success(
@@ -310,14 +311,16 @@ function RegisterPage() {
         </div>
 
         {!created ? (
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserPlus className="size-5 text-primary" /> New student registration
+          <Card className="w-full max-w-md shadow-md border">
+            <CardHeader className="text-center pb-2">
+              <div className="flex justify-center mb-2">
+                <KnustEmblem size={44} />
+              </div>
+              <CardTitle className="flex items-center justify-center gap-2 text-lg">
+                <UserPlus className="size-5 text-primary" /> New Student Registration
               </CardTitle>
               <CardDescription>
-                Register yourself once. You will be added to your class automatically and get your
-                personal QR code.
+                Kwame Nkrumah University of Science and Technology. Register once to receive your universal QR attendance pass.
               </CardDescription>
             </CardHeader>
             <CardContent>

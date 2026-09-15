@@ -11,10 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Download, FileText, GraduationCap, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { PublicFooter } from "@/components/PublicFooter";
+import { KnustEmblem } from "@/components/KnustEmblem";
 
 export const Route = createFileRoute("/portal/$token/")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Student QR Portal — QRoll" }] }),
+  head: () => ({ meta: [{ title: "Student QR Portal — KNUST-ATTENDANCE-APP" }] }),
   component: PortalPage,
 });
 
@@ -107,7 +108,7 @@ function PortalPage() {
       const url = await QRCode.toDataURL(row.qr_uuid, {
         width: 360,
         margin: 2,
-        color: { dark: "#1e3a8a", light: "#ffffff" },
+        color: { dark: "#00552b", light: "#ffffff" },
       });
       setQrDataUrl(url);
     } catch (err: any) {
@@ -124,20 +125,55 @@ function PortalPage() {
     a.click();
   };
 
-  const downloadPdf = () => {
+  const downloadPdf = async () => {
     const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text("QRoll — Student QR", 105, 25, { align: "center" });
+
+    // Embed KNUST Logo
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+        el.crossOrigin = "anonymous";
+        el.onload = () => resolve(el);
+        el.onerror = reject;
+        el.src = "/favicon.png";
+      });
+      doc.addImage(img, "PNG", 92, 12, 26, 26);
+    } catch {
+      // Non-blocking
+    }
+
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 85, 43);
+    doc.text("KWAME NKRUMAH UNIVERSITY OF SCIENCE AND TECHNOLOGY", 105, 44, { align: "center" });
+
     doc.setFontSize(12);
-    doc.text(student!.full_name, 105, 40, { align: "center" });
-    doc.text(`Index: ${student!.index_number}`, 105, 48, { align: "center" });
-    doc.text(`Level ${student!.level} · ${student!.department}`, 105, 56, { align: "center" });
-    doc.addImage(qrDataUrl, "PNG", 65, 68, 80, 80);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(30, 41, 59);
+    doc.text("KNUST Attendance — Universal Student QR Pass", 105, 52, { align: "center" });
+
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text(student!.full_name, 105, 66, { align: "center" });
+
+    doc.setFontSize(12);
+    doc.setTextColor(0, 85, 43);
+    doc.text(`Index: ${student!.index_number}`, 105, 74, { align: "center" });
+
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Level ${student!.level} · ${student!.department}`, 105, 82, { align: "center" });
+
+    doc.addImage(qrDataUrl, "PNG", 65, 92, 80, 80);
+
     doc.setFontSize(10);
-    doc.text("Show this QR to your T.A. or scan the classroom board QR to check in.", 105, 165, {
+    doc.setTextColor(100, 116, 139);
+    doc.text("Show this QR to your lecturer/T.A. or scan the classroom projector QR to check in.", 105, 182, {
       align: "center",
     });
-    doc.text("This QR works for every course and session — past, present and future.", 105, 173, {
+    doc.text("This official QR works for every course and session — past, present and future.", 105, 190, {
       align: "center",
     });
     doc.save(`${student!.index_number}-qr.pdf`);
@@ -146,9 +182,9 @@ function PortalPage() {
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col">
       <div className="flex-1 flex flex-col items-center p-6">
-        <div className="flex items-center gap-2 mb-6 mt-4">
-          <GraduationCap className="size-7 text-primary" />
-          <h1 className="text-2xl font-bold">QRoll Student QR Portal</h1>
+        <div className="flex items-center gap-3 mb-6 mt-4">
+          <KnustEmblem size={36} />
+          <h1 className="text-2xl font-bold">KNUST Student QR Portal</h1>
         </div>
 
         {!student ? (

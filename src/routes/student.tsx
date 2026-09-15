@@ -43,19 +43,23 @@ import QRCode from "qrcode";
 import { toast } from "sonner";
 import { PublicFooter } from "@/components/PublicFooter";
 import { calculateAttendanceGrade } from "@/lib/grading";
-import qrollLogo from "@/assets/qroll-logo.png";
+import { KnustEmblem } from "@/components/KnustEmblem";
+import {
+  PushNotificationManager,
+  InAppNotificationCenter,
+} from "@/components/PushNotificationManager";
 
 export const Route = createFileRoute("/student")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Student Portal — QRoll" },
+      { title: "Student Portal — KNUST-ATTENDANCE-APP" },
       {
         name: "description",
         content:
-          "Access your student attendance records, download your QR pass, view enrolled courses, announcements, and assignments.",
+          "Access your student attendance records, download your KNUST QR pass, view enrolled courses, announcements, and assignments.",
       },
-      { property: "og:title", content: "Student Portal — QRoll" },
+      { property: "og:title", content: "Student Portal — KNUST-ATTENDANCE-APP" },
       {
         property: "og:description",
         content: "Track your attendance percentage, QR code, enrolled courses, and announcements.",
@@ -67,8 +71,8 @@ export const Route = createFileRoute("/student")({
   component: StudentPortalPage,
 });
 
-const STORE = "qroll.student.session.v2";
-const BRAND_BLUE = "#1e3a8a";
+const STORE = "knust.student.session.v2";
+const BRAND_GREEN = "#00552b";
 
 interface StudentMe {
   id: string;
@@ -165,7 +169,7 @@ function StudentPortalPage() {
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
 
-  // QR Code generator matching QRoll brand blue
+  // QR Code generator matching KNUST brand green
   useEffect(() => {
     if (me) {
       const qrPayload = me.qr_uuid || me.index_number;
@@ -173,7 +177,7 @@ function StudentPortalPage() {
         width: 380,
         margin: 2,
         color: {
-          dark: BRAND_BLUE,
+          dark: BRAND_GREEN,
           light: "#ffffff",
         },
       })
@@ -192,7 +196,7 @@ function StudentPortalPage() {
     const w = window.open("", "_blank");
     if (!w) return;
     w.document.write(
-      `<html><head><title>${me.index_number} - Universal QR Pass</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;text-align:center;padding:40px;color:#0f172a}.badge{display:inline-block;border:2px solid #0f172a;border-radius:12px;padding:24px 32px;max-width:340px}img{width:240px;height:240px}h2{margin:0 0 8px;color:#1e3a8a}h3{margin:12px 0 4px;font-size:20px}p{margin:4px 0;color:#475569;font-size:13px}.tag{display:inline-block;background:#e0e7ff;color:#3730a3;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;margin-bottom:12px}</style></head><body><div class="badge"><div class="tag">UNIVERSAL STUDENT ATTENDANCE PASS</div><h2>QRoll Pass</h2><img src="${qrUrl}" /><h3>${me.full_name}</h3><p><strong>${me.index_number}</strong> · Level ${me.level || "100"}</p><p>${me.program || "Undergraduate Degree"}</p><p style="font-size:11px;color:#64748b;margin-top:12px">One unique QR code valid for all courses & lecturers</p></div></body></html>`,
+      `<html><head><title>${me.index_number} - KNUST Universal Student QR Pass</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;text-align:center;padding:40px;color:#0f172a}.badge{display:inline-block;border:2px solid #00552b;border-radius:16px;padding:24px 32px;max-width:360px;background:#ffffff;box-shadow:0 4px 12px rgba(0,0,0,0.08)}.crest{width:64px;height:64px;margin:0 auto 8px;display:block}h1{font-size:11px;letter-spacing:1px;color:#00552b;margin:0 0 6px;text-transform:uppercase}h2{margin:0 0 12px;color:#0f172a;font-size:18px}h3{margin:12px 0 4px;font-size:18px;color:#0f172a}p{margin:4px 0;color:#475569;font-size:13px}.tag{display:inline-block;background:#e6f4ea;color:#00552b;border:1px solid #00552b;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;margin-bottom:12px}.qr{width:220px;height:220px;margin:0 auto;display:block;border-radius:8px}</style></head><body><div class="badge"><img class="crest" src="/favicon.png" alt="KNUST Crest" /><h1>Kwame Nkrumah University of Science and Technology</h1><h2>Universal Student QR Pass</h2><img class="qr" src="${qrUrl}" /><h3>${me.full_name}</h3><p style="font-size:15px;font-weight:bold;color:#00552b">Index: ${me.index_number}</p><p>Level ${me.level || "100"} · ${me.program || "Undergraduate Degree"}</p><p style="font-size:11px;color:#64748b;margin-top:14px;border-top:1px dashed #cbd5e1;padding-top:10px">Official Academic Pass · Valid for all courses & faculty</p></div></body></html>`,
     );
     w.document.close();
     setTimeout(() => w.print(), 400);
@@ -590,18 +594,18 @@ function StudentPortalPage() {
     <div className="min-h-screen bg-muted/25 flex flex-col">
       {/* Top Navbar */}
       <header className="border-b bg-card/90 backdrop-blur-md sticky top-0 z-30 shadow-xs">
-        <div className="w-full px-3 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-2.5 hover:opacity-90 transition group">
-              <div className="size-10 sm:size-11 rounded-xl bg-white p-1 shadow-sm ring-1 ring-border/50 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                <img src={qrollLogo} alt="QRoll logo" className="size-full object-contain" />
+        <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <Link to="/" className="flex items-center gap-2 sm:gap-2.5 hover:opacity-90 transition group">
+              <div className="size-9 sm:size-10 rounded-xl bg-muted/40 p-0.5 shadow-xs border flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+                <KnustEmblem size={32} />
               </div>
               <div>
-                <span className="font-bold text-base sm:text-lg tracking-tight text-foreground block leading-none">
-                  QRoll
+                <span className="font-bold text-sm sm:text-lg tracking-tight text-foreground block leading-none">
+                  KNUST
                 </span>
-                <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
-                  Attendance System
+                <span className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
+                  Attendance App
                 </span>
               </div>
             </Link>
@@ -612,19 +616,21 @@ function StudentPortalPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {me && <InAppNotificationCenter userId={me.index_number} />}
             {me ? (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleSignOut}
-                className="text-xs gap-1.5 h-8 font-medium"
+                className="text-xs gap-1.5 h-8 font-medium px-2.5 sm:px-3"
               >
                 <LogOut className="size-3.5" />
-                Sign Out
+                <span className="hidden xs:inline">Sign Out</span>
+                <span className="xs:hidden">Exit</span>
               </Button>
             ) : (
               <Link to="/">
-                <Button variant="ghost" size="sm" className="text-xs gap-1 h-8">
+                <Button variant="ghost" size="sm" className="text-xs gap-1 h-8 px-2 sm:px-3">
                   <ArrowLeft className="size-3.5" />
                   Home
                 </Button>
@@ -635,17 +641,17 @@ function StudentPortalPage() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full px-3 sm:px-6 lg:px-8 py-5 md:py-8">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-3.5 sm:py-6 md:py-8">
         {!me ? (
           /* ========================================================================= */
           /* AUTHENTICATION SCREENS (INDEX CHECK, FIRST-TIME PASSWORD, LOGIN, RESET)   */
           /* ========================================================================= */
-          <div className="max-w-md mx-auto py-4 sm:py-8">
+          <div className="max-w-md mx-auto py-2 sm:py-8 px-0 sm:px-2">
             <Card className="shadow-lg border-primary/10 overflow-hidden">
-              <div className="h-2 bg-gradient-to-r from-blue-950 via-blue-800 to-blue-600" />
+              <div className="h-2 bg-gradient-to-r from-[#00381c] via-[#00552b] to-[#007a3d]" />
 
               {/* Mode Selector Tabs */}
-              <div className="p-2 bg-muted/60 border-b grid grid-cols-3 gap-1 text-xs">
+              <div className="p-1.5 sm:p-2 bg-muted/60 border-b grid grid-cols-3 gap-1 text-[11px] sm:text-xs">
                 <button
                   type="button"
                   onClick={() => {
@@ -653,7 +659,7 @@ function StudentPortalPage() {
                     setPassword("");
                     setConfirmPassword("");
                   }}
-                  className={`py-2 px-2 rounded-md font-semibold transition text-center ${
+                  className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate ${
                     step === "login"
                       ? "bg-background text-foreground shadow-xs border"
                       : "text-muted-foreground hover:text-foreground"
@@ -668,7 +674,7 @@ function StudentPortalPage() {
                     setPassword("");
                     setConfirmPassword("");
                   }}
-                  className={`py-2 px-2 rounded-md font-semibold transition text-center ${
+                  className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate ${
                     step === "index" || step === "create"
                       ? "bg-background text-foreground shadow-xs border"
                       : "text-muted-foreground hover:text-foreground"
@@ -683,7 +689,7 @@ function StudentPortalPage() {
                     setPassword("");
                     setConfirmPassword("");
                   }}
-                  className={`py-2 px-2 rounded-md font-semibold transition text-center ${
+                  className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate ${
                     step === "reset"
                       ? "bg-background text-foreground shadow-xs border"
                       : "text-muted-foreground hover:text-foreground"
@@ -695,17 +701,17 @@ function StudentPortalPage() {
 
               {step === "index" && (
                 <>
-                  <CardHeader className="text-center pb-3 pt-5">
-                    <div className="mx-auto size-12 rounded-full bg-primary/10 text-primary grid place-items-center mb-2">
-                      <GraduationCap className="size-6" />
+                  <CardHeader className="text-center pb-3 pt-5 px-4 sm:px-6">
+                    <div className="flex justify-center mb-2">
+                      <KnustEmblem size={48} />
                     </div>
-                    <CardTitle className="text-xl font-bold">Set Student Password</CardTitle>
+                    <CardTitle className="text-lg sm:text-xl font-bold">Set Student Password</CardTitle>
                     <CardDescription className="text-xs max-w-sm mx-auto">
                       Enter your university index number and registered email to set your permanent
                       login password.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 px-4 sm:px-6">
                     <form onSubmit={handleDirectRegister} className="space-y-3.5">
                       <div className="space-y-1.5">
                         <Label htmlFor="index-num" className="text-xs font-semibold">
@@ -713,7 +719,7 @@ function StudentPortalPage() {
                         </Label>
                         <Input
                           id="index-num"
-                          placeholder="e.g. 4068924"
+                          placeholder="e.g. 2084931"
                           value={index}
                           onChange={(e) => setIndex(e.target.value)}
                           autoFocus
@@ -783,7 +789,7 @@ function StudentPortalPage() {
                       <Button
                         type="submit"
                         id="student-verify-continue-btn"
-                        className="w-full h-11 rounded-lg bg-[#1e3a8a] hover:bg-[#172554] text-white font-semibold text-sm tracking-wide shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer"
+                        className="w-full h-11 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm tracking-wide shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer"
                         disabled={busy}
                       >
                         {busy ? (
@@ -817,8 +823,8 @@ function StudentPortalPage() {
               {step === "create" && (
                 <>
                   <CardHeader className="text-center pb-3">
-                    <div className="mx-auto size-12 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center mb-2">
-                      <KeyRound className="size-6" />
+                    <div className="flex justify-center mb-2">
+                      <KnustEmblem size={48} />
                     </div>
                     <CardTitle className="text-xl font-bold">Create Your Password</CardTitle>
                     <CardDescription className="text-xs">
@@ -923,21 +929,21 @@ function StudentPortalPage() {
 
               {step === "login" && (
                 <>
-                  <CardHeader className="text-center pb-3">
-                    <div className="mx-auto size-12 rounded-full bg-primary/10 text-primary grid place-items-center mb-2">
-                      <ShieldCheck className="size-6" />
+                  <CardHeader className="text-center pb-3 pt-5 px-4 sm:px-6">
+                    <div className="flex justify-center mb-2">
+                      <KnustEmblem size={48} />
                     </div>
-                    <CardTitle className="text-xl font-bold">Sign In to Student Portal</CardTitle>
+                    <CardTitle className="text-lg sm:text-xl font-bold">Sign In to Student Portal</CardTitle>
                     <CardDescription className="text-xs">
                       Enter your university index number and password to access your dashboard.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 px-4 sm:px-6">
                     <form onSubmit={handleLoginSubmit} className="space-y-3.5">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold">Student Index Number</Label>
                         <Input
-                          placeholder="e.g. 4068924"
+                          placeholder="e.g. 2084931"
                           value={index}
                           onChange={(e) => setIndex(e.target.value)}
                           required
@@ -1018,21 +1024,21 @@ function StudentPortalPage() {
 
               {step === "reset" && (
                 <>
-                  <CardHeader className="text-center pb-4">
-                    <div className="mx-auto size-12 rounded-full bg-amber-100 text-amber-800 grid place-items-center mb-2">
-                      <RefreshCw className="size-6" />
+                  <CardHeader className="text-center pb-4 pt-5 px-4 sm:px-6">
+                    <div className="flex justify-center mb-2">
+                      <KnustEmblem size={48} />
                     </div>
-                    <CardTitle className="text-xl font-bold">Reset Student Password</CardTitle>
+                    <CardTitle className="text-lg sm:text-xl font-bold">Reset Student Password</CardTitle>
                     <CardDescription className="text-xs max-w-sm mx-auto">
                       Provide your registered student email and index number to set a new password.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 px-4 sm:px-6">
                     <form onSubmit={handleResetPassword} className="space-y-3.5">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold">Student Index Number</Label>
                         <Input
-                          placeholder="e.g. 4068924"
+                          placeholder="e.g. 2084931"
                           value={index}
                           onChange={(e) => setIndex(e.target.value)}
                           required
@@ -1129,34 +1135,36 @@ function StudentPortalPage() {
           /* ========================================================================= */
           /* AUTHENTICATED STUDENT PORTAL DASHBOARD                                     */
           /* ========================================================================= */
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Student Header Card */}
             <Card className="border shadow-xs overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-blue-700 p-6 text-white">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-white/20 text-white hover:bg-white/30 border-none text-[11px] font-mono">
+              <div className="bg-gradient-to-r from-[#00381c] via-[#00552b] to-[#007a3d] p-3.5 sm:p-6 text-white">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4">
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <Badge className="bg-white/20 text-white hover:bg-white/30 border-none text-[10px] sm:text-[11px] font-mono">
                         {me.index_number}
                       </Badge>
-                      <Badge className="bg-emerald-500/90 text-white border-none text-[11px]">
+                      <Badge className="bg-emerald-500/90 text-white border-none text-[10px] sm:text-[11px]">
                         Verified Student
                       </Badge>
                     </div>
-                    <h1 className="text-2xl font-bold tracking-tight text-white">{me.full_name}</h1>
-                    <p className="text-xs text-white/80">
+                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white truncate">
+                      {me.full_name}
+                    </h1>
+                    <p className="text-[11px] sm:text-xs text-white/80">
                       {me.program || "Undergraduate Program"} · Level {me.level || "200"}
                       {me.email && ` · ${me.email}`}
                     </p>
                   </div>
 
                   {/* Attendance Grade Stat Box */}
-                  <div className="bg-white/10 backdrop-blur-xs rounded-xl p-4 border border-white/15 min-w-[200px] text-right sm:text-right">
-                    <div className="text-xs text-white/75 font-medium">Running Attendance</div>
-                    <div className="text-3xl font-extrabold text-white mt-0.5">
+                  <div className="bg-white/10 backdrop-blur-xs rounded-xl p-3 sm:p-4 border border-white/15 w-full sm:w-auto sm:min-w-[200px] text-left sm:text-right">
+                    <div className="text-[11px] sm:text-xs text-white/75 font-medium">Running Attendance</div>
+                    <div className="text-2xl sm:text-3xl font-extrabold text-white mt-0.5">
                       {overallPercentage}%
                     </div>
-                    <div className="flex items-center justify-end gap-1.5 mt-1 text-xs">
+                    <div className="flex items-center justify-start sm:justify-end gap-1.5 mt-1 text-[11px] sm:text-xs">
                       <span className="text-white/80">
                         {totalAttendedSessions} of {totalHeldSessions} sessions attended
                       </span>
@@ -1164,8 +1172,8 @@ function StudentPortalPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-white/15">
-                  <div className="flex justify-between items-center text-xs text-white/80 mb-1.5">
+                <div className="mt-3.5 sm:mt-4 pt-2.5 sm:pt-3 border-t border-white/15">
+                  <div className="flex justify-between items-center text-[11px] sm:text-xs text-white/80 mb-1.5">
                     <span>Overall Semester Attendance Standing</span>
                     <span className="font-semibold">
                       {calculateAttendanceGrade(overallPercentage).label} Grade
@@ -1178,13 +1186,13 @@ function StudentPortalPage() {
 
             {/* Attendance Risk Banner (If applicable) */}
             {atRiskCourses.length > 0 && (
-              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 sm:p-5 flex items-start gap-3.5 text-destructive animate-in fade-in">
-                <AlertTriangle className="size-5 shrink-0 mt-0.5" />
-                <div className="space-y-1 text-xs sm:text-sm">
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 sm:p-5 flex items-start gap-3 text-destructive animate-in fade-in">
+                <AlertTriangle className="size-4 sm:size-5 shrink-0 mt-0.5" />
+                <div className="space-y-1 text-xs sm:text-sm min-w-0 flex-1">
                   <div className="font-bold text-destructive flex items-center gap-2">
                     Attendance Risk Warning — Exam Eligibility at Risk
                   </div>
-                  <p className="text-destructive/90 leading-relaxed">
+                  <p className="text-destructive/90 leading-relaxed text-xs sm:text-sm">
                     You have fallen below the mandatory <b>75% attendance cutoff</b> in:{" "}
                     <b>
                       {atRiskCourses
@@ -1199,11 +1207,11 @@ function StudentPortalPage() {
             )}
 
             {warningCourses.length > 0 && atRiskCourses.length === 0 && (
-              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 sm:p-5 flex items-start gap-3.5 text-amber-900 animate-in fade-in">
-                <AlertCircle className="size-5 shrink-0 mt-0.5 text-amber-600" />
-                <div className="space-y-1 text-xs sm:text-sm">
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3.5 sm:p-5 flex items-start gap-3 text-amber-900 animate-in fade-in">
+                <AlertCircle className="size-4 sm:size-5 shrink-0 mt-0.5 text-amber-600" />
+                <div className="space-y-1 text-xs sm:text-sm min-w-0 flex-1">
                   <div className="font-bold text-amber-900">Attendance Caution</div>
-                  <p className="text-amber-800 leading-relaxed">
+                  <p className="text-amber-800 leading-relaxed text-xs sm:text-sm">
                     You have missed 3 or more sessions in:{" "}
                     <b>{warningCourses.map((c) => `${c.code} (${c.missed} missed)`).join(", ")}</b>.
                     Maintain regular attendance to keep your standing safe.
@@ -1212,18 +1220,26 @@ function StudentPortalPage() {
               </div>
             )}
 
+            {/* Web Push Notification Activation Card */}
+            <PushNotificationManager
+              userContext={{
+                userId: me.index_number,
+                userRole: "student",
+              }}
+            />
+
             {/* Multi-Lecturer Course & Faculty Filter Bar */}
             {courses.length > 0 && (
-              <div className="rounded-xl border bg-card p-3.5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="rounded-xl border bg-card p-3 sm:p-3.5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+                <div className="flex items-center gap-2.5">
                   <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
                     <Filter className="size-4" />
                   </div>
-                  <div>
-                    <span className="text-xs font-bold text-foreground block">
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-foreground block truncate">
                       Multi-Lecturer & Course Scope
                     </span>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-[11px] text-muted-foreground block truncate">
                       {courses.length} enrolled courses across{" "}
                       <span className="font-semibold text-foreground">
                         {uniqueLecturers.length} lecturer{uniqueLecturers.length === 1 ? "" : "s"}
@@ -1232,12 +1248,12 @@ function StudentPortalPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <select
                     id="student-course-lecturer-filter"
                     value={selectedCourseFilter}
                     onChange={(e) => setSelectedCourseFilter(e.target.value)}
-                    className="text-xs bg-background border rounded-lg px-3 py-2 font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto"
+                    className="text-xs bg-background border rounded-lg px-2.5 py-2 font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto max-w-full truncate"
                   >
                     <option value="all">All Courses & Lecturers ({courses.length})</option>
                     {courses.map((c) => (
@@ -1252,9 +1268,9 @@ function StudentPortalPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setSelectedCourseFilter("all")}
-                      className="text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground"
+                      className="text-xs h-8 px-2 shrink-0 text-muted-foreground hover:text-foreground"
                     >
-                      Reset Filter
+                      Reset
                     </Button>
                   )}
                 </div>
@@ -1263,63 +1279,72 @@ function StudentPortalPage() {
 
             {/* Navigation Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 h-auto p-1 bg-muted/60 rounded-xl gap-1">
-                <TabsTrigger
-                  value="attendance"
-                  className="text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5"
-                >
-                  <CalendarCheck className="size-3.5" />
-                  Attendance
-                </TabsTrigger>
-                <TabsTrigger
-                  value="records"
-                  className="text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5"
-                >
-                  <FileText className="size-3.5" />
-                  Personal Records
-                </TabsTrigger>
-                <TabsTrigger
-                  value="courses"
-                  className="text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5"
-                >
-                  <BookOpen className="size-3.5" />
-                  Courses ({courses.length})
-                </TabsTrigger>
-                <TabsTrigger
-                  value="announcements"
-                  className="text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5"
-                >
-                  <Megaphone className="size-3.5" />
-                  Announcements
-                  {announcements.length > 0 && (
-                    <span className="size-2 rounded-full bg-primary ml-0.5" />
-                  )}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="assignments"
-                  className="text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5"
-                >
-                  <ClipboardList className="size-3.5" />
-                  Assignments
-                  {assignments.length > 0 && (
-                    <span className="size-2 rounded-full bg-primary ml-0.5" />
-                  )}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="qr"
-                  className="text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5"
-                >
-                  <QrCode className="size-3.5" />
-                  My QR Pass
-                </TabsTrigger>
-                <TabsTrigger
-                  value="settings"
-                  className="text-xs py-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5"
-                >
-                  <KeyRound className="size-3.5" />
-                  Settings
-                </TabsTrigger>
-              </TabsList>
+              <div className="overflow-x-auto no-scrollbar -mx-1 px-1 sm:mx-0 sm:px-0">
+                <TabsList className="inline-flex w-auto min-w-full sm:grid sm:grid-cols-4 lg:grid-cols-7 h-auto p-1 bg-muted/60 rounded-xl gap-1">
+                  <TabsTrigger
+                    value="attendance"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                  >
+                    <CalendarCheck className="size-3.5 shrink-0" />
+                    Attendance
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="records"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                  >
+                    <FileText className="size-3.5 shrink-0" />
+                    Personal Records
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="courses"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                  >
+                    <BookOpen className="size-3.5 shrink-0" />
+                    Courses ({courses.length})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="announcements"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                  >
+                    <Megaphone className="size-3.5 shrink-0" />
+                    Announcements
+                    {announcements.length > 0 && (
+                      <span className="size-2 rounded-full bg-primary ml-0.5 shrink-0" />
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="assignments"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                  >
+                    <ClipboardList className="size-3.5 shrink-0" />
+                    Assignments
+                    {assignments.length > 0 && (
+                      <span className="size-2 rounded-full bg-primary ml-0.5 shrink-0" />
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="qr"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                  >
+                    <QrCode className="size-3.5 shrink-0" />
+                    My QR Pass
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="notifications"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                  >
+                    <BellRing className="size-3.5 shrink-0" />
+                    Notifications
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="settings"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                  >
+                    <KeyRound className="size-3.5 shrink-0" />
+                    Settings
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               {/* ------------------------------------------------------------- */}
               {/* TAB 1: ATTENDANCE RECORD (CORE PER-COURSE METRICS)             */}
@@ -1351,39 +1376,39 @@ function StudentPortalPage() {
                               : "border-border/80 hover:border-primary/40"
                           }`}
                         >
-                          <CardHeader className="pb-3">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <Badge variant="outline" className="font-mono text-xs font-bold">
+                          <CardHeader className="p-3.5 sm:p-5 pb-2.5">
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 sm:gap-3">
+                              <div className="space-y-1 min-w-0">
+                                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                  <Badge variant="outline" className="font-mono text-[10px] sm:text-xs font-bold">
                                     {course.code}
                                   </Badge>
                                   {course.level && (
                                     <Badge
                                       variant="secondary"
-                                      className="font-semibold text-[11px] bg-primary/10 text-primary"
+                                      className="font-semibold text-[10px] sm:text-[11px] bg-primary/10 text-primary"
                                     >
                                       {course.level.toUpperCase().startsWith("L")
                                         ? course.level
                                         : `L${course.level}`}
                                     </Badge>
                                   )}
-                                  <span className="text-xs text-muted-foreground">
+                                  <span className="text-[11px] sm:text-xs text-muted-foreground">
                                     {course.department ? `${course.department} · ` : ""}
-                                    {course.semester || "Semester"} · {course.credit_hours} credits
+                                    {course.semester || "Semester"} · {course.credit_hours} cr
                                   </span>
                                 </div>
-                                <CardTitle className="text-base font-bold text-foreground">
+                                <CardTitle className="text-sm sm:text-base font-bold text-foreground">
                                   {course.title}
                                 </CardTitle>
                                 {course.lecturer_name && (
                                   <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
                                     <User className="size-3.5 shrink-0" />
-                                    <span>Lecturer: {course.lecturer_name}</span>
+                                    <span className="truncate">Lecturer: {course.lecturer_name}</span>
                                     {course.lecturer_email && (
                                       <a
                                         href={`mailto:${course.lecturer_email}`}
-                                        className="text-muted-foreground hover:text-primary transition"
+                                        className="text-muted-foreground hover:text-primary transition shrink-0"
                                         title={`Contact ${course.lecturer_email}`}
                                       >
                                         <Mail className="size-3 ml-0.5" />
@@ -1393,9 +1418,9 @@ function StudentPortalPage() {
                                 )}
                               </div>
 
-                              <div className="text-right shrink-0">
+                              <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-1 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0">
                                 <div
-                                  className={`text-2xl font-black ${
+                                  className={`text-xl sm:text-2xl font-black ${
                                     isPassing ? "text-emerald-600" : "text-destructive"
                                   }`}
                                 >
@@ -1410,7 +1435,7 @@ function StudentPortalPage() {
                               </div>
                             </div>
                           </CardHeader>
-                          <CardContent className="space-y-3 pt-0">
+                          <CardContent className="p-3.5 sm:p-5 space-y-3 pt-0">
                             {/* Running progress bar */}
                             <Progress
                               value={course.percentage}
@@ -1418,30 +1443,30 @@ function StudentPortalPage() {
                             />
 
                             {/* Attended, Missed, Late metrics */}
-                            <div className="grid grid-cols-3 gap-2 pt-1 text-center">
-                              <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-100">
-                                <div className="text-xs text-emerald-800 font-medium">Attended</div>
-                                <div className="text-lg font-bold text-emerald-700">
+                            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1 text-center">
+                              <div className="p-1.5 sm:p-2 rounded-lg bg-emerald-50 border border-emerald-100">
+                                <div className="text-[10px] sm:text-xs text-emerald-800 font-medium">Attended</div>
+                                <div className="text-base sm:text-lg font-bold text-emerald-700">
                                   {course.attended}
                                 </div>
                               </div>
-                              <div className="p-2 rounded-lg bg-rose-50 border border-rose-100">
-                                <div className="text-xs text-rose-800 font-medium">Missed</div>
-                                <div className="text-lg font-bold text-rose-700">
+                              <div className="p-1.5 sm:p-2 rounded-lg bg-rose-50 border border-rose-100">
+                                <div className="text-[10px] sm:text-xs text-rose-800 font-medium">Missed</div>
+                                <div className="text-base sm:text-lg font-bold text-rose-700">
                                   {course.missed}
                                 </div>
                               </div>
-                              <div className="p-2 rounded-lg bg-amber-50 border border-amber-100">
-                                <div className="text-xs text-amber-800 font-medium">Late</div>
-                                <div className="text-lg font-bold text-amber-700">
+                              <div className="p-1.5 sm:p-2 rounded-lg bg-amber-50 border border-amber-100">
+                                <div className="text-[10px] sm:text-xs text-amber-800 font-medium">Late</div>
+                                <div className="text-base sm:text-lg font-bold text-amber-700">
                                   {course.late}
                                 </div>
                               </div>
                             </div>
 
-                            <div className="text-[11px] text-muted-foreground flex items-center justify-between pt-1">
+                            <div className="text-[10px] sm:text-[11px] text-muted-foreground flex flex-col xs:flex-row xs:items-center justify-between gap-1 pt-1">
                               <span>Total Sessions Held: {course.sessions_total}</span>
-                              <span className="font-medium">{course.risk_message}</span>
+                              <span className="font-medium text-foreground/80">{course.risk_message}</span>
                             </div>
                           </CardContent>
                         </Card>
@@ -1452,8 +1477,8 @@ function StudentPortalPage() {
 
                 {/* Session-by-Session History Log */}
                 <Card className="border shadow-xs">
-                  <CardHeader className="pb-3 border-b">
-                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <CardHeader className="pb-3 border-b px-3.5 sm:px-6">
+                    <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
                       <Clock className="size-4 text-primary" />
                       Session Attendance History
                     </CardTitle>
@@ -1475,30 +1500,30 @@ function StudentPortalPage() {
                           return (
                             <div
                               key={record.id}
-                              className="px-4 py-3 flex items-center justify-between gap-3 text-xs sm:text-sm hover:bg-muted/30 transition"
+                              className="px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2 text-xs sm:text-sm hover:bg-muted/30 transition"
                             >
-                              <div className="space-y-0.5 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-bold font-mono text-primary">
+                              <div className="space-y-0.5 min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                  <span className="font-bold font-mono text-primary text-xs">
                                     {record.course_code || "CLASS"}
                                   </span>
-                                  <span className="text-foreground font-medium truncate">
+                                  <span className="text-foreground font-medium truncate text-xs sm:text-sm">
                                     {record.session_title || record.course_title}
                                   </span>
                                   {record.lecturer_name && (
                                     <Badge
                                       variant="outline"
-                                      className="text-[10px] text-muted-foreground"
+                                      className="text-[9px] sm:text-[10px] text-muted-foreground"
                                     >
                                       Lecturer: {record.lecturer_name}
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                                <div className="text-[10px] sm:text-[11px] text-muted-foreground flex items-center gap-1.5 sm:gap-2">
                                   <span>{record.session_date}</span>
                                   {record.check_in_at && (
                                     <span>
-                                      · {new Date(record.check_in_at).toLocaleTimeString()}
+                                      · {new Date(record.check_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                     </span>
                                   )}
                                 </div>
@@ -1506,7 +1531,7 @@ function StudentPortalPage() {
 
                               <Badge
                                 variant={isPresent ? "default" : isLate ? "secondary" : "outline"}
-                                className={`text-[11px] font-mono shrink-0 ${
+                                className={`text-[10px] sm:text-[11px] font-mono shrink-0 ${
                                   isPresent
                                     ? "bg-emerald-600 text-white"
                                     : isLate
@@ -1528,57 +1553,60 @@ function StudentPortalPage() {
               {/* ------------------------------------------------------------- */}
               {/* TAB: PERSONAL & MULTI-LECTURER ACADEMIC RECORDS               */}
               {/* ------------------------------------------------------------- */}
-              <TabsContent value="records" className="space-y-5">
+              <TabsContent value="records" className="space-y-4 sm:space-y-5">
                 {/* Academic Identity & Stats */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <Card className="p-4 border shadow-xs space-y-1">
-                    <span className="text-xs text-muted-foreground font-medium">Student Index</span>
-                    <div className="font-mono text-lg font-bold text-primary">
+                <div className="grid gap-2.5 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+                  <Card className="p-3 sm:p-4 border shadow-xs space-y-1">
+                    <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">Student Index</span>
+                    <div className="font-mono text-base sm:text-lg font-bold text-primary truncate">
                       {me.index_number}
                     </div>
-                    <span className="text-[11px] text-muted-foreground">
-                      Verified Student Record
+                    <span className="text-[10px] sm:text-[11px] text-muted-foreground block truncate">
+                      Verified Record
                     </span>
                   </Card>
-                  <Card className="p-4 border shadow-xs space-y-1">
-                    <span className="text-xs text-muted-foreground font-medium">
+                  <Card className="p-3 sm:p-4 border shadow-xs space-y-1">
+                    <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">
                       Enrolled Courses
                     </span>
-                    <div className="text-lg font-bold text-foreground">
-                      {courses.length} Active Courses
+                    <div className="text-base sm:text-lg font-bold text-foreground">
+                      {courses.length} Courses
                     </div>
-                    <span className="text-[11px] text-muted-foreground">Across all semesters</span>
+                    <span className="text-[10px] sm:text-[11px] text-muted-foreground block truncate">
+                      All semesters
+                    </span>
                   </Card>
-                  <Card className="p-4 border shadow-xs space-y-1">
-                    <span className="text-xs text-muted-foreground font-medium">
+                  <Card className="p-3 sm:p-4 border shadow-xs space-y-1">
+                    <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">
                       Assigned Lecturers
                     </span>
-                    <div className="text-lg font-bold text-foreground">
-                      {uniqueLecturers.length} Faculty Member
-                      {uniqueLecturers.length === 1 ? "" : "s"}
+                    <div className="text-base sm:text-lg font-bold text-foreground">
+                      {uniqueLecturers.length} Faculty
                     </div>
-                    <span className="text-[11px] text-muted-foreground">Instructors on record</span>
+                    <span className="text-[10px] sm:text-[11px] text-muted-foreground block truncate">
+                      Instructors on record
+                    </span>
                   </Card>
-                  <Card className="p-4 border shadow-xs space-y-1">
-                    <span className="text-xs text-muted-foreground font-medium">
+                  <Card className="p-3 sm:p-4 border shadow-xs space-y-1">
+                    <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">
                       Overall Attendance
                     </span>
-                    <div className="text-lg font-bold text-emerald-600">
-                      {overallPercentage}% Average
+                    <div className="text-base sm:text-lg font-bold text-emerald-600">
+                      {overallPercentage}%
                     </div>
-                    <span className="text-[11px] text-muted-foreground">
-                      {calculateAttendanceGrade(overallPercentage).label} Eligibility Standing
+                    <span className="text-[10px] sm:text-[11px] text-muted-foreground block truncate">
+                      {calculateAttendanceGrade(overallPercentage).label} Standing
                     </span>
                   </Card>
                 </div>
 
                 {/* Comprehensive Multi-Lecturer Course Breakdown Table */}
                 <Card className="border shadow-xs overflow-hidden">
-                  <CardHeader className="pb-3 border-b bg-muted/20">
+                  <CardHeader className="p-3.5 sm:p-5 pb-3 border-b bg-muted/20">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
-                        <CardTitle className="text-base font-bold flex items-center gap-2">
-                          <BookCheck className="size-4 text-primary" />
+                        <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
+                          <BookCheck className="size-4 text-primary shrink-0" />
                           Multi-Lecturer Academic Record & Course Standing
                         </CardTitle>
                         <CardDescription className="text-xs">
@@ -1597,80 +1625,128 @@ function StudentPortalPage() {
                         No course records found across any lecturers.
                       </div>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs text-left">
-                          <thead className="bg-muted/40 text-muted-foreground border-b uppercase text-[10px] font-semibold tracking-wider">
-                            <tr>
-                              <th className="px-4 py-3">Course</th>
-                              <th className="px-4 py-3">Assigned Lecturer</th>
-                              <th className="px-4 py-3">Credits & Term</th>
-                              <th className="px-4 py-3 text-center">Sessions (Held/Attended)</th>
-                              <th className="px-4 py-3 text-center">Attendance %</th>
-                              <th className="px-4 py-3 text-right">Exam Status</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border">
-                            {courses.map((c) => {
-                              const isPassing = c.percentage >= 75;
-                              return (
-                                <tr key={c.course_id} className="hover:bg-muted/25 transition">
-                                  <td className="px-4 py-3 font-medium">
-                                    <div className="font-mono font-bold text-primary">{c.code}</div>
-                                    <div className="text-foreground text-xs">{c.title}</div>
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <div className="font-semibold text-foreground">
-                                      {c.lecturer_name || "Academic Department"}
+                      <>
+                        {/* Mobile portrait list view */}
+                        <div className="sm:hidden divide-y divide-border">
+                          {courses.map((c) => {
+                            const isPassing = c.percentage >= 75;
+                            return (
+                              <div key={c.course_id} className="p-3.5 space-y-2.5 hover:bg-muted/20 transition">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-mono font-bold text-primary text-xs">{c.code}</span>
+                                      <span className="text-[10px] text-muted-foreground">· {c.credit_hours} cr</span>
+                                      {c.semester && (
+                                        <span className="text-[10px] text-muted-foreground">· {c.semester}</span>
+                                      )}
                                     </div>
-                                    {c.lecturer_email && (
-                                      <a
-                                        href={`mailto:${c.lecturer_email}`}
-                                        className="text-[11px] text-muted-foreground hover:text-primary transition flex items-center gap-1"
-                                      >
-                                        <Mail className="size-2.5" />
-                                        {c.lecturer_email}
-                                      </a>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-3 text-muted-foreground">
-                                    <div>{c.credit_hours} Credit Hours</div>
-                                    <div className="text-[11px]">{c.semester}</div>
-                                  </td>
-                                  <td className="px-4 py-3 text-center">
-                                    <span className="font-semibold text-foreground">
-                                      {c.attended}
-                                    </span>
-                                    <span className="text-muted-foreground">
-                                      {" "}
-                                      / {c.sessions_total}
-                                    </span>
-                                    <div className="text-[10px] text-muted-foreground">
-                                      {c.missed} missed · {c.late} late
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 text-center">
-                                    <div
-                                      className={`font-extrabold text-sm ${
-                                        isPassing ? "text-emerald-600" : "text-destructive"
-                                      }`}
-                                    >
+                                    <h4 className="font-semibold text-xs text-foreground truncate mt-0.5">{c.title}</h4>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <div className={`font-black text-sm ${isPassing ? "text-emerald-600" : "text-destructive"}`}>
                                       {c.percentage}%
                                     </div>
-                                  </td>
-                                  <td className="px-4 py-3 text-right">
                                     <Badge
                                       variant={isPassing ? "default" : "destructive"}
-                                      className="text-[10px]"
+                                      className="text-[9px] px-1.5 py-0"
                                     >
                                       {isPassing ? "Eligible" : "At Risk"}
                                     </Badge>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between text-[11px] bg-muted/40 p-2 rounded-lg gap-2">
+                                  <div className="text-muted-foreground truncate">
+                                    <span>Lec: </span>
+                                    <span className="font-medium text-foreground">{c.lecturer_name || "Department"}</span>
+                                  </div>
+                                  <div className="text-right shrink-0 font-medium text-foreground">
+                                    <span>{c.attended}</span>
+                                    <span className="text-muted-foreground">/{c.sessions_total} sessions</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Desktop / tablet table view */}
+                        <div className="hidden sm:block overflow-x-auto">
+                          <table className="w-full text-xs text-left">
+                            <thead className="bg-muted/40 text-muted-foreground border-b uppercase text-[10px] font-semibold tracking-wider">
+                              <tr>
+                                <th className="px-4 py-3">Course</th>
+                                <th className="px-4 py-3">Assigned Lecturer</th>
+                                <th className="px-4 py-3">Credits & Term</th>
+                                <th className="px-4 py-3 text-center">Sessions (Held/Attended)</th>
+                                <th className="px-4 py-3 text-center">Attendance %</th>
+                                <th className="px-4 py-3 text-right">Exam Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                              {courses.map((c) => {
+                                const isPassing = c.percentage >= 75;
+                                return (
+                                  <tr key={c.course_id} className="hover:bg-muted/25 transition">
+                                    <td className="px-4 py-3 font-medium">
+                                      <div className="font-mono font-bold text-primary">{c.code}</div>
+                                      <div className="text-foreground text-xs">{c.title}</div>
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <div className="font-semibold text-foreground">
+                                        {c.lecturer_name || "Academic Department"}
+                                      </div>
+                                      {c.lecturer_email && (
+                                        <a
+                                          href={`mailto:${c.lecturer_email}`}
+                                          className="text-[11px] text-muted-foreground hover:text-primary transition flex items-center gap-1"
+                                        >
+                                          <Mail className="size-2.5" />
+                                          {c.lecturer_email}
+                                        </a>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 text-muted-foreground">
+                                      <div>{c.credit_hours} Credit Hours</div>
+                                      <div className="text-[11px]">{c.semester}</div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <span className="font-semibold text-foreground">
+                                        {c.attended}
+                                      </span>
+                                      <span className="text-muted-foreground">
+                                        {" "}
+                                        / {c.sessions_total}
+                                      </span>
+                                      <div className="text-[10px] text-muted-foreground">
+                                        {c.missed} missed · {c.late} late
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <div
+                                        className={`font-extrabold text-sm ${
+                                          isPassing ? "text-emerald-600" : "text-destructive"
+                                        }`}
+                                      >
+                                        {c.percentage}%
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-right">
+                                      <Badge
+                                        variant={isPassing ? "default" : "destructive"}
+                                        className="text-[10px]"
+                                      >
+                                        {isPassing ? "Eligible" : "At Risk"}
+                                      </Badge>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
                     )}
                   </CardContent>
                 </Card>
@@ -1678,24 +1754,24 @@ function StudentPortalPage() {
                 {/* Assigned Faculty Summary Cards */}
                 {uniqueLecturers.length > 0 && (
                   <Card className="border shadow-xs">
-                    <CardHeader className="pb-3 border-b">
-                      <CardTitle className="text-base font-bold flex items-center gap-2">
-                        <School className="size-4 text-primary" />
+                    <CardHeader className="p-3.5 sm:p-5 pb-3 border-b">
+                      <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
+                        <School className="size-4 text-primary shrink-0" />
                         My Assigned Lecturers & Instructors
                       </CardTitle>
                       <CardDescription className="text-xs">
                         Direct instructors managing your registered courses.
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-4">
-                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <CardContent className="p-3.5 sm:p-4">
+                      <div className="grid gap-2.5 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                         {uniqueLecturers.map((lec, idx) => (
                           <div
                             key={idx}
                             className="p-3 rounded-lg border bg-muted/30 space-y-1.5 hover:bg-muted/50 transition text-xs"
                           >
                             <div className="flex items-center gap-2">
-                              <div className="size-7 rounded-full bg-primary/10 text-primary grid place-items-center font-bold text-xs">
+                              <div className="size-7 rounded-full bg-primary/10 text-primary grid place-items-center font-bold text-xs shrink-0">
                                 {lec.name.charAt(0).toUpperCase()}
                               </div>
                               <span className="font-bold text-foreground truncate">{lec.name}</span>
@@ -1705,8 +1781,8 @@ function StudentPortalPage() {
                                 href={`mailto:${lec.email}`}
                                 className="text-[11px] text-primary hover:underline flex items-center gap-1 truncate"
                               >
-                                <Mail className="size-3" />
-                                {lec.email}
+                                <Mail className="size-3 shrink-0" />
+                                <span className="truncate">{lec.email}</span>
                               </a>
                             )}
                             <div className="pt-1 flex items-center gap-1 flex-wrap">
@@ -1727,66 +1803,6 @@ function StudentPortalPage() {
                     </CardContent>
                   </Card>
                 )}
-              </TabsContent>
-
-              {/* ------------------------------------------------------------- */}
-              {/* TAB 2: MY DIGITAL ATTENDANCE QR CODE PASS                     */}
-              {/* ------------------------------------------------------------- */}
-              <TabsContent value="qr" className="space-y-4">
-                <Card className="border-primary/20 shadow-sm">
-                  <CardHeader className="text-center pb-2">
-                    <CardTitle className="text-xl font-bold flex items-center justify-center gap-2 text-foreground">
-                      <QrCode className="size-5 text-primary" />
-                      Official Student Attendance QR Pass
-                    </CardTitle>
-                    <CardDescription className="text-xs max-w-md mx-auto">
-                      Present this QR code to your lecturer or camera scanner during attendance.
-                      Styled with official QRoll branding.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-6 flex flex-col items-center justify-center space-y-6">
-                    {/* QR Code Container styled with brand blue */}
-                    <div className="p-4 bg-white rounded-2xl shadow-md border-2 border-blue-900/20 grid place-items-center">
-                      {qrUrl ? (
-                        <img
-                          src={qrUrl}
-                          alt={`Attendance QR code for ${me.full_name}`}
-                          className="size-56 sm:size-64 object-contain"
-                        />
-                      ) : (
-                        <div className="size-56 sm:size-64 bg-muted animate-pulse rounded-xl" />
-                      )}
-                    </div>
-
-                    <div className="text-center space-y-1 max-w-sm">
-                      <h3 className="text-lg font-bold text-foreground">{me.full_name}</h3>
-                      <div className="inline-flex items-center gap-2">
-                        <Badge variant="outline" className="font-mono text-sm px-3 py-1 font-bold">
-                          {me.index_number}
-                        </Badge>
-                        <Badge className="bg-primary text-primary-foreground text-xs">
-                          Level {me.level}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground pt-1">
-                        High-contrast optical QR code optimized for projection screens & smartphone
-                        cameras.
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-center gap-3 w-full max-w-xs">
-                      {qrUrl && (
-                        <a
-                          href={qrUrl}
-                          download={`QRoll-${me.index_number}.png`}
-                          className="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90 transition shadow-sm"
-                        >
-                          <Download className="size-4" /> Download QR Image
-                        </a>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
               </TabsContent>
 
               {/* ------------------------------------------------------------- */}
@@ -1815,7 +1831,7 @@ function StudentPortalPage() {
                         {filteredCourses.map((c) => (
                           <div
                             key={c.course_id}
-                            className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/25 transition"
+                            className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/25 transition"
                           >
                             <div className="space-y-1">
                               <div className="flex items-center gap-2 flex-wrap">
@@ -1839,13 +1855,13 @@ function StudentPortalPage() {
                               </div>
                               <h4 className="font-bold text-sm text-foreground">{c.title}</h4>
                               {c.lecturer_name && (
-                                <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
+                                <div className="flex items-center gap-1.5 text-xs text-primary font-medium flex-wrap">
                                   <User className="size-3.5 shrink-0" />
                                   <span>Lecturer: {c.lecturer_name}</span>
                                   {c.lecturer_email && (
                                     <a
                                       href={`mailto:${c.lecturer_email}`}
-                                      className="text-muted-foreground hover:text-primary transition"
+                                      className="text-muted-foreground hover:text-primary transition inline-flex items-center"
                                       title={`Contact ${c.lecturer_email}`}
                                     >
                                       <Mail className="size-3 ml-0.5" />
@@ -1858,8 +1874,8 @@ function StudentPortalPage() {
                               </p>
                             </div>
 
-                            <div className="flex items-center gap-3 shrink-0">
-                              <div className="text-right">
+                            <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0">
+                              <div className="text-left sm:text-right">
                                 <div className="text-sm font-bold">{c.percentage}% Attendance</div>
                                 <div className="text-xs text-muted-foreground">
                                   {c.attended} Attended · {c.missed} Missed
@@ -1867,7 +1883,7 @@ function StudentPortalPage() {
                               </div>
                               <Badge
                                 variant={c.percentage >= 75 ? "default" : "destructive"}
-                                className="text-xs"
+                                className="text-xs shrink-0"
                               >
                                 {c.percentage >= 75 ? "Good Standing" : "Risk"}
                               </Badge>
@@ -2079,20 +2095,23 @@ function StudentPortalPage() {
                     </CardDescription>
                   </CardHeader>
 
-                  <CardContent className="p-6 text-center space-y-4">
+                  <CardContent className="p-4 sm:p-6 text-center space-y-4">
                     {qrUrl ? (
-                      <div className="p-4 bg-white rounded-2xl shadow-sm border inline-block mx-auto">
+                      <div className="p-3 sm:p-4 bg-white rounded-2xl shadow-sm border inline-block mx-auto">
                         <img
                           src={qrUrl}
                           alt={`Universal QR Pass for ${me.full_name}`}
-                          className="mx-auto size-56 sm:size-64 object-contain"
+                          className="mx-auto size-48 sm:size-64 object-contain"
                         />
                       </div>
                     ) : (
-                      <div className="size-56 sm:size-64 bg-muted animate-pulse rounded-2xl mx-auto" />
+                      <div className="size-48 sm:size-64 bg-muted animate-pulse rounded-2xl mx-auto" />
                     )}
 
                     <div className="space-y-1">
+                      <div className="flex justify-center mb-2">
+                        <KnustEmblem size={36} />
+                      </div>
                       <h3 className="text-lg font-bold text-foreground">{me.full_name}</h3>
                       <div className="font-mono text-sm font-bold bg-primary/10 text-primary px-3 py-1 rounded inline-block">
                         {me.index_number}
@@ -2118,7 +2137,7 @@ function StudentPortalPage() {
                       {qrUrl && (
                         <a
                           href={qrUrl}
-                          download={`QRoll-${me.index_number}-Universal-Pass.png`}
+                          download={`KNUST-${me.index_number}-Pass.png`}
                           className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-secondary-foreground py-2.5 px-3 rounded-lg border transition shadow-xs"
                         >
                           <Download className="size-3.5" />
@@ -2132,6 +2151,19 @@ function StudentPortalPage() {
                     </div>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* ------------------------------------------------------------- */}
+              {/* TAB: NOTIFICATIONS & WEB PUSH PREFERENCES                      */}
+              {/* ------------------------------------------------------------- */}
+              <TabsContent value="notifications" className="space-y-4">
+                <PushNotificationManager
+                  userContext={{
+                    userId: me.index_number,
+                    userRole: "student",
+                  }}
+                  showCard={true}
+                />
               </TabsContent>
 
               {/* ------------------------------------------------------------- */}

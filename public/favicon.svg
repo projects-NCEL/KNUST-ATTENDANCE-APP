@@ -1,0 +1,270 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Flame Gradient -->
+    <linearGradient id="flameGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ffcc00" />
+      <stop offset="40%" stop-color="#ff5500" />
+      <stop offset="100%" stop-color="#d60000" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffe600" />
+      <stop offset="100%" stop-color="#f5b800" />
+    </linearGradient>
+    <!-- Ribbon Text Paths -->
+    <path id="leftRibbonPath" d="M 115 365 Q 155 425 210 440" fill="none" />
+    <path id="midRibbonPath" d="M 200 443 Q 250 458 300 443" fill="none" />
+    <path id="rightRibbonPath" d="M 290 440 Q 345 425 385 365" fill="none" />
+  </defs>
+
+  <!-- 1. FLAMES (Top) -->
+  <g id="flames">
+    <!-- Outer Red/Orange Flame -->
+    <path d="M 225 125 
+             C 215 105, 205 90, 215 70
+             C 220 60, 230 65, 235 50
+             C 240 35, 248 20, 250 18
+             C 252 20, 260 35, 265 50
+             C 270 65, 280 60, 285 70
+             C 295 90, 285 105, 275 125
+             Z" 
+          fill="url(#flameGrad)" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round" />
+    
+    <!-- Secondary Flame Tongues Left -->
+    <path d="M 220 120 
+             C 205 100, 195 85, 205 65
+             C 210 58, 220 70, 228 85
+             C 230 98, 225 110, 220 120 Z" 
+          fill="#ff4500" stroke="#1a1a1a" stroke-width="2" />
+    
+    <!-- Secondary Flame Tongues Right -->
+    <path d="M 280 120 
+             C 295 100, 305 85, 295 65
+             C 290 58, 280 70, 272 85
+             C 270 98, 275 110, 280 120 Z" 
+          fill="#ff4500" stroke="#1a1a1a" stroke-width="2" />
+
+    <!-- Inner Golden Core Flame -->
+    <path d="M 235 122 
+             C 230 100, 235 80, 245 55
+             C 248 45, 250 40, 250 38
+             C 250 40, 252 45, 255 55
+             C 265 80, 270 100, 265 122
+             C 255 125, 245 125, 235 122 Z" 
+          fill="#ffea00" stroke="#d97706" stroke-width="1.5" />
+  </g>
+
+  <!-- 2. FLAMING POT (Black Cauldron) -->
+  <g id="pot">
+    <!-- Lip/Rim -->
+    <ellipse cx="250" cy="124" rx="42" ry="7" fill="#1c1917" stroke="#000000" stroke-width="3" />
+    <ellipse cx="250" cy="123" rx="36" ry="4" fill="#44403c" />
+    <!-- Pot Body -->
+    <path d="M 210 124 
+             C 192 145, 192 165, 220 182
+             C 232 190, 268 190, 280 182
+             C 308 165, 308 145, 290 124
+             Z" 
+          fill="#1c1917" stroke="#000000" stroke-width="3.5" stroke-linejoin="round" />
+    <!-- Pot highlight -->
+    <path d="M 218 140 C 212 152, 216 165, 226 172" fill="none" stroke="#78716c" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+
+  <!-- 3. DRAFTING CALIPER / COMPASS (Silver) -->
+  <g id="calipers">
+    <!-- Left Leg -->
+    <polygon points="238,162 248,175 162,352 142,342" fill="#e5e7eb" stroke="#000000" stroke-width="3.5" stroke-linejoin="round" />
+    <line x1="243" y1="168" x2="152" y2="347" stroke="#ffffff" stroke-width="2" />
+    <!-- Right Leg -->
+    <polygon points="262,162 252,175 338,352 358,342" fill="#e5e7eb" stroke="#000000" stroke-width="3.5" stroke-linejoin="round" />
+    <line x1="257" y1="168" x2="348" y2="347" stroke="#ffffff" stroke-width="2" />
+    
+    <!-- Caliper Top Pivot Head -->
+    <circle cx="250" cy="162" r="18" fill="#e5e7eb" stroke="#000000" stroke-width="3.5" />
+    <circle cx="250" cy="162" r="7" fill="#1c1917" stroke="#000000" stroke-width="2" />
+    <circle cx="250" cy="162" r="3" fill="#ffffff" />
+  </g>
+
+  <!-- 4. GREEN LEAF SHIELD (Oval adinkra leaf background) -->
+  <g id="green-shield">
+    <path d="M 250 215 
+             C 200 215, 160 250, 160 295
+             C 160 335, 205 355, 250 360
+             C 295 355, 340 335, 340 295
+             C 340 250, 300 215, 250 215 Z" 
+          fill="#008751" stroke="#000000" stroke-width="3.5" stroke-linejoin="round" />
+    <!-- Leaf Veins (Black) -->
+    <!-- Center Vein -->
+    <line x1="250" y1="225" x2="250" y2="350" stroke="#000000" stroke-width="3" />
+    <!-- Left Veins -->
+    <path d="M 250 250 Q 210 245 180 260" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" />
+    <path d="M 250 280 Q 205 280 172 300" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" />
+    <path d="M 250 315 Q 215 315 190 335" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" />
+    <!-- Right Veins -->
+    <path d="M 250 250 Q 290 245 320 260" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" />
+    <path d="M 250 280 Q 295 280 328 300" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" />
+    <path d="M 250 315 Q 285 315 310 335" fill="none" stroke="#000000" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+
+  <!-- 5. GOLDEN EAGLE -->
+  <g id="eagle">
+    <!-- LEFT WING -->
+    <!-- Flight feathers (bottom row) -->
+    <path d="M 220 250 
+             L 105 180 C 110 200, 115 220, 120 245
+             L 135 255 L 148 268 L 165 280 L 195 295 Z" 
+          fill="#ffde00" stroke="#000000" stroke-width="3" stroke-linejoin="round" />
+    <!-- Left Wing Individual Feather Linework -->
+    <path d="M 110 183 Q 160 215 210 238" fill="none" stroke="#000000" stroke-width="2" />
+    <path d="M 118 200 Q 165 228 205 248" fill="none" stroke="#000000" stroke-width="2" />
+    <path d="M 124 218 Q 170 240 205 258" fill="none" stroke="#000000" stroke-width="2" />
+    <path d="M 132 238 Q 175 255 208 268" fill="none" stroke="#000000" stroke-width="2" />
+    <path d="M 145 256 Q 180 270 210 280" fill="none" stroke="#000000" stroke-width="2" />
+    <!-- Left Wing Upper Feathers -->
+    <path d="M 230 225 C 190 200, 150 185, 108 175 C 105 180, 110 190, 115 195 C 150 205, 190 220, 230 235 Z" 
+          fill="#ffd000" stroke="#000000" stroke-width="2.5" />
+
+    <!-- RIGHT WING -->
+    <!-- Flight feathers (bottom row) -->
+    <path d="M 280 250 
+             L 395 180 C 390 200, 385 220, 380 245
+             L 365 255 L 352 268 L 335 280 L 305 295 Z" 
+          fill="#ffde00" stroke="#000000" stroke-width="3" stroke-linejoin="round" />
+    <!-- Right Wing Individual Feather Linework -->
+    <path d="M 390 183 Q 340 215 290 238" fill="none" stroke="#000000" stroke-width="2" />
+    <path d="M 382 200 Q 335 228 295 248" fill="none" stroke="#000000" stroke-width="2" />
+    <path d="M 376 218 Q 330 240 295 258" fill="none" stroke="#000000" stroke-width="2" />
+    <path d="M 368 238 Q 325 255 292 268" fill="none" stroke="#000000" stroke-width="2" />
+    <path d="M 355 256 Q 320 270 290 280" fill="none" stroke="#000000" stroke-width="2" />
+    <!-- Right Wing Upper Feathers -->
+    <path d="M 270 225 C 310 200, 350 185, 392 175 C 395 180, 390 190, 385 195 C 350 205, 310 220, 270 235 Z" 
+          fill="#ffd000" stroke="#000000" stroke-width="2.5" />
+
+    <!-- EAGLE BODY & BREAST -->
+    <path d="M 220 230 
+             C 210 260, 215 290, 230 315
+             L 270 315 
+             C 285 290, 290 260, 280 230
+             Z" 
+          fill="#ffde00" stroke="#000000" stroke-width="3" stroke-linejoin="round" />
+
+    <!-- EAGLE HEAD (Facing Right) -->
+    <path d="M 245 220 
+             C 240 205, 245 190, 260 190
+             C 275 190, 285 195, 292 205
+             C 300 205, 305 210, 295 216
+             L 282 222
+             C 275 232, 255 232, 245 220 Z" 
+          fill="#ffde00" stroke="#000000" stroke-width="2.5" stroke-linejoin="round" />
+    
+    <!-- Eagle Beak / Red detail -->
+    <path d="M 288 204 L 302 208 L 286 215 Z" fill="#d60000" stroke="#000000" stroke-width="2" />
+    <!-- Eagle Eye -->
+    <circle cx="275" cy="202" r="3.5" fill="#ffffff" stroke="#000000" stroke-width="1.5" />
+    <circle cx="276" cy="202" r="1.8" fill="#000000" />
+    
+    <!-- Red Collar Neck Ribbon -->
+    <path d="M 252 215 Q 268 228 282 217" fill="none" stroke="#d60000" stroke-width="5" stroke-linecap="round" />
+    <path d="M 252 215 Q 268 228 282 217" fill="none" stroke="#000000" stroke-width="1.5" stroke-linecap="round" />
+
+    <!-- BLACK FIVE-POINTED STAR (Center of Chest) -->
+    <!-- Precision 5-pointed star centered at (255, 260) -->
+    <polygon points="
+      255,244
+      259,255
+      271,255
+      261,262
+      265,273
+      255,266
+      245,273
+      249,262
+      239,255
+      251,255
+    " fill="#000000" stroke="#000000" stroke-width="1.5" stroke-linejoin="round" />
+
+    <!-- Red Legs & Talons -->
+    <g id="talons">
+      <!-- Left Leg & Claws -->
+      <path d="M 233 308 L 228 325 M 224 322 L 218 327 M 236 322 L 238 327" 
+            stroke="#d60000" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 233 308 L 228 325 M 224 322 L 218 327 M 236 322 L 238 327" 
+            stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+      <!-- Right Leg & Claws -->
+      <path d="M 267 308 L 272 325 M 264 322 L 262 327 M 276 322 L 282 327" 
+            stroke="#d60000" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 267 308 L 272 325 M 264 322 L 262 327 M 276 322 L 282 327" 
+            stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+  </g>
+
+  <!-- 6. ASHANTI GOLDEN STOOL (Sika Dwa) -->
+  <g id="golden-stool">
+    <!-- Curved Crescent Seat -->
+    <path d="M 165 315 
+             C 210 338, 290 338, 335 315
+             C 330 330, 310 342, 250 342
+             C 190 342, 170 330, 165 315 Z" 
+          fill="#ffde00" stroke="#000000" stroke-width="3" stroke-linejoin="round" />
+
+    <!-- Center Column (Traditional Akan Knot Symbol) -->
+    <path d="M 210 342 L 210 380 L 290 380 L 290 342 Z" fill="#ffde00" stroke="#000000" stroke-width="3" />
+    <!-- Intricate Knot Carvings inside Stool -->
+    <path d="M 230 348 C 220 355, 220 368, 230 374 C 240 374, 245 365, 235 360 C 245 355, 240 348, 230 348 Z" 
+          fill="none" stroke="#000000" stroke-width="3.5" />
+    <path d="M 270 348 C 280 355, 280 368, 270 374 C 260 374, 255 365, 265 360 C 255 355, 260 348, 270 348 Z" 
+          fill="none" stroke="#000000" stroke-width="3.5" />
+    <circle cx="250" cy="361" r="4.5" fill="#000000" />
+
+    <!-- Stepped 3-Tier Base -->
+    <!-- Tier 1 -->
+    <rect x="195" y="380" width="110" height="9" fill="#ffde00" stroke="#000000" stroke-width="2.5" />
+    <!-- Tier 2 -->
+    <rect x="185" y="389" width="130" height="8" fill="#ffd000" stroke="#000000" stroke-width="2.5" />
+    <!-- Tier 3 (Bottom) -->
+    <rect x="175" y="397" width="150" height="9" fill="#ffde00" stroke="#000000" stroke-width="3" />
+  </g>
+
+  <!-- 7. MOTTO BANNER RIBBON (NYANSAPƆ WƆ SANE NO BADWENMA) -->
+  <g id="banner">
+    <!-- Banner Yellow Ribbon Fill -->
+    <!-- Left curve -->
+    <path d="M 112 345 
+             L 132 375 L 110 395 
+             L 125 405 C 160 445, 205 465, 250 466
+             C 295 465, 340 445, 375 405
+             L 390 395 L 368 375 L 388 345
+             L 355 368 C 325 400, 290 415, 250 416
+             C 210 415, 175 400, 145 368 Z" 
+          fill="#ffd000" stroke="#000000" stroke-width="3.5" stroke-linejoin="round" />
+
+    <!-- Front Banner Strip -->
+    <path d="M 112 345 
+             C 150 420, 200 458, 250 462
+             C 300 458, 350 420, 388 345
+             L 368 362
+             C 335 422, 290 446, 250 448
+             C 210 446, 165 422, 132 362 Z" 
+          fill="#ffea00" stroke="#000000" stroke-width="3" stroke-linejoin="round" />
+
+    <!-- Motto Text: "NYANSAPƆ WƆ SANE NO BADWENMA" -->
+    <!-- Left text: NYANSAPƆ -->
+    <text font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="16" fill="#000000" letter-spacing="1.5">
+      <textPath href="#leftRibbonPath" startOffset="10%" text-anchor="start">
+        NYANSAPƆ
+      </textPath>
+    </text>
+
+    <!-- Center text: WƆ SANE NO -->
+    <text font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="15" fill="#000000" letter-spacing="1.5">
+      <textPath href="#midRibbonPath" startOffset="50%" text-anchor="middle">
+        WƆ SANE NO
+      </textPath>
+    </text>
+
+    <!-- Right text: BADWENMA -->
+    <text font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="16" fill="#000000" letter-spacing="1.5">
+      <textPath href="#rightRibbonPath" startOffset="90%" text-anchor="end">
+        BADWENMA
+      </textPath>
+    </text>
+  </g>
+</svg>

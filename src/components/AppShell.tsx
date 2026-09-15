@@ -23,8 +23,14 @@ import {
 import { firebaseAuth } from "@/integrations/firebase/config";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import qrollLogo from "@/assets/qroll-logo.png";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { KnustEmblem } from "@/components/KnustEmblem";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   registerOrVerifyDevice,
   getDeviceId,
@@ -32,6 +38,7 @@ import {
   type UserDevice,
 } from "@/lib/device-manager";
 import { DeviceLimitDialog } from "@/components/DeviceLimitDialog";
+import { InAppNotificationCenter } from "@/components/PushNotificationManager";
 import { toast } from "sonner";
 import { clearUserAppCache } from "@/lib/query-client";
 
@@ -45,19 +52,39 @@ const nav: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/students", label: "Students", icon: Users, adminOnly: true },
   { to: "/courses", label: "Courses", icon: BookOpen, adminOnly: true },
-  { to: "/departments", label: "Departments", icon: Building2, adminOnly: true },
-  { to: "/semesters", label: "Semesters", icon: CalendarRange, adminOnly: true },
+  {
+    to: "/departments",
+    label: "Departments",
+    icon: Building2,
+    adminOnly: true,
+  },
+  {
+    to: "/semesters",
+    label: "Semesters",
+    icon: CalendarRange,
+    adminOnly: true,
+  },
   { to: "/sessions", label: "Sessions", icon: CalendarClock },
   { to: "/scan", label: "Scanner", icon: ScanLine },
-  { to: "/portal-links", label: "Student QR Portal", icon: Share2, adminOnly: true },
+  {
+    to: "/portal-links",
+    label: "Student QR Portal",
+    icon: Share2,
+    adminOnly: true,
+  },
   { to: "/reports", label: "Reports", icon: FileBarChart },
   { to: "/history", label: "Academic History", icon: History },
   { to: "/announcements", label: "Announcements & Tasks", icon: Megaphone },
-  { to: "/billing", label: "Billing & Plans", icon: CreditCard },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
-function NavLinks({ isAdmin, onNavigate }: { isAdmin: boolean; onNavigate?: () => void }) {
+function NavLinks({
+  isAdmin,
+  onNavigate,
+}: {
+  isAdmin: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <nav className="flex flex-col gap-1 p-2">
@@ -100,12 +127,16 @@ function SidebarBody({
   return (
     <div className="flex h-full flex-col bg-knust-gradient text-primary-foreground">
       <div className="px-5 py-5 flex items-center gap-3.5 border-b border-white/10">
-        <div className="size-14 rounded-2xl bg-white p-1.5 shadow-md flex items-center justify-center shrink-0">
-          <img src={qrollLogo} alt="QRoll logo" className="size-full object-contain" />
+        <div className="size-12 rounded-2xl bg-white/10 p-1 shadow-md flex items-center justify-center shrink-0 border border-white/20">
+          <KnustEmblem size={40} />
         </div>
         <div className="leading-tight min-w-0">
-          <div className="text-base font-bold tracking-tight text-white truncate">QRoll</div>
-          <div className="text-xs text-white/80 truncate">Attendance System</div>
+          <div className="text-sm font-bold tracking-tight text-white truncate">
+            KNUST-ATTENDANCE-APP
+          </div>
+          <div className="text-xs text-white/80 truncate">
+            Academic Attendance System
+          </div>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto">
@@ -139,8 +170,15 @@ function SidebarBody({
       </div>
       <div className="p-3 border-t border-white/10">
         <div className="text-xs opacity-80 truncate">{email}</div>
-        <div className="text-[10px] uppercase tracking-wider text-gold/90 mt-0.5">{role}</div>
-        <Button variant="secondary" size="sm" className="mt-2 w-full" onClick={onSignOut}>
+        <div className="text-[10px] uppercase tracking-wider text-gold/90 mt-0.5">
+          {role}
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="mt-2 w-full"
+          onClick={onSignOut}
+        >
           <LogOut className="size-4 mr-1" /> Sign out
         </Button>
       </div>
@@ -177,7 +215,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
     // Real-time listener: if another session revoked this device, force logout
     const unsub = listenToDeviceStatus(user.id, currentDeviceId, () => {
-      toast.error("This device was removed from your account devices. Signed out.");
+      toast.error(
+        "This device was removed from your account devices. Signed out.",
+      );
       void signOut();
     });
 
@@ -227,13 +267,16 @@ export function AppShell({ children }: { children: ReactNode }) {
               </SheetContent>
             </Sheet>
 
-            <Link to={"/dashboard" as string} className="flex items-center gap-2.5 min-w-0 group">
-              <div className="size-9 sm:size-11 rounded-xl bg-white p-1 shadow-sm ring-1 ring-border/50 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                <img src={qrollLogo} alt="QRoll logo" className="size-full object-contain" />
+            <Link
+              to={"/dashboard" as string}
+              className="flex items-center gap-2.5 min-w-0 group"
+            >
+              <div className="size-9 sm:size-10 rounded-xl bg-primary/10 p-1 shadow-sm ring-1 ring-primary/20 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+                <KnustEmblem size={32} />
               </div>
               <div className="min-w-0">
-                <div className="text-base sm:text-lg font-bold tracking-tight leading-none text-foreground">
-                  QRoll
+                <div className="text-sm sm:text-base font-bold tracking-tight leading-none text-foreground truncate">
+                  KNUST-ATTENDANCE-APP
                 </div>
                 <div className="text-[10px] text-muted-foreground hidden sm:block tracking-wide uppercase font-semibold">
                   Attendance System
@@ -243,6 +286,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-1.5">
+            {user?.id && <InAppNotificationCenter userId={user.id} />}
             <Link to={"/dashboard" as string} aria-label="Dashboard">
               <Button
                 variant="ghost"

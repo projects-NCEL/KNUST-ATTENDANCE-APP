@@ -36,7 +36,7 @@ import { toast } from "sonner";
 import { isStudentInCourse } from "@/lib/class-matching";
 
 export const Route = createFileRoute("/_authenticated/courses")({
-  head: () => ({ meta: [{ title: "Courses — QRoll" }] }),
+  head: () => ({ meta: [{ title: "Courses — KNUST-ATTENDANCE-APP" }] }),
   component: CoursesPage,
 });
 

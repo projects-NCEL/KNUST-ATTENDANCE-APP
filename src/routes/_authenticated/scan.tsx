@@ -41,7 +41,7 @@ import { clearQueue, isOnline, listQueued, queueScan, removeQueued } from "@/lib
 type Search = { session?: string };
 
 export const Route = createFileRoute("/_authenticated/scan")({
-  head: () => ({ meta: [{ title: "Scanner — QRoll" }] }),
+  head: () => ({ meta: [{ title: "Scanner — KNUST-ATTENDANCE-APP" }] }),
   validateSearch: (s: Record<string, unknown>): Search => ({
     session: typeof s.session === "string" ? s.session : undefined,
   }),

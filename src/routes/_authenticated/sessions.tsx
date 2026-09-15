@@ -59,7 +59,7 @@ import { toast } from "sonner";
 import { getPublicOrigin } from "@/lib/public-origin";
 
 export const Route = createFileRoute("/_authenticated/sessions")({
-  head: () => ({ meta: [{ title: "Sessions — QRoll" }] }),
+  head: () => ({ meta: [{ title: "Sessions — KNUST-ATTENDANCE-APP" }] }),
   component: SessionsPage,
 });
 
@@ -189,6 +189,23 @@ function SessionsPage() {
         created_at: new Date().toISOString(),
       });
       toast.success("Session created — reuse it every class day");
+      const chosenCourse = courses?.find((c: any) => c.id === form.course_id);
+      fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId: form.course_id,
+          payload: {
+            type: "ATTENDANCE",
+            title: "Attendance Session Active",
+            body: `Attendance for ${chosenCourse?.code || "your class"} is now open. Tap to scan or check in.`,
+            url: `/check-in?session=${docRef.id}`,
+            entityId: docRef.id,
+            entityType: "attendance_session",
+          },
+        }),
+      }).catch((e) => console.warn("Push notification warning:", e));
+
       setOpen(false);
       setForm({
         course_id: "",
@@ -218,6 +235,23 @@ function SessionsPage() {
     try {
       await updateDoc(doc(firestoreDb, "attendance_sessions", s.id), updates);
       toast.success(status === "OPEN" ? "Session reopened for today" : "Session closed");
+      if (status === "OPEN" && s.course_id) {
+        fetch("/api/push/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            courseId: s.course_id,
+            payload: {
+              type: "ATTENDANCE",
+              title: "Attendance Reopened",
+              body: `Attendance for ${s.courses?.code || "your class"} has reopened for today.`,
+              url: `/check-in?session=${s.id}`,
+              entityId: s.id,
+              entityType: "attendance_session",
+            },
+          }),
+        }).catch((e) => console.warn("Push dispatch warning:", e));
+      }
       qc.invalidateQueries({ queryKey: ["sessions"] });
     } catch (err: any) {
       toast.error(err?.message || "Failed to update session");
@@ -242,7 +276,7 @@ function SessionsPage() {
       const dataUrl = await QRCode.toDataURL(url, {
         width: 800,
         margin: 2,
-        color: { dark: "#1e3a8a", light: "#ffffff" },
+        color: { dark: "#00552b", light: "#ffffff" },
       });
       setProjecting({
         id: s.id,

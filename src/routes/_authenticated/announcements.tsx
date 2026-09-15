@@ -201,6 +201,21 @@ export function AnnouncementsAndAssignmentsPage() {
         owner_id: uid,
       });
       toast.success("Announcement published to student portal");
+      fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId: announceCourseId === "all" ? undefined : announceCourseId,
+          payload: {
+            type: "ANNOUNCEMENT",
+            title: `Notice: ${announceTitle.trim()}`,
+            body: announceBody.trim().slice(0, 140),
+            url: "/student",
+            entityType: "announcement",
+          },
+        }),
+      }).catch((e) => console.warn("Push dispatch warning:", e));
+
       setAnnounceTitle("");
       setAnnounceBody("");
       setAnnounceLevels([]);
@@ -236,6 +251,21 @@ export function AnnouncementsAndAssignmentsPage() {
         owner_id: uid,
       });
       toast.success("Assignment published to student portal");
+      fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId: assignCourseId === "all" ? undefined : assignCourseId,
+          payload: {
+            type: "ASSIGNMENT",
+            title: `Assignment: ${assignTitle.trim()}`,
+            body: assignDetails.trim().slice(0, 140),
+            url: "/student",
+            entityType: "assignment",
+          },
+        }),
+      }).catch((e) => console.warn("Push dispatch warning:", e));
+
       setAssignTitle("");
       setAssignDetails("");
       setAssignUrl("");
@@ -426,7 +456,7 @@ export function AnnouncementsAndAssignmentsPage() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           {item.type === "announcement" ? (
-                            <Badge className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] gap-1">
+                            <Badge className="bg-primary hover:bg-primary/90 text-primary-foreground text-[11px] gap-1">
                               <Megaphone className="size-3" /> Announcement
                             </Badge>
                           ) : (
@@ -517,7 +547,7 @@ export function AnnouncementsAndAssignmentsPage() {
                       className="w-full justify-start text-xs h-10"
                       onClick={() => setActiveTab("announcements")}
                     >
-                      <Megaphone className="size-4 mr-2 text-blue-300" />
+                      <Megaphone className="size-4 mr-2 text-primary-foreground" />
                       Post New Announcement
                     </Button>
                     <Button

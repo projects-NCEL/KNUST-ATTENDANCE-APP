@@ -1139,7 +1139,7 @@ function QrButton({ student }: { student: any }) {
       const url = await QRCode.toDataURL(qrValue, {
         width: 320,
         margin: 2,
-        color: { dark: "#1e3a8a", light: "#ffffff" },
+        color: { dark: "#00552b", light: "#ffffff" },
       });
       setDataUrl(url);
     } catch (err) {
@@ -1151,7 +1151,7 @@ function QrButton({ student }: { student: any }) {
     const w = window.open("", "_blank");
     if (!w) return;
     w.document.write(
-      `<html><head><title>${student.index_number} - QR Code</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;text-align:center;padding:40px;color:#0f172a}.badge{display:inline-block;border:2px solid #0f172a;border-radius:12px;padding:24px 32px;max-width:320px}img{width:220px;height:220px}h2{margin:0 0 10px}h3{margin:12px 0 4px;font-size:20px}p{margin:4px 0;color:#475569;font-size:14px}</style></head><body><div class="badge"><h2>QRoll Student Pass</h2><img src="${dataUrl}" /><h3>${student.full_name}</h3><p><strong>${student.index_number}</strong> · Level ${student.level}</p></div></body></html>`,
+      `<html><head><title>${student.index_number} - QR Code</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;text-align:center;padding:40px;color:#0f172a}.badge{display:inline-block;border:2px solid #00552b;border-radius:12px;padding:24px 32px;max-width:320px}img{width:220px;height:220px}h2{margin:0 0 10px;color:#006837}h3{margin:12px 0 4px;font-size:20px}p{margin:4px 0;color:#475569;font-size:14px}</style></head><body><div class="badge"><h2>KNUST Attendance Pass</h2><img src="${dataUrl}" /><h3>${student.full_name}</h3><p><strong>${student.index_number}</strong> · Level ${student.level}</p></div></body></html>`,
     );
     w.document.close();
     setTimeout(() => w.print(), 400);
@@ -1198,7 +1198,7 @@ function QrButton({ student }: { student: any }) {
               {dataUrl && (
                 <a
                   href={dataUrl}
-                  download={`QRoll-${student.index_number || "student"}.png`}
+                  download={`KNUST-${student.index_number || "student"}.png`}
                   className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-secondary-foreground py-2 px-3 rounded-lg border transition"
                 >
                   <Download className="size-3.5" />
