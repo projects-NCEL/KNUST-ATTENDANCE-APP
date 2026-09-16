@@ -12,6 +12,11 @@ import {
   Shield,
   Clock,
   Info,
+  RefreshCw,
+  Megaphone,
+  FileText,
+  Inbox,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -85,10 +90,64 @@ export function PushNotificationManager({
     }
   }, [userContext.userId]);
 
+  // History state
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState<string>("all");
+
+  const loadHistory = useCallback(async () => {
+    if (!userContext.userId) return;
+    setHistoryLoading(true);
+    try {
+      const altParam = userContext.studentId ? `&altId=${encodeURIComponent(userContext.studentId)}` : "";
+      const res = await fetch(
+        `/api/push/notifications?userId=${encodeURIComponent(userContext.userId)}${altParam}`,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setHistory(data.notifications || []);
+      }
+    } catch {
+      // Non-blocking
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [userContext.userId, userContext.studentId]);
+
   useEffect(() => {
     checkStatus();
     loadPreferences();
-  }, [checkStatus, loadPreferences]);
+    loadHistory();
+  }, [checkStatus, loadPreferences, loadHistory]);
+
+  const markAllHistoryRead = async () => {
+    try {
+      await fetch("/api/push/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: userContext.userId, markAllRead: true }),
+      });
+      setHistory((prev) => prev.map((item) => ({ ...item, isRead: true })));
+      toast.success("All notifications marked as read");
+    } catch {
+      toast.error("Failed to mark notifications read");
+    }
+  };
+
+  const markSingleRead = async (notificationId: string) => {
+    try {
+      await fetch("/api/push/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId, userId: userContext.userId }),
+      });
+      setHistory((prev) =>
+        prev.map((item) => (item.id === notificationId ? { ...item, isRead: true } : item)),
+      );
+    } catch {
+      // Ignore
+    }
+  };
 
   const handleSubscribe = async () => {
     setLoading(true);
@@ -387,6 +446,171 @@ export function PushNotificationManager({
             </div>
           </div>
         </div>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* Notification History Feed                                          */}
+        {/* ------------------------------------------------------------------ */}
+        <div className="space-y-3 pt-2 border-t">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <Clock className="size-3.5 text-primary" />
+                Notification History ({history.length})
+              </div>
+              {history.some((h) => !h.isRead) && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary font-semibold">
+                  {history.filter((h) => !h.isRead).length} Unread
+                </Badge>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {history.some((h) => !h.isRead) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={markAllHistoryRead}
+                  className="text-xs h-7 text-muted-foreground hover:text-foreground"
+                >
+                  Mark all as read
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadHistory}
+                disabled={historyLoading}
+                className="text-xs h-7 gap-1"
+              >
+                <RefreshCw className={`size-3 ${historyLoading ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+            </div>
+          </div>
+
+          {/* Filter Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+            {[
+              { id: "all", label: "All Alerts" },
+              { id: "ANNOUNCEMENT", label: "Announcements" },
+              { id: "ASSIGNMENT", label: "Assignments" },
+              { id: "ATTENDANCE", label: "Attendance" },
+            ].map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setHistoryFilter(f.id)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors shrink-0 ${
+                  historyFilter === f.id
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* List of Notification History Records */}
+          <div className="rounded-xl border divide-y overflow-hidden bg-background">
+            {historyLoading && history.length === 0 ? (
+              <div className="p-8 text-center text-xs text-muted-foreground space-y-2">
+                <Loader2 className="size-5 animate-spin mx-auto text-primary" />
+                <p>Loading notification history...</p>
+              </div>
+            ) : history.filter((item) => (historyFilter === "all" ? true : item.type?.toUpperCase() === historyFilter.toUpperCase())).length === 0 ? (
+              <div className="p-8 text-center text-xs text-muted-foreground space-y-2">
+                <Inbox className="size-8 text-muted-foreground/40 mx-auto" />
+                <p className="font-semibold text-foreground text-sm">No notification records yet</p>
+                <p className="max-w-xs mx-auto text-muted-foreground">
+                  When your course lecturers post announcements, assign coursework, or open attendance sessions, they will be logged here and sent directly to your phone.
+                </p>
+              </div>
+            ) : (
+              history
+                .filter((item) => (historyFilter === "all" ? true : item.type?.toUpperCase() === historyFilter.toUpperCase()))
+                .map((n) => {
+                  const isAnnouncement = n.type?.toUpperCase() === "ANNOUNCEMENT";
+                  const isAssignment = n.type?.toUpperCase() === "ASSIGNMENT";
+                  const isAttendance = n.type?.toUpperCase() === "ATTENDANCE";
+
+                  return (
+                    <div
+                      key={n.id}
+                      className={`p-3.5 sm:p-4 flex items-start gap-3 transition-colors ${
+                        !n.isRead ? "bg-primary/5 font-medium" : "hover:bg-muted/30"
+                      }`}
+                    >
+                      <div
+                        className={`size-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                          isAnnouncement
+                            ? "bg-blue-100 text-blue-700"
+                            : isAssignment
+                            ? "bg-amber-100 text-amber-700"
+                            : isAttendance
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {isAnnouncement ? (
+                          <Megaphone className="size-4" />
+                        ) : isAssignment ? (
+                          <FileText className="size-4" />
+                        ) : (
+                          <Bell className="size-4" />
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-foreground truncate">
+                              {n.title}
+                            </span>
+                            {!n.isRead && (
+                              <span className="size-2 rounded-full bg-primary shrink-0" />
+                            )}
+                          </div>
+                          <span className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
+                            <Clock className="size-3" />
+                            {n.createdAt ? new Date(n.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recent"}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground leading-relaxed break-words">
+                          {n.body}
+                        </p>
+
+                        <div className="pt-1 flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="text-[10px] py-0 px-1.5 uppercase font-semibold">
+                            {n.type || "UPDATE"}
+                          </Badge>
+                          {n.url && (
+                            <a
+                              href={n.url}
+                              onClick={() => !n.isRead && markSingleRead(n.id)}
+                              className="text-[11px] text-primary hover:underline inline-flex items-center gap-1 font-semibold"
+                            >
+                              Open Update <ExternalLink className="size-3" />
+                            </a>
+                          )}
+                          {!n.isRead && (
+                            <button
+                              type="button"
+                              onClick={() => markSingleRead(n.id)}
+                              className="text-[11px] text-muted-foreground hover:text-foreground"
+                            >
+                              Mark as read
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+            )}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
@@ -513,6 +737,149 @@ export function InAppNotificationCenter({ userId }: { userId: string }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Compact Student Portal Phone Push Notification Banner
+ * Prominently prompts students to enable mobile push alerts for announcements & assignments.
+ */
+export function StudentPushBanner({
+  userContext,
+  onOpenNotificationsTab,
+}: {
+  userContext: PushUserContext;
+  onOpenNotificationsTab?: () => void;
+}) {
+  const [status, setStatus] = useState<PushPermissionStatus>("prompt");
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    const s = getPushPermissionStatus();
+    setStatus(s);
+    if (s === "granted") {
+      getExistingPushSubscription().then((sub) => {
+        setIsSubscribed(Boolean(sub));
+      });
+    }
+  }, []);
+
+  const handleEnable = async () => {
+    setLoading(true);
+    try {
+      const res = await subscribeDeviceToPush(userContext);
+      if (res.success) {
+        setIsSubscribed(true);
+        setStatus("granted");
+        toast.success("Phone notifications activated! Test alert dispatched.");
+        // Trigger a test alert to phone
+        fetch("/api/push/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: userContext.userId,
+            payload: {
+              type: "GENERAL",
+              title: "🔔 QRoll Alerts Connected!",
+              body: "You will now receive lecturer announcements and assignments on this phone.",
+              url: "/student",
+            },
+          }),
+        }).catch(() => {});
+      } else if (res.error === "ios_pwa_required") {
+        toast.info(
+          "On iPhone/iPad, please tap Share (⎋) and select 'Add to Home Screen' to enable phone alerts.",
+          { duration: 7000 },
+        );
+      } else {
+        toast.error(res.error || "Failed to activate phone notifications");
+      }
+    } catch {
+      toast.error("An error occurred while enabling notifications");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (dismissed) return null;
+
+  if (isSubscribed) {
+    return (
+      <div className="rounded-xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 px-3.5 py-2 flex items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
+          <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <span className="font-medium">
+            Phone notifications are active — you will receive lecturer updates directly to this device.
+          </span>
+        </div>
+        {onOpenNotificationsTab && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onOpenNotificationsTab}
+            className="text-[11px] h-6 px-2 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/40"
+          >
+            Preferences
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border-2 border-primary/20 bg-linear-to-r from-primary/10 via-background to-primary/5 p-4 sm:p-5 shadow-xs transition-all">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-3.5">
+          <div className="p-2.5 rounded-xl bg-primary text-primary-foreground shrink-0 shadow-xs">
+            <Bell className="size-5 animate-pulse" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-foreground">
+                Get Lecturer Announcements & Assignments on your Phone
+              </h3>
+              <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px] px-1.5 py-0 font-semibold">
+                Recommended
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
+              Turn on push notifications so your device receives class notices, coursework postings, and attendance session alerts in real-time, even when QRoll is closed.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 pt-1 sm:pt-0">
+          <Button
+            onClick={handleEnable}
+            disabled={loading || status === "denied"}
+            size="sm"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold w-full sm:w-auto h-9 gap-1.5 shadow-xs"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin" />
+                Connecting Phone...
+              </>
+            ) : (
+              <>
+                <Smartphone className="size-3.5" />
+                Turn On Phone Alerts
+              </>
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDismissed(true)}
+            className="text-xs text-muted-foreground hover:text-foreground h-9 px-2.5"
+          >
+            Later
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -72,6 +72,10 @@ function AuthPage() {
         <img
           src={knustStudentsHero}
           alt="KNUST university students"
+          loading="lazy"
+          decoding="async"
+          width={1376}
+          height={768}
           className="absolute inset-0 h-full w-full object-cover object-center brightness-95"
           referrerPolicy="no-referrer"
         />
@@ -122,6 +126,10 @@ function AuthPage() {
             <img
               src={knustStudentsHero}
               alt="KNUST university students"
+              loading="lazy"
+              decoding="async"
+              width={1376}
+              height={768}
               className="absolute inset-0 h-full w-full object-cover object-center brightness-95"
               referrerPolicy="no-referrer"
             />

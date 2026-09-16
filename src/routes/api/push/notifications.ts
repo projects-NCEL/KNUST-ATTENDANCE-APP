@@ -10,25 +10,45 @@ export const Route = createFileRoute("/api/push/notifications")({
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const userId = (url.searchParams.get("userId") || "").trim();
+        const altId = (url.searchParams.get("altId") || "").trim();
 
-        if (!userId) {
+        if (!userId && !altId) {
           return Response.json({ error: "userId is required" }, { status: 400 });
         }
 
         try {
-          const list = await queryCollectionRest("in_app_notifications", {
-            where: [{ field: "userId", op: "EQUAL", value: userId }],
-            limit: 50,
-          });
+          const idsToQuery = Array.from(
+            new Set([userId, altId, "all", "students", "broadcast_student"].filter(Boolean)),
+          );
+
+          const lists = await Promise.all(
+            idsToQuery.map((targetId) =>
+              queryCollectionRest("in_app_notifications", {
+                where: [{ field: "userId", op: "EQUAL", value: targetId }],
+                limit: 30,
+              }).catch(() => []),
+            ),
+          );
+
+          const seen = new Set<string>();
+          const combined: any[] = [];
+          for (const list of lists) {
+            for (const item of list) {
+              if (item.id && !seen.has(item.id)) {
+                seen.add(item.id);
+                combined.push(item);
+              }
+            }
+          }
 
           // Sort by createdAt descending
-          list.sort((a, b) => {
+          combined.sort((a, b) => {
             const timeA = new Date(a.createdAt || 0).getTime();
             const timeB = new Date(b.createdAt || 0).getTime();
             return timeB - timeA;
           });
 
-          return Response.json({ notifications: list });
+          return Response.json({ notifications: combined });
         } catch (err: any) {
           return Response.json({ error: err.message }, { status: 500 });
         }

@@ -54,6 +54,8 @@ export interface StoredPushSubscription {
   id: string;
   userId: string;
   userRole: "student" | "lecturer" | "admin";
+  studentId?: string | null;
+  indexNumber?: string | null;
   endpoint: string;
   keys: {
     p256dh: string;
@@ -90,6 +92,8 @@ export async function savePushSubscription(
     browser?: string;
     userAgent?: string;
     isStandalone?: boolean;
+    studentId?: string;
+    indexNumber?: string;
   } = {},
 ): Promise<StoredPushSubscription> {
   if (!subscription || !subscription.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
@@ -98,14 +102,21 @@ export async function savePushSubscription(
 
   const docId = getSubscriptionDocId(subscription.endpoint);
   const now = new Date().toISOString();
+  const cleanUserId = String(userId).trim();
 
   // Check if existing record exists
   const existing = await getDocRest("push_subscriptions", docId);
 
   const subDoc: StoredPushSubscription = {
     id: docId,
-    userId: String(userId).trim(),
+    userId: cleanUserId,
     userRole,
+    studentId: deviceInfo.studentId || existing?.studentId || null,
+    indexNumber:
+      deviceInfo.indexNumber ||
+      (userRole === "student" ? cleanUserId : null) ||
+      existing?.indexNumber ||
+      null,
     endpoint: subscription.endpoint,
     keys: {
       p256dh: subscription.keys.p256dh,
@@ -124,7 +135,9 @@ export async function savePushSubscription(
   };
 
   await setDocRest("push_subscriptions", docId, subDoc, true);
-  console.log(`[WebPush] Subscription saved for user ${userId} on ${subDoc.platform}/${subDoc.browser}`);
+  console.log(
+    `[WebPush] Subscription saved for ${userRole} ${cleanUserId} on ${subDoc.platform}/${subDoc.browser}`,
+  );
   return subDoc;
 }
 
@@ -287,13 +300,35 @@ export async function sendNotificationToUser(
     return { targetDevices: 0, successful: 0, failed: 0 };
   }
 
-  // Query all active devices for this user
-  const subscriptions = await queryCollectionRest("push_subscriptions", {
+  // Query all active devices for this user (by userId, indexNumber, or studentId)
+  let subscriptions = await queryCollectionRest("push_subscriptions", {
     where: [
       { field: "userId", op: "EQUAL", value: cleanId },
       { field: "isActive", op: "EQUAL", value: true },
     ],
   });
+
+  if (subscriptions.length === 0) {
+    const byIndex = await queryCollectionRest("push_subscriptions", {
+      where: [
+        { field: "indexNumber", op: "EQUAL", value: cleanId },
+        { field: "isActive", op: "EQUAL", value: true },
+      ],
+    });
+    if (byIndex.length > 0) {
+      subscriptions = byIndex;
+    } else {
+      const byStudentId = await queryCollectionRest("push_subscriptions", {
+        where: [
+          { field: "studentId", op: "EQUAL", value: cleanId },
+          { field: "isActive", op: "EQUAL", value: true },
+        ],
+      });
+      if (byStudentId.length > 0) {
+        subscriptions = byStudentId;
+      }
+    }
+  }
 
   if (subscriptions.length === 0) {
     return { targetDevices: 0, successful: 0, failed: 0 };
@@ -399,6 +434,14 @@ export async function sendNotificationToCourseStudents(
     console.log(
       `[WebPush] Resolved ${recipientList.length} candidate student identifier(s) for course ${cleanCourseId}`,
     );
+
+    if (recipientList.length === 0) {
+      console.log(
+        `[WebPush] No direct course registrations found for course ${cleanCourseId}. Falling back to active student devices.`,
+      );
+      const broadcastRes = await sendNotificationToAllActive(payload, "student");
+      return { studentsCount: broadcastRes.totalDevices, delivered: broadcastRes.totalDelivered };
+    }
 
     const res = await sendNotificationToUsers(recipientList, payload);
     return { studentsCount: recipientList.length, delivered: res.totalDelivered };

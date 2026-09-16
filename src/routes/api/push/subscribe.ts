@@ -28,8 +28,14 @@ export const Route = createFileRoute("/api/push/subscribe")({
           }
 
           const userRole = userContext?.userRole || "student";
+          const studentId = (userContext?.studentId || "").trim();
+          const indexNumber = (userContext?.indexNumber || userContext?.userId || "").trim();
 
-          const saved = await savePushSubscription(userId, userRole, subscription, device);
+          const saved = await savePushSubscription(userId, userRole, subscription, {
+            ...device,
+            studentId,
+            indexNumber,
+          });
 
           return Response.json({
             success: true,

@@ -507,26 +507,30 @@ function ManualPage() {
           )}
         </div>
 
-        {/* Bottom Quick Navigation Links */}
-        <div className="rounded-xl border bg-card p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <h3 className="font-bold text-base">Ready to start managing your classroom?</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Jump straight to the dashboard or start a live scanner session.
-            </p>
+        {/* Official System Manual PDF Download Banner */}
+        <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-4 text-left">
+            <div className="size-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0 shadow-sm">
+              <FileText className="size-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-bold text-base text-foreground">
+                Official System Architecture & User Manual (PDF)
+              </h3>
+              <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
+                Detailed 5-page university document covering all route pages, dynamic rolling QR tokens, mobile push notifications, 10-mark continuous assessment engine, and complete lecturer & student operational workflows.
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Link to={"/scan" as string}>
-              <Button size="sm" className="text-xs">
-                <ScanLine className="size-4 mr-1.5" /> Open Scanner
-              </Button>
-            </Link>
-            <Link to={"/sessions" as string}>
-              <Button size="sm" variant="outline" className="text-xs">
-                <CalendarClock className="size-4 mr-1.5" /> View Sessions
-              </Button>
-            </Link>
-          </div>
+          <a
+            href="/app-manual.pdf"
+            download="KNUST-Attendance-User-Manual.pdf"
+            className="w-full sm:w-auto shrink-0"
+          >
+            <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-sm">
+              <Download className="size-4" /> Download Manual (PDF)
+            </Button>
+          </a>
         </div>
       </main>
       <PublicFooter />

@@ -71,6 +71,10 @@ function Landing() {
           <img
             src={heroImage}
             alt="Real KNUST students on campus"
+            fetchPriority="high"
+            decoding="async"
+            width={1376}
+            height={768}
             className="absolute inset-0 w-full h-full object-cover object-[center_35%] brightness-100"
             referrerPolicy="no-referrer"
           />

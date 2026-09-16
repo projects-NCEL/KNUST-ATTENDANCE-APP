@@ -38,7 +38,9 @@ import {
   School,
   BookCheck,
   Printer,
+  UserPlus,
 } from "lucide-react";
+import knustStudentsHero from "@/assets/knust-students-hero.jpg";
 import QRCode from "qrcode";
 import { toast } from "sonner";
 import { PublicFooter } from "@/components/PublicFooter";
@@ -47,6 +49,7 @@ import { KnustEmblem } from "@/components/KnustEmblem";
 import {
   PushNotificationManager,
   InAppNotificationCenter,
+  StudentPushBanner,
 } from "@/components/PushNotificationManager";
 
 export const Route = createFileRoute("/student")({
@@ -646,179 +649,267 @@ function StudentPortalPage() {
           /* ========================================================================= */
           /* AUTHENTICATION SCREENS (INDEX CHECK, FIRST-TIME PASSWORD, LOGIN, RESET)   */
           /* ========================================================================= */
-          <div className="max-w-md mx-auto py-2 sm:py-8 px-0 sm:px-2">
-            <Card className="shadow-lg border-primary/10 overflow-hidden">
-              <div className="h-2 bg-gradient-to-r from-[#00381c] via-[#00552b] to-[#007a3d]" />
+          <div className="max-w-4xl mx-auto py-2 sm:py-6 px-0 sm:px-2">
+            <div className="rounded-2xl border border-primary/15 bg-card shadow-xl overflow-hidden grid md:grid-cols-12">
+              {/* Left Column / University Students Presentation Image */}
+              <div className="relative md:col-span-5 hidden md:flex flex-col justify-between p-6 sm:p-8 text-white overflow-hidden bg-[#001f0f]">
+                <img
+                  src={knustStudentsHero}
+                  alt="KNUST university students"
+                  loading="lazy"
+                  decoding="async"
+                  width={800}
+                  height={900}
+                  className="absolute inset-0 h-full w-full object-cover object-center brightness-[0.82]"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-[#00381c]/65 to-black/40" />
 
-              {/* Mode Selector Tabs */}
-              <div className="p-1.5 sm:p-2 bg-muted/60 border-b grid grid-cols-3 gap-1 text-[11px] sm:text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep("login");
-                    setPassword("");
-                    setConfirmPassword("");
-                  }}
-                  className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate ${
-                    step === "login"
-                      ? "bg-background text-foreground shadow-xs border"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Sign In
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep("index");
-                    setPassword("");
-                    setConfirmPassword("");
-                  }}
-                  className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate ${
-                    step === "index" || step === "create"
-                      ? "bg-background text-foreground shadow-xs border"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Set Password
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep("reset");
-                    setPassword("");
-                    setConfirmPassword("");
-                  }}
-                  className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate ${
-                    step === "reset"
-                      ? "bg-background text-foreground shadow-xs border"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Reset Password
-                </button>
-              </div>
-
-              {step === "index" && (
-                <>
-                  <CardHeader className="text-center pb-3 pt-5 px-4 sm:px-6">
-                    <div className="flex justify-center mb-2">
-                      <KnustEmblem size={48} />
+                {/* Top Branding inside Image Panel */}
+                <div className="relative z-10 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="size-11 rounded-full bg-white/10 backdrop-blur-xs flex items-center justify-center p-0.5 border border-white/25 shadow-md">
+                      <KnustEmblem size={36} />
                     </div>
-                    <CardTitle className="text-lg sm:text-xl font-bold">Set Student Password</CardTitle>
-                    <CardDescription className="text-xs max-w-sm mx-auto">
-                      Enter your university index number and registered email to set your permanent
-                      login password.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 px-4 sm:px-6">
-                    <form onSubmit={handleDirectRegister} className="space-y-3.5">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="index-num" className="text-xs font-semibold">
-                          Index Number
-                        </Label>
-                        <Input
-                          id="index-num"
-                          placeholder="e.g. 2084931"
-                          value={index}
-                          onChange={(e) => setIndex(e.target.value)}
-                          autoFocus
-                          required
-                          className="h-10 font-mono text-sm tracking-wide uppercase"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label htmlFor="student-email" className="text-xs font-semibold">
-                          Registered Email Address
-                        </Label>
-                        <Input
-                          id="student-email"
-                          type="email"
-                          placeholder="e.g. student@example.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                          className="h-10 text-sm"
-                        />
-                        <p className="text-[11px] text-muted-foreground">
-                          Matches the email recorded in the system by your instructor.
-                        </p>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs font-semibold">Create Password</Label>
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-                          >
-                            {showPassword ? (
-                              <EyeOff className="size-3" />
-                            ) : (
-                              <Eye className="size-3" />
-                            )}
-                            {showPassword ? "Hide" : "Show"}
-                          </button>
-                        </div>
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="At least 6 characters"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          minLength={6}
-                          required
-                          className="h-10"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold">Confirm Password</Label>
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Re-enter password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          minLength={6}
-                          required
-                          className="h-10"
-                        />
-                      </div>
-
-                      <Button
-                        type="submit"
-                        id="student-verify-continue-btn"
-                        className="w-full h-11 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm tracking-wide shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer"
-                        disabled={busy}
-                      >
-                        {busy ? (
-                          <span className="flex items-center gap-2">
-                            <RefreshCw className="size-4 animate-spin" /> Verifying & Saving...
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-2">
-                            <KeyRound className="size-4" /> Set Password & Enter Portal
-                          </span>
-                        )}
-                      </Button>
-                    </form>
-
-                    <div className="pt-2 text-center space-y-1.5">
-                      <p className="text-xs text-muted-foreground">
-                        Already set your password?{" "}
-                        <button
-                          type="button"
-                          onClick={() => setStep("login")}
-                          className="text-primary font-semibold hover:underline"
-                        >
-                          Sign In with Password
-                        </button>
+                    <div>
+                      <h2 className="font-extrabold text-base tracking-tight text-white drop-shadow-xs">
+                        KNUST-ATTENDANCE-APP
+                      </h2>
+                      <p className="text-[11px] font-semibold text-white/80 uppercase tracking-wider">
+                        Student Portal
                       </p>
                     </div>
-                  </CardContent>
-                </>
-              )}
+                  </div>
+                  <Badge className="bg-primary/80 hover:bg-primary/90 text-white border-white/20 text-[10px] px-2 py-0.5">
+                    Official Student Gateway
+                  </Badge>
+                </div>
+
+                {/* Bottom Value Props */}
+                <div className="relative z-10 space-y-4 pt-10">
+                  <div className="space-y-1.5">
+                    <h3 className="font-bold text-lg text-white leading-snug">
+                      Fast, Secure Attendance & Course Updates
+                    </h3>
+                    <p className="text-xs text-white/85 leading-relaxed">
+                      Instant classroom check-ins, personal rotating QR badges, assignments, and real-time push alerts on your phone.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-white/15 text-xs text-white/90">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" />
+                      <span>Live 10-second rolling QR tokens</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" />
+                      <span>Instant mobile push notifications</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" />
+                      <span>Coursework submissions & exam eligibility</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column / Auth Form Area */}
+              <div className="md:col-span-7 flex flex-col justify-center bg-card">
+                {/* Mobile Hero Image Banner */}
+                <div className="relative md:hidden h-28 overflow-hidden bg-[#001f0f]">
+                  <img
+                    src={knustStudentsHero}
+                    alt="KNUST university students"
+                    className="absolute inset-0 h-full w-full object-cover object-center brightness-[0.78]"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-[#00381c]/60 to-black/30" />
+                  <div className="relative z-10 h-full flex items-center gap-3 px-4 text-white">
+                    <div className="size-9 rounded-full bg-white/10 backdrop-blur-xs flex items-center justify-center p-0.5 border border-white/25">
+                      <KnustEmblem size={30} />
+                    </div>
+                    <div>
+                      <h2 className="font-bold text-sm tracking-tight text-white">
+                        KNUST Student Portal
+                      </h2>
+                      <p className="text-[10px] text-white/80">
+                        Attendance, Coursework & Alerts
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="h-1.5 bg-gradient-to-r from-[#00381c] via-[#00552b] to-[#007a3d]" />
+
+                {/* Mode Selector Tabs */}
+                <div className="p-1.5 sm:p-2 bg-muted/60 border-b grid grid-cols-3 gap-1 text-[11px] sm:text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep("login");
+                      setPassword("");
+                      setConfirmPassword("");
+                    }}
+                    className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate ${
+                      step === "login"
+                        ? "bg-background text-foreground shadow-xs border"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep("index");
+                      setPassword("");
+                      setConfirmPassword("");
+                    }}
+                    className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate ${
+                      step === "index" || step === "create"
+                        ? "bg-background text-foreground shadow-xs border"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Sign Up
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep("reset");
+                      setPassword("");
+                      setConfirmPassword("");
+                    }}
+                    className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate ${
+                      step === "reset"
+                        ? "bg-background text-foreground shadow-xs border"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Reset Password
+                  </button>
+                </div>
+
+                {step === "index" && (
+                  <>
+                    <CardHeader className="text-center pb-3 pt-5 px-4 sm:px-6">
+                      <div className="flex justify-center mb-2 md:hidden">
+                        <KnustEmblem size={42} />
+                      </div>
+                      <CardTitle className="text-lg sm:text-xl font-bold">Student Sign Up</CardTitle>
+                      <CardDescription className="text-xs max-w-sm mx-auto">
+                        Enter your university index number and registered email to activate your account
+                        and set your password.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4 px-4 sm:px-6">
+                      <form onSubmit={handleDirectRegister} className="space-y-3.5">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="index-num" className="text-xs font-semibold">
+                            Index Number
+                          </Label>
+                          <Input
+                            id="index-num"
+                            placeholder="e.g. 2084931"
+                            value={index}
+                            onChange={(e) => setIndex(e.target.value)}
+                            autoFocus
+                            required
+                            className="h-10 font-mono text-sm tracking-wide uppercase"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor="student-email" className="text-xs font-semibold">
+                            Registered Email Address
+                          </Label>
+                          <Input
+                            id="student-email"
+                            type="email"
+                            placeholder="e.g. student@example.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            className="h-10 text-sm"
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            Matches the email recorded in the system by your instructor.
+                          </p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs font-semibold">Create Password</Label>
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                            >
+                              {showPassword ? (
+                                <EyeOff className="size-3" />
+                              ) : (
+                                <Eye className="size-3" />
+                              )}
+                              {showPassword ? "Hide" : "Show"}
+                            </button>
+                          </div>
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="At least 6 characters"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            minLength={6}
+                            required
+                            className="h-10"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">Confirm Password</Label>
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Re-enter password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            minLength={6}
+                            required
+                            className="h-10"
+                          />
+                        </div>
+
+                        <Button
+                          type="submit"
+                          id="student-verify-continue-btn"
+                          className="w-full h-11 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm tracking-wide shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer"
+                          disabled={busy}
+                        >
+                          {busy ? (
+                            <span className="flex items-center gap-2">
+                              <RefreshCw className="size-4 animate-spin" /> Verifying & Saving...
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-2">
+                              <UserPlus className="size-4" /> Sign Up & Enter Portal
+                            </span>
+                          )}
+                        </Button>
+                      </form>
+
+                      <div className="pt-2 text-center space-y-1.5">
+                        <p className="text-xs text-muted-foreground">
+                          Already have an account?{" "}
+                          <button
+                            type="button"
+                            onClick={() => setStep("login")}
+                            className="text-primary font-semibold hover:underline"
+                          >
+                            Sign In
+                          </button>
+                        </p>
+                      </div>
+                    </CardContent>
+                  </>
+                )}
 
               {step === "create" && (
                 <>
@@ -920,7 +1011,7 @@ function StudentPortalPage() {
                           setConfirmPassword("");
                         }}
                       >
-                        Back to index verification
+                        Back to Sign Up
                       </Button>
                     </form>
                   </CardContent>
@@ -930,8 +1021,8 @@ function StudentPortalPage() {
               {step === "login" && (
                 <>
                   <CardHeader className="text-center pb-3 pt-5 px-4 sm:px-6">
-                    <div className="flex justify-center mb-2">
-                      <KnustEmblem size={48} />
+                    <div className="flex justify-center mb-2 md:hidden">
+                      <KnustEmblem size={42} />
                     </div>
                     <CardTitle className="text-lg sm:text-xl font-bold">Sign In to Student Portal</CardTitle>
                     <CardDescription className="text-xs">
@@ -1013,7 +1104,7 @@ function StudentPortalPage() {
                             onClick={() => setStep("index")}
                             className="text-primary font-semibold hover:underline"
                           >
-                            Set Password First
+                            Sign Up
                           </button>
                         </p>
                       </div>
@@ -1025,8 +1116,8 @@ function StudentPortalPage() {
               {step === "reset" && (
                 <>
                   <CardHeader className="text-center pb-4 pt-5 px-4 sm:px-6">
-                    <div className="flex justify-center mb-2">
-                      <KnustEmblem size={48} />
+                    <div className="flex justify-center mb-2 md:hidden">
+                      <KnustEmblem size={42} />
                     </div>
                     <CardTitle className="text-lg sm:text-xl font-bold">Reset Student Password</CardTitle>
                     <CardDescription className="text-xs max-w-sm mx-auto">
@@ -1129,7 +1220,8 @@ function StudentPortalPage() {
                   </CardContent>
                 </>
               )}
-            </Card>
+              </div>
+            </div>
           </div>
         ) : (
           /* ========================================================================= */
@@ -1276,6 +1368,17 @@ function StudentPortalPage() {
                 </div>
               </div>
             )}
+
+            {/* Mobile Push Notification Activation Banner */}
+            <StudentPushBanner
+              userContext={{
+                userId: me.index_number,
+                userRole: "student",
+                studentId: me.id,
+                indexNumber: me.index_number,
+              }}
+              onOpenNotificationsTab={() => setActiveTab("notifications")}
+            />
 
             {/* Navigation Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -2161,6 +2264,8 @@ function StudentPortalPage() {
                   userContext={{
                     userId: me.index_number,
                     userRole: "student",
+                    studentId: me.id,
+                    indexNumber: me.index_number,
                   }}
                   showCard={true}
                 />

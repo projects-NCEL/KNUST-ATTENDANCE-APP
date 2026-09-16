@@ -10,6 +10,7 @@ export function KnustEmblem({ className = "", size = 36 }: KnustEmblemProps) {
       alt="KNUST Official Crest"
       width={size}
       height={size}
+      decoding="async"
       className={`shrink-0 object-contain rounded-full bg-white p-0.5 shadow-xs ${className}`}
       style={{ width: size, height: size }}
       referrerPolicy="no-referrer"
