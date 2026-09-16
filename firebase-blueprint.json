@@ -109,6 +109,40 @@
         "check_in_at": { "type": "string" }
       },
       "required": ["session_id", "index_number"]
+    },
+    "PushSubscription": {
+      "title": "PushSubscription",
+      "description": "Device Web Push subscription tokens for background push notifications.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userRole": { "type": "string" },
+        "endpoint": { "type": "string" },
+        "keys": { "type": "object" },
+        "platform": { "type": "string" },
+        "browser": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "endpoint", "keys"]
+    },
+    "InAppNotification": {
+      "title": "InAppNotification",
+      "description": "In-app alerts and notifications sent to users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "url": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "title", "body"]
     }
   },
   "firestore": {
@@ -135,6 +169,14 @@
     "/attendance_records/{recordId}": {
       "schema": "AttendanceRecord",
       "description": "Recorded attendance logs per session."
+    },
+    "/push_subscriptions/{subId}": {
+      "schema": "PushSubscription",
+      "description": "Registered browser push subscriptions."
+    },
+    "/in_app_notifications/{notifId}": {
+      "schema": "InAppNotification",
+      "description": "Stored user alerts and notification history."
     }
   }
 }

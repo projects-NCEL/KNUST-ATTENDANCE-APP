@@ -1,12 +1,17 @@
 // QRoll Official Web Push & PWA Service Worker
 // Kwame Nkrumah University of Science and Technology (KNUST)
 
-const CACHE_NAME = "qroll-pwa-v1";
+const CACHE_NAME = "qroll-pwa-v2";
 const STATIC_ASSETS = [
   "/",
   "/manifest.webmanifest",
+  "/manifest.json",
   "/favicon.png",
   "/favicon.svg",
+  "/apple-touch-icon.png",
+  "/pwa-192x192.png",
+  "/pwa-512x512.png",
+  "/pwa-maskable-512x512.png",
   "/knust-logo.svg",
 ];
 

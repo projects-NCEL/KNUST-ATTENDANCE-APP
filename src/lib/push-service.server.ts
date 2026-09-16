@@ -407,3 +407,61 @@ export async function sendNotificationToCourseStudents(
     return { studentsCount: 0, delivered: 0 };
   }
 }
+
+/**
+ * Broadcast notification to all active devices/users (or filtered by role)
+ */
+export async function sendNotificationToAllActive(
+  payload: NotificationPayload,
+  targetRole?: "student" | "lecturer" | "admin",
+): Promise<{ totalDevices: number; totalDelivered: number }> {
+  try {
+    const filters: any[] = [{ field: "isActive", op: "EQUAL", value: true }];
+    if (targetRole) {
+      filters.push({ field: "userRole", op: "EQUAL", value: targetRole });
+    }
+
+    const subscriptions = await queryCollectionRest("push_subscriptions", {
+      where: filters,
+    });
+
+    if (subscriptions.length === 0) {
+      return { totalDevices: 0, totalDelivered: 0 };
+    }
+
+    // Record in-app notification for each unique user
+    const uniqueUserIds = Array.from(
+      new Set(subscriptions.map((s: any) => s.userId).filter(Boolean)),
+    );
+    await Promise.all(
+      uniqueUserIds.map((uid) =>
+        saveInAppNotification(String(uid), payload).catch(() => {}),
+      ),
+    );
+
+    // Send push notification to devices in chunks
+    let delivered = 0;
+    const chunkSize = 10;
+    for (let i = 0; i < subscriptions.length; i += chunkSize) {
+      const chunk = subscriptions.slice(i, i + chunkSize);
+      const results = await Promise.all(
+        chunk.map((sub: any) =>
+          sendToSubscriptionRecord(sub as StoredPushSubscription, payload).catch(
+            () => ({ success: false }),
+          ),
+        ),
+      );
+      delivered += results.filter((r) => r.success).length;
+    }
+
+    console.log(
+      `[WebPush] Broadcast complete: "${payload.title}" (${delivered}/${subscriptions.length} devices delivered)`,
+    );
+
+    return { totalDevices: subscriptions.length, totalDelivered: delivered };
+  } catch (err) {
+    console.error("[WebPush] Broadcast error:", err);
+    return { totalDevices: 0, totalDelivered: 0 };
+  }
+}
+

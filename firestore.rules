@@ -113,5 +113,20 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
     }
+
+    // Push subscriptions & web push tokens
+    match /push_subscriptions/{subId} {
+      allow read, write: if true;
+    }
+
+    // In-App notifications and notification center
+    match /in_app_notifications/{notifId} {
+      allow read, write: if true;
+    }
+
+    // User notification preferences
+    match /notification_preferences/{prefId} {
+      allow read, write: if true;
+    }
   }
 }
