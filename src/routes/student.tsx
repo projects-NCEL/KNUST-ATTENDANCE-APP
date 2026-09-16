@@ -39,6 +39,7 @@ import {
   BookCheck,
   Printer,
   UserPlus,
+  Navigation,
 } from "lucide-react";
 import knustStudentsHero from "@/assets/knust-students-hero.jpg";
 import QRCode from "qrcode";
@@ -1020,10 +1021,30 @@ function StudentPortalPage() {
 
               {step === "login" && (
                 <>
-                  <CardHeader className="text-center pb-3 pt-5 px-4 sm:px-6">
-                    <div className="flex justify-center mb-2 md:hidden">
-                      <KnustEmblem size={42} />
+                  <div className="relative h-28 sm:h-32 w-full overflow-hidden bg-[#001f0f] border-b">
+                    <img
+                      src={knustStudentsHero}
+                      alt="KNUST University Students"
+                      className="absolute inset-0 h-full w-full object-cover object-center brightness-[0.88]"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+                    <div className="absolute bottom-2.5 left-3.5 right-3.5 flex items-center gap-2.5 text-white">
+                      <div className="size-9 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center p-0.5 border border-white/30 shadow-xs shrink-0">
+                        <KnustEmblem size={28} />
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="font-bold text-sm sm:text-base text-white tracking-tight drop-shadow-xs truncate">
+                          Student Portal Access
+                        </h2>
+                        <p className="text-[10px] sm:text-[11px] text-white/85 truncate">
+                          KNUST Attendance & Coursework Management
+                        </p>
+                      </div>
                     </div>
+                  </div>
+
+                  <CardHeader className="text-center pb-2 pt-3 px-4 sm:px-6">
                     <CardTitle className="text-lg sm:text-xl font-bold">Sign In to Student Portal</CardTitle>
                     <CardDescription className="text-xs">
                       Enter your university index number and password to access your dashboard.
@@ -1227,21 +1248,21 @@ function StudentPortalPage() {
           /* ========================================================================= */
           /* AUTHENTICATED STUDENT PORTAL DASHBOARD                                     */
           /* ========================================================================= */
-          <div className="space-y-4 sm:space-y-6">
+          <div className="space-y-3.5 sm:space-y-6">
             {/* Student Header Card */}
             <Card className="border shadow-xs overflow-hidden">
-              <div className="bg-gradient-to-r from-[#00381c] via-[#00552b] to-[#007a3d] p-3.5 sm:p-6 text-white">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4">
+              <div className="bg-gradient-to-r from-[#00381c] via-[#00552b] to-[#007a3d] p-3.5 sm:p-5 text-white">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                   <div className="space-y-1 min-w-0">
                     <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                      <Badge className="bg-white/20 text-white hover:bg-white/30 border-none text-[10px] sm:text-[11px] font-mono">
+                      <Badge className="bg-white/20 text-white border-none text-[10px] sm:text-[11px] font-mono">
                         {me.index_number}
                       </Badge>
-                      <Badge className="bg-emerald-500/90 text-white border-none text-[10px] sm:text-[11px]">
+                      <Badge className="bg-emerald-400/90 text-emerald-950 font-bold border-none text-[10px] sm:text-[11px]">
                         Verified Student
                       </Badge>
                     </div>
-                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white truncate">
+                    <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-white truncate">
                       {me.full_name}
                     </h1>
                     <p className="text-[11px] sm:text-xs text-white/80">
@@ -1251,40 +1272,92 @@ function StudentPortalPage() {
                   </div>
 
                   {/* Attendance Grade Stat Box */}
-                  <div className="bg-white/10 backdrop-blur-xs rounded-xl p-3 sm:p-4 border border-white/15 w-full sm:w-auto sm:min-w-[200px] text-left sm:text-right">
-                    <div className="text-[11px] sm:text-xs text-white/75 font-medium">Running Attendance</div>
-                    <div className="text-2xl sm:text-3xl font-extrabold text-white mt-0.5">
-                      {overallPercentage}%
-                    </div>
-                    <div className="flex items-center justify-start sm:justify-end gap-1.5 mt-1 text-[11px] sm:text-xs">
-                      <span className="text-white/80">
-                        {totalAttendedSessions} of {totalHeldSessions} sessions attended
-                      </span>
+                  <div className="bg-white/10 backdrop-blur-xs rounded-xl p-2.5 sm:p-4 border border-white/15 w-full sm:w-auto text-left sm:text-right">
+                    <div className="flex sm:flex-col items-center sm:items-end justify-between">
+                      <div>
+                        <div className="text-[10px] sm:text-xs text-white/75 font-medium">Running Attendance</div>
+                        <div className="text-2xl sm:text-3xl font-extrabold text-white">
+                          {overallPercentage}%
+                        </div>
+                      </div>
+                      <div className="text-right sm:mt-1">
+                        <span className="text-[11px] sm:text-xs text-white/85 block">
+                          {totalAttendedSessions} of {totalHeldSessions} attended
+                        </span>
+                        <span className="text-[10px] text-emerald-300 font-semibold block">
+                          {calculateAttendanceGrade(overallPercentage).label} Standing
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-3.5 sm:mt-4 pt-2.5 sm:pt-3 border-t border-white/15">
-                  <div className="flex justify-between items-center text-[11px] sm:text-xs text-white/80 mb-1.5">
+                <div className="mt-3 pt-2.5 border-t border-white/15">
+                  <div className="flex justify-between items-center text-[10px] sm:text-xs text-white/80 mb-1">
                     <span>Overall Semester Attendance Standing</span>
                     <span className="font-semibold">
                       {calculateAttendanceGrade(overallPercentage).label} Grade
                     </span>
                   </div>
-                  <Progress value={overallPercentage} className="h-2 bg-white/20" />
+                  <Progress value={overallPercentage} className="h-1.5 sm:h-2 bg-white/20" />
                 </div>
               </div>
             </Card>
 
+            {/* Quick Mobile Classroom Actions Bar */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab("qr")}
+                className={`p-2.5 sm:p-3 rounded-xl border flex items-center gap-2.5 transition text-left cursor-pointer ${
+                  activeTab === "qr"
+                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                    : "bg-card hover:bg-muted/50 border-border text-foreground"
+                }`}
+              >
+                <div
+                  className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    activeTab === "qr" ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+                  }`}
+                >
+                  <QrCode className="size-4" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-xs font-bold block truncate">My QR Pass</span>
+                  <span
+                    className={`text-[10px] block truncate ${
+                      activeTab === "qr" ? "text-white/80" : "text-muted-foreground"
+                    }`}
+                  >
+                    Display for TA Scan
+                  </span>
+                </div>
+              </button>
+
+              <Link to="/check-in" className="block">
+                <div className="p-2.5 sm:p-3 rounded-xl border bg-card hover:bg-muted/50 border-border text-foreground flex items-center gap-2.5 transition cursor-pointer">
+                  <div className="size-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <Navigation className="size-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold block truncate">Projector Check-In</span>
+                    <span className="text-[10px] text-muted-foreground block truncate">
+                      GPS Classroom Link
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            </div>
+
             {/* Attendance Risk Banner (If applicable) */}
             {atRiskCourses.length > 0 && (
-              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 sm:p-5 flex items-start gap-3 text-destructive animate-in fade-in">
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 sm:p-4 flex items-start gap-2.5 text-destructive animate-in fade-in">
                 <AlertTriangle className="size-4 sm:size-5 shrink-0 mt-0.5" />
                 <div className="space-y-1 text-xs sm:text-sm min-w-0 flex-1">
-                  <div className="font-bold text-destructive flex items-center gap-2">
+                  <div className="font-bold text-destructive flex items-center gap-1.5">
                     Attendance Risk Warning — Exam Eligibility at Risk
                   </div>
-                  <p className="text-destructive/90 leading-relaxed text-xs sm:text-sm">
+                  <p className="text-destructive/90 leading-relaxed text-xs">
                     You have fallen below the mandatory <b>75% attendance cutoff</b> in:{" "}
                     <b>
                       {atRiskCourses
@@ -1292,18 +1365,18 @@ function StudentPortalPage() {
                         .join(", ")}
                     </b>
                     . University regulations require minimum 75% attendance to sit for final
-                    examinations. Please ensure you attend all remaining sessions.
+                    examinations.
                   </p>
                 </div>
               </div>
             )}
 
             {warningCourses.length > 0 && atRiskCourses.length === 0 && (
-              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3.5 sm:p-5 flex items-start gap-3 text-amber-900 animate-in fade-in">
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 sm:p-4 flex items-start gap-2.5 text-amber-900 animate-in fade-in">
                 <AlertCircle className="size-4 sm:size-5 shrink-0 mt-0.5 text-amber-600" />
-                <div className="space-y-1 text-xs sm:text-sm min-w-0 flex-1">
+                <div className="space-y-1 text-xs min-w-0 flex-1">
                   <div className="font-bold text-amber-900">Attendance Caution</div>
-                  <p className="text-amber-800 leading-relaxed text-xs sm:text-sm">
+                  <p className="text-amber-800 leading-relaxed text-xs">
                     You have missed 3 or more sessions in:{" "}
                     <b>{warningCourses.map((c) => `${c.code} (${c.missed} missed)`).join(", ")}</b>.
                     Maintain regular attendance to keep your standing safe.
@@ -1312,27 +1385,19 @@ function StudentPortalPage() {
               </div>
             )}
 
-            {/* Web Push Notification Activation Card */}
-            <PushNotificationManager
-              userContext={{
-                userId: me.index_number,
-                userRole: "student",
-              }}
-            />
-
             {/* Multi-Lecturer Course & Faculty Filter Bar */}
             {courses.length > 0 && (
-              <div className="rounded-xl border bg-card p-3 sm:p-3.5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <Filter className="size-4" />
+              <div className="rounded-xl border bg-card p-2.5 sm:p-3.5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="size-7 sm:size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Filter className="size-3.5 sm:size-4" />
                   </div>
                   <div className="min-w-0">
                     <span className="text-xs font-bold text-foreground block truncate">
-                      Multi-Lecturer & Course Scope
+                      Multi-Lecturer Scope
                     </span>
-                    <span className="text-[11px] text-muted-foreground block truncate">
-                      {courses.length} enrolled courses across{" "}
+                    <span className="text-[10px] sm:text-[11px] text-muted-foreground block truncate">
+                      {courses.length} enrolled course{courses.length === 1 ? "" : "s"} across{" "}
                       <span className="font-semibold text-foreground">
                         {uniqueLecturers.length} lecturer{uniqueLecturers.length === 1 ? "" : "s"}
                       </span>
@@ -1345,7 +1410,7 @@ function StudentPortalPage() {
                     id="student-course-lecturer-filter"
                     value={selectedCourseFilter}
                     onChange={(e) => setSelectedCourseFilter(e.target.value)}
-                    className="text-xs bg-background border rounded-lg px-2.5 py-2 font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto max-w-full truncate"
+                    className="text-xs bg-background border rounded-lg px-2.5 py-1.5 font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto max-w-full truncate"
                   >
                     <option value="all">All Courses & Lecturers ({courses.length})</option>
                     {courses.map((c) => (
@@ -1360,7 +1425,7 @@ function StudentPortalPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setSelectedCourseFilter("all")}
-                      className="text-xs h-8 px-2 shrink-0 text-muted-foreground hover:text-foreground"
+                      className="text-xs h-7 px-2 shrink-0 text-muted-foreground hover:text-foreground"
                     >
                       Reset
                     </Button>
@@ -1369,7 +1434,7 @@ function StudentPortalPage() {
               </div>
             )}
 
-            {/* Mobile Push Notification Activation Banner */}
+            {/* Mobile Push Notification Activation Banner (Compact & Dismissable) */}
             <StudentPushBanner
               userContext={{
                 userId: me.index_number,
@@ -1383,31 +1448,38 @@ function StudentPortalPage() {
             {/* Navigation Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <div className="overflow-x-auto no-scrollbar -mx-1 px-1 sm:mx-0 sm:px-0">
-                <TabsList className="inline-flex w-auto min-w-full sm:grid sm:grid-cols-4 lg:grid-cols-7 h-auto p-1 bg-muted/60 rounded-xl gap-1">
+                <TabsList className="flex overflow-x-auto no-scrollbar scroll-smooth w-full sm:grid sm:grid-cols-4 lg:grid-cols-8 h-auto p-1 bg-muted/60 rounded-xl gap-1">
+                  <TabsTrigger
+                    value="qr"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
+                  >
+                    <QrCode className="size-3.5 shrink-0 text-primary" />
+                    My QR Pass
+                  </TabsTrigger>
                   <TabsTrigger
                     value="attendance"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
                   >
                     <CalendarCheck className="size-3.5 shrink-0" />
                     Attendance
                   </TabsTrigger>
                   <TabsTrigger
                     value="records"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
                   >
                     <FileText className="size-3.5 shrink-0" />
                     Personal Records
                   </TabsTrigger>
                   <TabsTrigger
                     value="courses"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
                   >
                     <BookOpen className="size-3.5 shrink-0" />
                     Courses ({courses.length})
                   </TabsTrigger>
                   <TabsTrigger
                     value="announcements"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
                   >
                     <Megaphone className="size-3.5 shrink-0" />
                     Announcements
@@ -1417,7 +1489,7 @@ function StudentPortalPage() {
                   </TabsTrigger>
                   <TabsTrigger
                     value="assignments"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
                   >
                     <ClipboardList className="size-3.5 shrink-0" />
                     Assignments
@@ -1426,22 +1498,15 @@ function StudentPortalPage() {
                     )}
                   </TabsTrigger>
                   <TabsTrigger
-                    value="qr"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
-                  >
-                    <QrCode className="size-3.5 shrink-0" />
-                    My QR Pass
-                  </TabsTrigger>
-                  <TabsTrigger
                     value="notifications"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
                   >
                     <BellRing className="size-3.5 shrink-0" />
                     Notifications
                   </TabsTrigger>
                   <TabsTrigger
                     value="settings"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 sm:shrink whitespace-nowrap"
+                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
                   >
                     <KeyRound className="size-3.5 shrink-0" />
                     Settings
@@ -2178,79 +2243,89 @@ function StudentPortalPage() {
               {/* TAB 6: UNIVERSAL QR PASS (ONE CODE FOR ALL COURSES)           */}
               {/* ------------------------------------------------------------- */}
               <TabsContent value="qr" className="space-y-4">
-                <Card className="border shadow-xs overflow-hidden max-w-xl mx-auto">
-                  <CardHeader className="pb-3 border-b text-center bg-muted/20">
-                    <div className="flex items-center justify-center gap-2 mb-1 flex-wrap">
-                      <Badge className="bg-primary/10 text-primary border-primary/20 text-xs font-semibold">
+                <Card className="border shadow-xs overflow-hidden max-w-md mx-auto">
+                  <CardHeader className="p-3.5 sm:p-5 pb-3 border-b text-center bg-muted/20">
+                    <div className="flex items-center justify-center gap-1.5 mb-1 flex-wrap">
+                      <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] sm:text-xs font-semibold">
                         Universal Student Pass
                       </Badge>
-                      <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 text-xs font-semibold">
+                      <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 text-[10px] sm:text-xs font-semibold">
                         One Code for All Courses
                       </Badge>
                     </div>
-                    <CardTitle className="text-xl font-bold flex items-center justify-center gap-2">
-                      <QrCode className="size-5 text-primary" />
+                    <CardTitle className="text-lg sm:text-xl font-bold flex items-center justify-center gap-2">
+                      <QrCode className="size-5 text-primary shrink-0" />
                       My Universal QR Pass
                     </CardTitle>
-                    <CardDescription className="text-xs max-w-md mx-auto">
-                      Each student has one unique QR code for all courses. Present this single code
-                      to any lecturer to record your attendance.
+                    <CardDescription className="text-xs max-w-sm mx-auto">
+                      Present this unique QR code to your lecturer or TA to record your attendance.
                     </CardDescription>
                   </CardHeader>
 
-                  <CardContent className="p-4 sm:p-6 text-center space-y-4">
+                  <CardContent className="p-3.5 sm:p-6 text-center space-y-3.5">
                     {qrUrl ? (
-                      <div className="p-3 sm:p-4 bg-white rounded-2xl shadow-sm border inline-block mx-auto">
+                      <div className="p-3 bg-white rounded-2xl shadow-sm border inline-block mx-auto">
                         <img
                           src={qrUrl}
                           alt={`Universal QR Pass for ${me.full_name}`}
-                          className="mx-auto size-48 sm:size-64 object-contain"
+                          className="mx-auto size-40 xs:size-48 sm:size-56 object-contain"
                         />
                       </div>
                     ) : (
-                      <div className="size-48 sm:size-64 bg-muted animate-pulse rounded-2xl mx-auto" />
+                      <div className="size-40 xs:size-48 sm:size-56 bg-muted animate-pulse rounded-2xl mx-auto" />
                     )}
 
                     <div className="space-y-1">
-                      <div className="flex justify-center mb-2">
-                        <KnustEmblem size={36} />
+                      <div className="flex justify-center mb-1">
+                        <KnustEmblem size={32} />
                       </div>
-                      <h3 className="text-lg font-bold text-foreground">{me.full_name}</h3>
-                      <div className="font-mono text-sm font-bold bg-primary/10 text-primary px-3 py-1 rounded inline-block">
+                      <h3 className="text-base sm:text-lg font-bold text-foreground truncate px-2">
+                        {me.full_name}
+                      </h3>
+                      <div className="font-mono text-xs sm:text-sm font-bold bg-primary/10 text-primary px-3 py-1 rounded inline-block">
                         {me.index_number}
                       </div>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-[11px] sm:text-xs text-muted-foreground truncate px-2">
                         Level {me.level || "100"} · {me.program || "Undergraduate Degree"}
                       </p>
                     </div>
 
-                    <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground max-w-md mx-auto text-left space-y-1.5 border">
+                    <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground text-left space-y-1 border">
                       <div className="font-semibold text-foreground flex items-center gap-1.5">
-                        <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
-                        Universal QR Code Guarantee
+                        <ShieldCheck className="size-3.5 text-emerald-600 shrink-0" />
+                        Universal QR Pass Guarantee
                       </div>
-                      <p>
-                        You do not need separate QR codes for each course or lecturer. This single
-                        code is uniquely tied to your student index number and identifies you across
-                        all registered courses, classes, and lecturers.
+                      <p className="text-[11px] leading-relaxed">
+                        You do not need separate QR codes for each course or lecturer. This single code
+                        is permanently tied to your index number and automatically identifies you in any registered class.
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 pt-2 max-w-md mx-auto">
+                    <div className="grid grid-cols-2 gap-2 pt-1">
                       {qrUrl && (
                         <a
                           href={qrUrl}
                           download={`KNUST-${me.index_number}-Pass.png`}
-                          className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-secondary-foreground py-2.5 px-3 rounded-lg border transition shadow-xs"
+                          className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-secondary-foreground py-2.5 px-2 rounded-lg border transition shadow-xs"
                         >
-                          <Download className="size-3.5" />
+                          <Download className="size-3.5 shrink-0" />
                           Save PNG
                         </a>
                       )}
                       <Button onClick={printPass} className="w-full text-xs py-2.5">
-                        <Printer className="size-3.5 mr-1" />
+                        <Printer className="size-3.5 mr-1 shrink-0" />
                         Print Pass
                       </Button>
+                    </div>
+
+                    <div className="pt-2 border-t">
+                      <Link
+                        to="/check-in"
+                        className="flex items-center justify-center gap-1.5 text-xs font-semibold text-primary hover:underline bg-primary/5 hover:bg-primary/10 py-2 px-3 rounded-lg border border-primary/20 transition"
+                      >
+                        <Navigation className="size-3.5 shrink-0" />
+                        Lecturer displaying QR on projector? Check-in here
+                      </Link>
                     </div>
                   </CardContent>
                 </Card>

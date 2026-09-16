@@ -26,7 +26,9 @@ import {
   WifiOff,
   X,
   ArrowRight,
+  LogIn,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 
 import { KnustEmblem } from "@/components/KnustEmblem";
 import { PublicFooter } from "@/components/PublicFooter";
@@ -300,6 +302,7 @@ const SECTIONS: GuideSection[] = [
 
 function ManualPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("all");
   const [search, setSearch] = useState("");
 
@@ -322,7 +325,7 @@ function ManualPage() {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.history.back();
     } else {
-      router.navigate({ to: "/dashboard" });
+      router.navigate({ to: user ? "/dashboard" : "/" });
     }
   };
 
@@ -350,12 +353,21 @@ function ManualPage() {
                 <span className="hidden sm:inline">Download PDF</span>
               </Button>
             </a>
-            <Link to={"/dashboard" as string}>
-              <Button variant="outline" size="sm" className="text-xs">
-                <Home className="size-3.5 mr-1" />
-                <span className="hidden sm:inline">Dashboard</span>
-              </Button>
-            </Link>
+            {user ? (
+              <Link to="/dashboard">
+                <Button variant="outline" size="sm" className="text-xs">
+                  <Home className="size-3.5 mr-1" />
+                  <span className="hidden sm:inline">Dashboard</span>
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/login">
+                <Button variant="outline" size="sm" className="text-xs">
+                  <LogIn className="size-3.5 mr-1" />
+                  <span className="hidden sm:inline">Tutor Sign In</span>
+                </Button>
+              </Link>
+            )}
             <Button size="sm" variant="ghost" onClick={close} aria-label="Close manual">
               <X className="size-4" />
             </Button>

@@ -375,7 +375,7 @@ export function PushNotificationManager({
                 onClick={handleSubscribe}
                 disabled={loading || status === "denied"}
                 size="sm"
-                className="bg-knust-green hover:bg-knust-green/90 text-white text-xs font-semibold"
+                className="bg-[#00552b] hover:bg-[#00381c] text-white text-xs font-semibold shadow-xs cursor-pointer"
               >
                 {loading ? (
                   <>

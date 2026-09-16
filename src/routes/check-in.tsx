@@ -1,13 +1,31 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { firestoreDb } from "@/integrations/firebase/config";
-import { collection, doc, getDoc, getDocs, query, where, addDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  addDoc,
+} from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, MapPin } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  CheckCircle2,
+  MapPin,
+  AlertCircle,
+  Loader2,
+  Navigation,
+  School,
+  ArrowRight,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PublicFooter } from "@/components/PublicFooter";
 import { KnustEmblem } from "@/components/KnustEmblem";
@@ -17,7 +35,7 @@ const search = z.object({ session: z.string().optional() });
 export const Route = createFileRoute("/check-in")({
   ssr: false,
   validateSearch: search,
-  head: () => ({ meta: [{ title: "Check in — KNUST-ATTENDANCE-APP" }] }),
+  head: () => ({ meta: [{ title: "Classroom Check In — KNUST QRoll" }] }),
   component: CheckInPage,
 });
 
@@ -36,83 +54,246 @@ function haversineDistanceMeters(lat1: number, lon1: number, lat2: number, lon2:
   return R * c;
 }
 
+interface SessionInfo {
+  id: string;
+  title?: string;
+  courseCode?: string;
+  courseTitle?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  radius_m?: number;
+  status: string;
+  is_active?: boolean;
+  owner_id?: string;
+  course_id?: string;
+}
+
 function CheckInPage() {
   const { session } = Route.useSearch();
   const [index, setIndex] = useState("");
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState<{ name: string; distance: number } | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [locPermissionState, setLocPermissionState] = useState<"prompt" | "granted" | "denied" | "unknown">("prompt");
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
+  const [requestingLoc, setRequestingLoc] = useState(false);
+  const [done, setDone] = useState<{
+    name: string;
+    indexNumber: string;
+    distance: number;
+    alreadyMarked: boolean;
+    time?: string;
+  } | null>(null);
 
-  if (!session) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <Card className="max-w-md w-full">
-          <CardHeader>
-            <CardTitle>Invalid link</CardTitle>
-            <CardDescription>
-              This check-in link is missing a session. Scan the QR projected by your lecturer.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
+  // Auto-detect saved student index number from previous login on this phone
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("knust_student_auth") || localStorage.getItem("knust_student_session");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.index_number) {
+          setIndex(parsed.index_number.toUpperCase());
+        }
+      }
+    } catch {
+      // Ignore session storage parse errors
+    }
+  }, []);
 
-  const getPos = () =>
-    new Promise<GeolocationPosition>((res, rej) => {
-      if (!navigator.geolocation) return rej(new Error("Geolocation not supported on this device"));
+  // Monitor location permission state
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.permissions?.query) {
+      navigator.permissions
+        .query({ name: "geolocation" as PermissionName })
+        .then((p) => {
+          setLocPermissionState(p.state as any);
+          p.onchange = () => setLocPermissionState(p.state as any);
+        })
+        .catch(() => setLocPermissionState("unknown"));
+    }
+  }, []);
+
+  // Fetch session details from Firestore
+  useEffect(() => {
+    if (!session) {
+      setSessionLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    const fetchSession = async () => {
+      setSessionLoading(true);
+      setSessionError(null);
+      try {
+        const sessDoc = await getDoc(doc(firestoreDb, "attendance_sessions", session));
+        if (!sessDoc.exists()) {
+          if (isMounted) setSessionError("Attendance session not found or has been deleted.");
+          return;
+        }
+
+        const data = sessDoc.data() as any;
+        let courseCode = "";
+        let courseTitle = "";
+
+        if (data.course_id) {
+          try {
+            const courseDoc = await getDoc(doc(firestoreDb, "courses", data.course_id));
+            if (courseDoc.exists()) {
+              const cData = courseDoc.data() as any;
+              courseCode = cData.code || "";
+              courseTitle = cData.title || "";
+            }
+          } catch {
+            // Course details fetch optional fallback
+          }
+        }
+
+        if (isMounted) {
+          setSessionInfo({
+            id: sessDoc.id,
+            title: data.title || courseTitle || "Class Attendance",
+            courseCode,
+            courseTitle,
+            latitude: typeof data.latitude === "number" ? data.latitude : null,
+            longitude: typeof data.longitude === "number" ? data.longitude : null,
+            radius_m: data.radius_m || 100,
+            status: data.status || (data.is_active === false ? "CLOSED" : "OPEN"),
+            is_active: data.is_active,
+            owner_id: data.owner_id,
+            course_id: data.course_id,
+          });
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setSessionError(err.message || "Failed to load session details.");
+        }
+      } finally {
+        if (isMounted) setSessionLoading(false);
+      }
+    };
+
+    fetchSession();
+    return () => {
+      isMounted = false;
+    };
+  }, [session]);
+
+  const requestPosition = (): Promise<GeolocationPosition> => {
+    return new Promise<GeolocationPosition>((resolve, reject) => {
+      if (!navigator.geolocation) {
+        return reject(new Error("GPS Geolocation is not supported on this device or browser."));
+      }
+
+      // Fast indoor strategy: try high accuracy with 6s timeout, then fall back immediately to standard accuracy
       navigator.geolocation.getCurrentPosition(
-        res,
+        (pos) => resolve(pos),
         (err) => {
-          // If high accuracy times out (common in concrete university lecture halls), retry with standard accuracy
-          if (err.code === err.TIMEOUT) {
-            navigator.geolocation.getCurrentPosition(res, rej, {
-              enableHighAccuracy: false,
-              timeout: 10000,
-              maximumAge: 15000,
-            });
-          } else if (err.code === err.PERMISSION_DENIED) {
-            rej(
+          if (err.code === err.PERMISSION_DENIED) {
+            setLocPermissionState("denied");
+            return reject(
               new Error(
-                "Location permission denied. Please allow location access in your browser settings to verify you are in class.",
+                "Location permission was denied. Please allow location access in your browser settings (tap the lock icon in the address bar) and try again.",
               ),
             );
-          } else {
-            rej(err);
           }
+          // Fallback to cell/Wi-Fi standard accuracy
+          navigator.geolocation.getCurrentPosition(
+            (pos2) => resolve(pos2),
+            (err2) => {
+              if (err2.code === err2.PERMISSION_DENIED) {
+                setLocPermissionState("denied");
+                reject(
+                  new Error(
+                    "Location permission was denied. Please allow location access in your browser settings.",
+                  ),
+                );
+              } else {
+                reject(
+                  new Error(
+                    "Unable to determine your GPS location. Please ensure Location/GPS is turned on in your phone settings and try again.",
+                  ),
+                );
+              }
+            },
+            {
+              enableHighAccuracy: false,
+              timeout: 6000,
+              maximumAge: 30000,
+            },
+          );
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 10000,
+          timeout: 6000,
+          maximumAge: 15000,
         },
       );
     });
+  };
+
+  const handleManualLocationRequest = async () => {
+    setRequestingLoc(true);
+    try {
+      const pos = await requestPosition();
+      setUserCoords({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: Math.round(pos.coords.accuracy || 0),
+      });
+      setLocPermissionState("granted");
+      toast.success("✓ Location acquired successfully");
+    } catch (err: any) {
+      toast.error(err.message || "Could not access location");
+    } finally {
+      setRequestingLoc(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanIndex = index.trim().toUpperCase();
-    if (!cleanIndex) return toast.error("Enter your index number");
+    if (!cleanIndex) return toast.error("Please enter your student index number");
+    if (!session) return toast.error("Missing session identifier");
+
     setLoading(true);
 
     try {
-      // 1. Verify session
+      // 1. Verify session state in Firestore
       const sessionDocRef = doc(firestoreDb, "attendance_sessions", session);
       const sessSnap = await getDoc(sessionDocRef);
       if (!sessSnap.exists()) {
-        throw new Error("Class session not found or has been removed.");
+        throw new Error("Attendance session not found or has expired.");
       }
       const sessData = sessSnap.data() as any;
-      if (!sessData.is_active) {
+
+      // In sessions.tsx, status is "OPEN" or "CLOSED"
+      const isClosed = sessData.status === "CLOSED" || sessData.is_active === false;
+      if (isClosed) {
         throw new Error("This attendance session has already been closed by the lecturer.");
       }
 
-      // 2. Geolocation verification
-      const pos = await getPos();
-      const userLat = pos.coords.latitude;
-      const userLng = pos.coords.longitude;
-      let distanceM = 0;
+      // 2. Obtain device location to verify presence in classroom
+      let pos: GeolocationPosition | null = null;
+      let userLat = userCoords?.lat ?? null;
+      let userLng = userCoords?.lng ?? null;
+      let accuracy = userCoords?.accuracy ?? null;
 
-      if (typeof sessData.latitude === "number" && typeof sessData.longitude === "number") {
+      const hasClassroomCoords =
+        typeof sessData.latitude === "number" && typeof sessData.longitude === "number";
+
+      if (hasClassroomCoords || !userCoords) {
+        toast.info("Verifying classroom geofence location...", { duration: 2500 });
+        pos = await requestPosition();
+        userLat = pos.coords.latitude;
+        userLng = pos.coords.longitude;
+        accuracy = Math.round(pos.coords.accuracy || 0);
+        setUserCoords({ lat: userLat, lng: userLng, accuracy });
+        setLocPermissionState("granted");
+      }
+
+      let distanceM = 0;
+      if (hasClassroomCoords && userLat != null && userLng != null) {
         distanceM = haversineDistanceMeters(
           sessData.latitude,
           sessData.longitude,
@@ -122,32 +303,43 @@ function CheckInPage() {
         const allowedRadius = sessData.radius_m || 100;
         if (distanceM > allowedRadius) {
           throw new Error(
-            `You are too far from the classroom (${Math.round(distanceM)}m away, allowed radius is ${allowedRadius}m).`,
+            `You are too far from the classroom (~${Math.round(distanceM)}m away). The allowed lecture hall radius is ${allowedRadius}m. Please ensure you are inside the classroom.`,
           );
         }
       }
 
-      // 3. Find student
-      const studSnap = sessData.owner_id
-        ? await getDocs(
-            query(
-              collection(firestoreDb, "students"),
-              where("owner_id", "==", sessData.owner_id),
-              where("index_number", "==", cleanIndex),
-            ),
-          )
-        : await getDocs(
-            query(collection(firestoreDb, "students"), where("index_number", "==", cleanIndex)),
-          );
-      if (studSnap.empty) {
-        throw new Error(
-          "Index number not found in student directory. Please register on the student portal first.",
-        );
-      }
-      const studentDoc = studSnap.docs[0];
-      const studentData = studentDoc.data() as any;
+      // 3. Find registered student by index number
+      const studSnap = await getDocs(
+        query(
+          collection(firestoreDb, "students"),
+          where("index_number", "==", cleanIndex),
+        ),
+      );
 
-      // 4. Check if already checked in
+      let studentDoc: any;
+      let studentData: any;
+
+      if (studSnap.empty) {
+        // Fallback: attempt case-insensitive match across students
+        const allStudentsSnap = await getDocs(collection(firestoreDb, "students"));
+        const matched = allStudentsSnap.docs.find(
+          (d) => (d.data()?.index_number || "").toString().trim().toUpperCase() === cleanIndex,
+        );
+        if (!matched) {
+          throw new Error(
+            `Student index "${cleanIndex}" was not found in the student directory. Please sign up or register on the Student Portal first.`,
+          );
+        }
+        studentDoc = matched;
+        studentData = matched.data();
+      } else {
+        studentDoc = studSnap.docs[0];
+        studentData = studentDoc.data();
+      }
+
+      const today = new Date().toISOString().slice(0, 10);
+
+      // 4. Duplicate Check: Prevent duplicate attendance across both scanner and projector methods
       const recQuery = await getDocs(
         query(
           collection(firestoreDb, "attendance_records"),
@@ -156,88 +348,337 @@ function CheckInPage() {
         ),
       );
 
-      if (!recQuery.empty) {
-        setDone({ name: studentData.full_name, distance: Math.round(distanceM) });
-        toast.info("You have already checked in to this session.");
+      // Check if already checked in today or in this session
+      const existingRecord = recQuery.docs.find((d) => {
+        const rData = d.data();
+        return rData.session_date === today || rData.status === "PRESENT" || rData.status === "present";
+      }) || recQuery.docs[0];
+
+      if (existingRecord) {
+        const exData = existingRecord.data();
+        const formattedTime = exData.check_in_at
+          ? new Date(exData.check_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : "earlier today";
+
+        setDone({
+          name: studentData.full_name,
+          indexNumber: cleanIndex,
+          distance: Math.round(distanceM),
+          alreadyMarked: true,
+          time: formattedTime,
+        });
+        toast.info(`Already marked present for this session (${formattedTime})`);
         return;
       }
 
-      // 5. Record check-in
+      // 5. Record new attendance record with identical schema to individual camera scanner
       const now = new Date();
       await addDoc(collection(firestoreDb, "attendance_records"), {
         session_id: session,
         student_id: studentDoc.id,
         course_id: sessData.course_id || null,
         owner_id: sessData.owner_id || null,
-        session_date: now.toISOString().slice(0, 10),
+        session_date: today,
         check_in_at: now.toISOString(),
-        status: "present",
-        source: "self_geofence",
+        status: "PRESENT", // Standard uppercase matching scanner and Excel continuous assessment engine
+        source: "projector_qr",
         geo_lat: userLat,
         geo_lng: userLng,
-        geo_accuracy_m: pos.coords.accuracy || null,
+        geo_accuracy_m: accuracy,
         distance_m: Math.round(distanceM),
         created_at: now.toISOString(),
       });
 
-      setDone({ name: studentData.full_name, distance: Math.round(distanceM) });
-      toast.success("Checked in successfully!");
+      setDone({
+        name: studentData.full_name,
+        indexNumber: cleanIndex,
+        distance: Math.round(distanceM),
+        alreadyMarked: false,
+      });
+      toast.success(`✓ Marked Present: ${studentData.full_name}`);
     } catch (err: any) {
-      toast.error(err.message ?? "Check-in failed");
+      toast.error(err.message ?? "Check-in failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-muted/30 flex flex-col">
-      <div className="flex-1 flex flex-col items-center p-6">
-        <div className="flex items-center gap-3 mb-6 mt-4">
-          <KnustEmblem size={36} />
-          <h1 className="text-2xl font-bold">KNUST Student Check-in</h1>
-        </div>
-
-        {!done ? (
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Confirm attendance</CardTitle>
-              <CardDescription>
-                Enter your index number. Your device GPS location will verify that you are in the
-                lecture hall.
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-muted/30 flex flex-col justify-between">
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
+          <Card className="max-w-md w-full shadow-lg border-primary/20">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-3 size-12 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center">
+                <AlertCircle className="size-6" />
+              </div>
+              <CardTitle className="text-xl">Invalid Check-In Link</CardTitle>
+              <CardDescription className="text-xs sm:text-sm pt-1">
+                This check-in link is missing a session code. Please scan the dynamic QR code projected onto the lecture hall screen.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={submit} className="space-y-4">
-                <div>
-                  <Label>Index number</Label>
+            <CardContent className="pt-2 text-center">
+              <Link to="/student">
+                <Button className="w-full bg-primary text-primary-foreground font-semibold">
+                  Open Student Portal
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+        <PublicFooter />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-muted/30 flex flex-col justify-between">
+      <div className="flex-1 flex flex-col items-center p-3.5 sm:p-6 max-w-lg mx-auto w-full">
+        {/* Header Branding */}
+        <div className="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6 mt-2">
+          <KnustEmblem size={34} />
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+              KNUST Student Check-In
+            </h1>
+            <p className="text-[11px] text-muted-foreground">
+              Classroom Projector Attendance Gateway
+            </p>
+          </div>
+        </div>
+
+        {sessionLoading ? (
+          <Card className="w-full p-8 text-center space-y-3">
+            <Loader2 className="size-8 animate-spin mx-auto text-primary" />
+            <p className="text-xs text-muted-foreground">Connecting to lecture hall session...</p>
+          </Card>
+        ) : sessionError ? (
+          <Card className="w-full shadow-md border-destructive/30">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-2 size-10 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+                <AlertCircle className="size-5" />
+              </div>
+              <CardTitle className="text-base text-destructive">Session Error</CardTitle>
+              <CardDescription className="text-xs">{sessionError}</CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <Link to="/student">
+                <Button variant="outline" size="sm" className="text-xs">
+                  Return to Student Portal
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : !done ? (
+          <Card className="w-full shadow-md border border-primary/20 overflow-hidden">
+            {/* Session Info Banner */}
+            <div className="bg-gradient-to-r from-[#00381c] via-[#00552b] to-[#007a3d] p-4 text-white">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {sessionInfo?.courseCode && (
+                      <Badge className="bg-white/20 text-white border-none text-[10px] font-mono">
+                        {sessionInfo.courseCode}
+                      </Badge>
+                    )}
+                    <Badge className="bg-emerald-400/90 text-emerald-950 font-bold border-none text-[10px]">
+                      {sessionInfo?.status === "CLOSED" ? "Closed" : "Active Session"}
+                    </Badge>
+                  </div>
+                  <h2 className="text-base sm:text-lg font-bold text-white leading-tight">
+                    {sessionInfo?.title}
+                  </h2>
+                  {sessionInfo?.courseTitle && sessionInfo.courseTitle !== sessionInfo.title && (
+                    <p className="text-xs text-white/80">{sessionInfo.courseTitle}</p>
+                  )}
+                </div>
+                <div className="size-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                  <School className="size-4 text-white" />
+                </div>
+              </div>
+            </div>
+
+            <CardHeader className="p-4 sm:p-5 pb-2">
+              <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
+                <Navigation className="size-4 text-primary" />
+                Confirm Classroom Attendance
+              </CardTitle>
+              <CardDescription className="text-xs leading-relaxed">
+                Enter your university index number. To prevent proxy attendance, your device GPS coordinates verify you are physically inside the lecture hall.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="p-4 sm:p-5 pt-1 space-y-4">
+              {/* Geolocation Status Notice */}
+              <div
+                className={`rounded-xl border p-3 text-xs flex items-start gap-2.5 ${
+                  locPermissionState === "denied"
+                    ? "bg-destructive/10 border-destructive/30 text-destructive"
+                    : userCoords
+                      ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300"
+                      : "bg-primary/5 border-primary/20 text-foreground"
+                }`}
+              >
+                <MapPin className="size-4 shrink-0 mt-0.5" />
+                <div className="space-y-1 flex-1">
+                  <div className="font-semibold text-xs flex items-center justify-between">
+                    <span>
+                      {locPermissionState === "denied"
+                        ? "Location Access Blocked"
+                        : userCoords
+                          ? `Location Ready (±${userCoords.accuracy}m)`
+                          : "Classroom Range Validation"}
+                    </span>
+                    {sessionInfo?.radius_m && (
+                      <span className="text-[10px] opacity-75 font-normal">
+                        Radius: {sessionInfo.radius_m}m
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] leading-relaxed opacity-90">
+                    {locPermissionState === "denied"
+                      ? "Your browser blocked location access. Please tap the permissions lock in your address bar and toggle Location to 'Allow', then retry."
+                      : userCoords
+                        ? "Device coordinates captured. Tap the button below to submit your attendance."
+                        : "Location access will be requested upon clicking check-in to confirm your presence."}
+                  </p>
+                  {!userCoords && locPermissionState !== "denied" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleManualLocationRequest}
+                      disabled={requestingLoc}
+                      className="h-7 text-[11px] px-2.5 mt-1 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer"
+                    >
+                      {requestingLoc ? (
+                        <>
+                          <Loader2 className="size-3 animate-spin mr-1" />
+                          Checking GPS...
+                        </>
+                      ) : (
+                        <>
+                          <Navigation className="size-3 mr-1" />
+                          Pre-Verify My Location
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Check-in Form */}
+              <form onSubmit={submit} className="space-y-3.5">
+                <div className="space-y-1.5">
+                  <Label htmlFor="student-index" className="text-xs font-semibold">
+                    Student Index Number
+                  </Label>
                   <Input
-                    placeholder="e.g. 20700000"
+                    id="student-index"
+                    placeholder="e.g. 2084931"
                     value={index}
                     onChange={(e) => setIndex(e.target.value)}
                     required
                     autoFocus
+                    className="h-10 font-mono text-sm tracking-wide uppercase"
                   />
+                  <p className="text-[11px] text-muted-foreground">
+                    Must match your enrolled KNUST student record.
+                  </p>
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  <MapPin className="size-4 mr-1.5" />
-                  {loading ? "Verifying GPS & checking in..." : "Check in now"}
+
+                <Button
+                  type="submit"
+                  disabled={loading || sessionInfo?.status === "CLOSED"}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10 text-xs sm:text-sm gap-2 shadow-xs cursor-pointer"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Verifying Range & Checking In...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="size-4" />
+                      Check In & Mark Present
+                    </>
+                  )}
                 </Button>
+
+                {sessionInfo?.status === "CLOSED" && (
+                  <p className="text-xs text-destructive text-center font-medium">
+                    This attendance session has been marked closed by the lecturer.
+                  </p>
+                )}
               </form>
+
+              {/* Anti-fraud Notice */}
+              <div className="pt-2 border-t flex items-center justify-between text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <ShieldCheck className="size-3.5 text-primary" /> Duplicate-safe system
+                </span>
+                <Link to="/student" className="text-primary hover:underline font-medium">
+                  Go to Student Portal →
+                </Link>
+              </div>
             </CardContent>
           </Card>
         ) : (
-          <Card className="w-full max-w-md text-center">
-            <CardHeader>
-              <div className="mx-auto mb-2 size-12 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center">
-                <CheckCircle2 className="size-6 text-emerald-600" />
+          /* Success Screen */
+          <Card className="w-full shadow-lg border-emerald-500/30 overflow-hidden text-center animate-in fade-in">
+            <div className="bg-emerald-600 p-6 text-white text-center space-y-2">
+              <div className="mx-auto size-14 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center shadow-inner">
+                <CheckCircle2 className="size-8 text-white" />
               </div>
-              <CardTitle>You are checked in!</CardTitle>
-              <CardDescription>Recorded for {done.name}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Verified within ~{done.distance}m of classroom coordinates. You may close this tab.
+              <h2 className="text-xl font-extrabold text-white">
+                {done.alreadyMarked ? "Attendance Already Recorded" : "Marked Present!"}
+              </h2>
+              <p className="text-xs text-white/90">
+                {done.alreadyMarked
+                  ? `You are already registered as present for this session (${done.time || "today"}).`
+                  : "Your classroom attendance has been permanently recorded."}
               </p>
+            </div>
+
+            <CardContent className="p-5 sm:p-6 space-y-4">
+              <div className="rounded-xl bg-muted/50 p-4 border text-left space-y-2">
+                <div className="flex justify-between items-center text-xs pb-2 border-b">
+                  <span className="text-muted-foreground">Student Name</span>
+                  <span className="font-bold text-foreground">{done.name}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs pb-2 border-b">
+                  <span className="text-muted-foreground">Index Number</span>
+                  <span className="font-mono font-bold text-foreground">{done.indexNumber}</span>
+                </div>
+                {sessionInfo?.courseCode && (
+                  <div className="flex justify-between items-center text-xs pb-2 border-b">
+                    <span className="text-muted-foreground">Course</span>
+                    <span className="font-bold text-primary">{sessionInfo.courseCode}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground">Geofence Proximity</span>
+                  <span className="font-semibold text-emerald-600">
+                    Verified ~{done.distance}m from classroom
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                <Link to="/student" className="flex-1">
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-9 gap-1.5 cursor-pointer">
+                    Open Student Portal <ArrowRight className="size-3.5" />
+                  </Button>
+                </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDone(null)}
+                  className="text-xs h-9"
+                >
+                  Check In Another
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -246,3 +687,4 @@ function CheckInPage() {
     </div>
   );
 }
+
