@@ -373,16 +373,13 @@ function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Info className="size-5 text-primary" /> About QRoll
+              <Info className="size-5 text-primary" /> About KNUST Attendance App
             </CardTitle>
             <CardDescription>Attendance and classroom management, made simple.</CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-1">
             <p>
               Built by <b className="text-foreground">Bern Studio</b>
-            </p>
-            <p>
-              Developed by <b className="text-foreground">Agbenyo Bernard Atsu</b>
             </p>
             <p>
               Created by <b className="text-foreground">Bern Studio Labs</b>

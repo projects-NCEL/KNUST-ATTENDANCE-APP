@@ -129,14 +129,18 @@ function ReportsPage() {
         const studentMap = new Map<string, any>();
         allStudSnap.docs.forEach((d) => {
           const s = d.data() as any;
-          studentMap.set(d.id, {
+          const studObj = {
             id: d.id,
             full_name: s.full_name,
             index_number: s.index_number,
             level: s.level,
             department_id: s.department_id || null,
             program: s.program || null,
-          });
+          };
+          studentMap.set(d.id, studObj);
+          if (s.index_number) {
+            studentMap.set(s.index_number.toString().trim().toUpperCase(), studObj);
+          }
         });
 
         // Filter sessions for this course
@@ -168,14 +172,21 @@ function ReportsPage() {
               .filter((d) => sessionIds.has((d.data() as any).session_id))
               .map((d) => {
                 const data = d.data() as any;
+                const cleanIdx = data.index_number
+                  ? data.index_number.toString().trim().toUpperCase()
+                  : null;
                 return {
                   id: d.id,
                   student_id: data.student_id,
+                  index_number: data.index_number || null,
                   session_id: data.session_id,
                   session_date: data.session_date,
                   check_in_at: data.check_in_at,
                   status: data.status || "PRESENT",
-                  students: studentMap.get(data.student_id) || null,
+                  students:
+                    studentMap.get(data.student_id) ||
+                    (cleanIdx ? studentMap.get(cleanIdx) : null) ||
+                    null,
                 };
               });
           } catch (recErr) {
@@ -251,13 +262,26 @@ function ReportsPage() {
     for (const rec of raw.records) {
       const d = rec.session_date ?? (rec.check_in_at ? dayKey(rec.check_in_at) : null);
       if (!d) continue;
-      if (!scanned.has(rec.student_id)) scanned.set(rec.student_id, new Set());
-      scanned.get(rec.student_id)!.add(d);
+
+      const idsToMark = new Set<string>();
+      if (rec.student_id) idsToMark.add(rec.student_id);
+      if (rec.students?.id) idsToMark.add(rec.students.id);
+      if (rec.index_number) idsToMark.add(rec.index_number.toString().trim().toUpperCase());
+      if (rec.students?.index_number)
+        idsToMark.add(rec.students.index_number.toString().trim().toUpperCase());
+
+      for (const id of idsToMark) {
+        if (!scanned.has(id)) scanned.set(id, new Set());
+        scanned.get(id)!.add(d);
+      }
     }
 
     const rows = Array.from(studentMap.values())
       .map((s: any) => {
-        const cells = activeDays.map((d) => (scanned.get(s.id)?.has(d) ? 1 : 0));
+        const cleanIdx = s.index_number ? s.index_number.toString().trim().toUpperCase() : "";
+        const cells = activeDays.map((d) =>
+          scanned.get(s.id)?.has(d) || (cleanIdx && scanned.get(cleanIdx)?.has(d)) ? 1 : 0,
+        );
         const scans = cells.filter((v) => v === 1).length;
         const missed = cells.length - scans;
         const pct = cells.length ? Math.round((scans / cells.length) * 100) : 0;

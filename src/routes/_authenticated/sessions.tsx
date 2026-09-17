@@ -166,13 +166,8 @@ function SessionsPage() {
 
   const create = async () => {
     if (!form.course_id) return toast.error("Pick a course");
-    let lat = form.latitude;
-    let lng = form.longitude;
-    if (lat == null || lng == null) {
-      lat = 5.6037;
-      lng = -0.187;
-      toast.info("Using default campus coordinates for classroom geofence");
-    }
+    const lat = form.latitude ?? null;
+    const lng = form.longitude ?? null;
     const currentUid = firebaseAuth.currentUser?.uid;
     try {
       const docRef = await addDoc(collection(firestoreDb, "attendance_sessions"), {

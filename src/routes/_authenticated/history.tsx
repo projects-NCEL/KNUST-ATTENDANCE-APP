@@ -293,8 +293,15 @@ function HistoryPage() {
     data.records.forEach((rec) => {
       const courseId = sessionCourse.get(rec.session_id);
       if (!courseId || !courseIds.has(courseId)) return;
-      if (rec.student_id) {
-        attendedPerStudent.set(rec.student_id, (attendedPerStudent.get(rec.student_id) ?? 0) + 1);
+      const ids = new Set<string>();
+      if (rec.student_id) ids.add(rec.student_id);
+      if (rec.students?.id) ids.add(rec.students.id);
+      if (rec.index_number) ids.add(rec.index_number.toString().trim().toUpperCase());
+      if (rec.students?.index_number)
+        ids.add(rec.students.index_number.toString().trim().toUpperCase());
+
+      for (const id of ids) {
+        attendedPerStudent.set(id, (attendedPerStudent.get(id) ?? 0) + 1);
       }
     });
 
@@ -314,7 +321,9 @@ function HistoryPage() {
           (sum, cid) => sum + (sessionsPerCourse.get(cid) ?? 0),
           0,
         );
-        const attended = attendedPerStudent.get(st.id) ?? 0;
+        const cleanIdx = st.index_number ? st.index_number.toString().trim().toUpperCase() : "";
+        const attended =
+          attendedPerStudent.get(st.id) ?? (cleanIdx ? attendedPerStudent.get(cleanIdx) ?? 0 : 0);
 
         return {
           id: st.id,

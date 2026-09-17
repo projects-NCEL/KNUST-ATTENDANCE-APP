@@ -1274,14 +1274,14 @@ function StudentPortalPage() {
 
                   {/* Attendance Grade Stat Box */}
                   <div className="bg-white/10 backdrop-blur-xs rounded-xl p-2.5 sm:p-4 border border-white/15 w-full sm:w-auto text-left sm:text-right min-w-0">
-                    <div className="flex flex-col xs:flex-row sm:flex-col items-start xs:items-center sm:items-end justify-between gap-2 min-w-0">
+                    <div className="flex flex-col items-start sm:items-end gap-1.5 min-w-0">
                       <div>
                         <div className="text-[10px] sm:text-xs text-white/75 font-medium">Running Attendance</div>
                         <div className="text-2xl sm:text-3xl font-extrabold text-white">
                           {overallPercentage}%
                         </div>
                       </div>
-                      <div className="text-left xs:text-right sm:text-right sm:mt-1">
+                      <div className="text-left sm:text-right">
                         <span className="text-[11px] sm:text-xs text-white/85 block">
                           {totalAttendedSessions} of {totalHeldSessions} attended
                         </span>
@@ -1305,19 +1305,19 @@ function StudentPortalPage() {
               </div>
             </Card>
 
-            {/* Quick Mobile Classroom Actions Bar */}
-            <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 w-full min-w-0">
+            {/* Quick Mobile Classroom Actions Bar - Stacked for Portrait Mobile Screens */}
+            <div className="flex flex-col gap-2 w-full max-w-xs sm:max-w-sm mx-auto min-w-0">
               <button
                 type="button"
                 onClick={() => setActiveTab("qr")}
-                className={`p-2.5 sm:p-3 rounded-xl border flex items-center gap-2.5 transition text-left cursor-pointer min-w-0 ${
+                className={`p-2.5 sm:p-3 rounded-xl border flex items-center gap-2.5 transition text-left cursor-pointer w-full min-w-0 ${
                   activeTab === "qr"
                     ? "bg-primary text-primary-foreground border-primary shadow-xs"
                     : "bg-card hover:bg-muted/50 border-border text-foreground"
                 }`}
               >
                 <div
-                  className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  className={`size-7 sm:size-8 rounded-lg flex items-center justify-center shrink-0 ${
                     activeTab === "qr" ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
                   }`}
                 >
@@ -1335,19 +1335,21 @@ function StudentPortalPage() {
                 </div>
               </button>
 
-              <Link to="/check-in" className="block min-w-0">
-                <div className="p-2.5 sm:p-3 rounded-xl border bg-card hover:bg-muted/50 border-border text-foreground flex items-center gap-2.5 transition cursor-pointer min-w-0">
-                  <div className="size-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                    <Navigation className="size-4" />
+              <div className="w-full">
+                <Link to="/check-in" className="block w-full min-w-0">
+                  <div className="p-2.5 sm:p-3 rounded-xl border bg-card hover:bg-muted/50 border-border text-foreground flex items-center gap-2.5 transition cursor-pointer w-full min-w-0">
+                    <div className="size-7 sm:size-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                      <Navigation className="size-3.5 sm:size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-xs font-bold block truncate">Projector Check-In</span>
+                      <span className="text-[10px] text-muted-foreground block truncate">
+                        Classroom GPS Portal
+                      </span>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="text-xs font-bold block truncate">Projector Check-In</span>
-                    <span className="text-[10px] text-muted-foreground block truncate">
-                      GPS Classroom Link
-                    </span>
-                  </div>
-                </div>
-              </Link>
+                </Link>
+              </div>
             </div>
 
             {/* Attendance Risk Banner (If applicable) */}
@@ -2302,31 +2304,37 @@ function StudentPortalPage() {
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 pt-1 min-w-0">
+                    {/* Actions Stacked Vertically for Portrait Mobile */}
+                    <div className="flex flex-col gap-2 pt-1 w-full max-w-[240px] mx-auto min-w-0">
                       {qrUrl && (
                         <a
                           href={qrUrl}
                           download={`KNUST-${me.index_number}-Pass.png`}
-                          className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-secondary-foreground py-2.5 px-2 rounded-lg border transition shadow-xs min-w-0 truncate"
+                          className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-secondary-foreground py-2 px-3 rounded-lg border transition shadow-xs w-full min-w-0"
                         >
                           <Download className="size-3.5 shrink-0" />
-                          <span className="truncate">Save PNG</span>
+                          <span>Save PNG</span>
                         </a>
                       )}
-                      <Button onClick={printPass} className="w-full text-xs py-2.5 min-w-0 truncate">
+                      <Button onClick={printPass} className="w-full text-xs py-2 min-w-0">
                         <Printer className="size-3.5 mr-1 shrink-0" />
-                        <span className="truncate">Print Pass</span>
+                        <span>Print Pass</span>
                       </Button>
                     </div>
 
-                    <div className="pt-2 border-t">
-                      <Link
-                        to="/check-in"
-                        className="flex items-center justify-center gap-1.5 text-xs font-semibold text-primary hover:underline bg-primary/5 hover:bg-primary/10 py-2.5 px-2 rounded-lg border border-primary/20 transition text-center"
-                      >
-                        <Navigation className="size-3.5 shrink-0" />
-                        <span className="leading-tight">Lecturer projecting QR? Check-in here</span>
-                      </Link>
+                    {/* Shortened Link Container for Portrait Mobile Compatibility */}
+                    <div className="pt-2 border-t flex justify-center w-full">
+                      <div className="w-full max-w-[240px]">
+                        <Link
+                          to="/check-in"
+                          className="flex items-center justify-center gap-1.5 text-xs font-semibold text-primary hover:underline bg-primary/5 hover:bg-primary/10 py-2 px-2.5 rounded-lg border border-primary/20 transition text-center w-full"
+                        >
+                          <Navigation className="size-3.5 shrink-0" />
+                          <span className="leading-tight text-[11px] truncate">
+                            Projector Check-In
+                          </span>
+                        </Link>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

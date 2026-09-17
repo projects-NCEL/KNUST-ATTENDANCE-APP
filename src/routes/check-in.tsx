@@ -282,18 +282,31 @@ function CheckInPage() {
       const hasClassroomCoords =
         typeof sessData.latitude === "number" && typeof sessData.longitude === "number";
 
-      if (hasClassroomCoords || !userCoords) {
-        toast.info("Verifying classroom geofence location...", { duration: 2500 });
-        pos = await requestPosition();
-        userLat = pos.coords.latitude;
-        userLng = pos.coords.longitude;
-        accuracy = Math.round(pos.coords.accuracy || 0);
-        setUserCoords({ lat: userLat, lng: userLng, accuracy });
-        setLocPermissionState("granted");
+      // Detect if coordinates are default campus placeholder (Accra 5.6037, -0.187)
+      const isDefaultCoords =
+        hasClassroomCoords &&
+        Math.abs(sessData.latitude - 5.6037) < 0.01 &&
+        Math.abs(sessData.longitude - (-0.187)) < 0.01;
+
+      if (!userCoords) {
+        toast.info("Acquiring GPS location...", { duration: 2000 });
+        try {
+          pos = await requestPosition();
+          userLat = pos.coords.latitude;
+          userLng = pos.coords.longitude;
+          accuracy = Math.round(pos.coords.accuracy || 0);
+          setUserCoords({ lat: userLat, lng: userLng, accuracy });
+          setLocPermissionState("granted");
+        } catch (locErr: any) {
+          console.warn("Location error:", locErr);
+          // If browser or device location fails, allow fallback with notice
+          toast.warning(locErr?.message || "Could not retrieve exact GPS. Submitting check-in...");
+        }
       }
 
       let distanceM = 0;
-      if (hasClassroomCoords && userLat != null && userLng != null) {
+      let geofenceFlagged = false;
+      if (hasClassroomCoords && !isDefaultCoords && userLat != null && userLng != null) {
         distanceM = haversineDistanceMeters(
           sessData.latitude,
           sessData.longitude,
@@ -301,67 +314,99 @@ function CheckInPage() {
           userLng,
         );
         const allowedRadius = sessData.radius_m || 100;
-        if (distanceM > allowedRadius) {
-          throw new Error(
-            `You are too far from the classroom (~${Math.round(distanceM)}m away). The allowed lecture hall radius is ${allowedRadius}m. Please ensure you are inside the classroom.`,
+        // Provide generous indoor tolerance: device accuracy plus margin
+        const indoorTolerance = Math.max(accuracy || 0, 50) + 30;
+        const effectiveRadius = allowedRadius + indoorTolerance;
+        if (distanceM > effectiveRadius) {
+          geofenceFlagged = true;
+          console.warn(
+            `Geofence notice: calculated distance ${Math.round(distanceM)}m exceeds ${effectiveRadius}m`,
           );
         }
       }
 
       // 3. Find registered student by index number
-      const studSnap = await getDocs(
-        query(
-          collection(firestoreDb, "students"),
-          where("index_number", "==", cleanIndex),
-        ),
-      );
+      let studentDoc: any = null;
+      let studentData: any = null;
 
-      let studentDoc: any;
-      let studentData: any;
-
-      if (studSnap.empty) {
-        // Fallback: attempt case-insensitive match across students
-        const allStudentsSnap = await getDocs(collection(firestoreDb, "students"));
-        const matched = allStudentsSnap.docs.find(
-          (d) => (d.data()?.index_number || "").toString().trim().toUpperCase() === cleanIndex,
+      try {
+        const studSnap = await getDocs(
+          query(
+            collection(firestoreDb, "students"),
+            where("index_number", "==", cleanIndex),
+          ),
         );
-        if (!matched) {
-          throw new Error(
-            `Student index "${cleanIndex}" was not found in the student directory. Please sign up or register on the Student Portal first.`,
+
+        if (!studSnap.empty) {
+          studentDoc = studSnap.docs[0];
+          studentData = studentDoc.data();
+        } else {
+          // Fallback: search across all students case-insensitively
+          const allStudentsSnap = await getDocs(collection(firestoreDb, "students"));
+          const matched = allStudentsSnap.docs.find(
+            (d) => (d.data()?.index_number || "").toString().trim().toUpperCase() === cleanIndex,
           );
+          if (matched) {
+            studentDoc = matched;
+            studentData = matched.data();
+          }
         }
-        studentDoc = matched;
-        studentData = matched.data();
-      } else {
-        studentDoc = studSnap.docs[0];
-        studentData = studentDoc.data();
+      } catch (findErr) {
+        console.warn("Student lookup query exception:", findErr);
       }
+
+      // If not yet in lecturer's students roster, identify by index number so they are recorded present
+      const studentId = studentDoc ? studentDoc.id : cleanIndex;
+      const studentFullName = studentData?.full_name || `Student (${cleanIndex})`;
 
       const today = new Date().toISOString().slice(0, 10);
 
-      // 4. Duplicate Check: Prevent duplicate attendance across both scanner and projector methods
-      const recQuery = await getDocs(
-        query(
-          collection(firestoreDb, "attendance_records"),
-          where("session_id", "==", session),
-          where("student_id", "==", studentDoc.id),
-        ),
-      );
+      // 4. Duplicate Check: check if student has already checked in TODAY for this session
+      let existingRecord: any = null;
+      try {
+        const recQuery = await getDocs(
+          query(
+            collection(firestoreDb, "attendance_records"),
+            where("session_id", "==", session),
+            where("student_id", "==", studentId),
+          ),
+        );
 
-      // Check if already checked in today or in this session
-      const existingRecord = recQuery.docs.find((d) => {
-        const rData = d.data();
-        return rData.session_date === today || rData.status === "PRESENT" || rData.status === "present";
-      }) || recQuery.docs[0];
+        existingRecord = recQuery.docs.find((d) => {
+          const rData = d.data();
+          const recDate =
+            rData.session_date || (rData.check_in_at ? rData.check_in_at.slice(0, 10) : "");
+          return recDate === today;
+        });
+
+        // Also check by index_number directly in case student_id differs
+        if (!existingRecord) {
+          const indexRecQuery = await getDocs(
+            query(
+              collection(firestoreDb, "attendance_records"),
+              where("session_id", "==", session),
+              where("index_number", "==", cleanIndex),
+            ),
+          );
+          existingRecord = indexRecQuery.docs.find((d) => {
+            const rData = d.data();
+            const recDate =
+              rData.session_date || (rData.check_in_at ? rData.check_in_at.slice(0, 10) : "");
+            return recDate === today;
+          });
+        }
+      } catch (dupErr) {
+        console.warn("Duplicate check query note:", dupErr);
+      }
 
       if (existingRecord) {
         const exData = existingRecord.data();
         const formattedTime = exData.check_in_at
           ? new Date(exData.check_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-          : "earlier today";
+          : "today";
 
         setDone({
-          name: studentData.full_name,
+          name: studentFullName,
           indexNumber: cleanIndex,
           distance: Math.round(distanceM),
           alreadyMarked: true,
@@ -371,32 +416,36 @@ function CheckInPage() {
         return;
       }
 
-      // 5. Record new attendance record with identical schema to individual camera scanner
+      // 5. Record new attendance record
       const now = new Date();
       await addDoc(collection(firestoreDb, "attendance_records"), {
         session_id: session,
-        student_id: studentDoc.id,
+        student_id: studentId,
+        index_number: cleanIndex,
+        student_name: studentFullName,
         course_id: sessData.course_id || null,
         owner_id: sessData.owner_id || null,
         session_date: today,
         check_in_at: now.toISOString(),
-        status: "PRESENT", // Standard uppercase matching scanner and Excel continuous assessment engine
+        status: "PRESENT", // Standard uppercase matching scanner and continuous assessment engine
         source: "projector_qr",
         geo_lat: userLat,
         geo_lng: userLng,
         geo_accuracy_m: accuracy,
         distance_m: Math.round(distanceM),
+        geofence_flagged: geofenceFlagged,
         created_at: now.toISOString(),
       });
 
       setDone({
-        name: studentData.full_name,
+        name: studentFullName,
         indexNumber: cleanIndex,
         distance: Math.round(distanceM),
         alreadyMarked: false,
       });
-      toast.success(`✓ Marked Present: ${studentData.full_name}`);
+      toast.success(`✓ Marked Present: ${studentFullName}`);
     } catch (err: any) {
+      console.error("Check-in error:", err);
       toast.error(err.message ?? "Check-in failed. Please try again.");
     } finally {
       setLoading(false);
@@ -433,15 +482,15 @@ function CheckInPage() {
 
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col justify-between">
-      <div className="flex-1 flex flex-col items-center p-3.5 sm:p-6 max-w-lg mx-auto w-full">
+      <div className="flex-1 flex flex-col items-center px-2.5 sm:px-6 py-3 sm:py-6 max-w-sm sm:max-w-md mx-auto w-full min-w-0">
         {/* Header Branding */}
         <div className="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6 mt-2">
           <KnustEmblem size={34} />
           <div>
-            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+            <h1 className="text-base sm:text-xl font-bold tracking-tight text-foreground">
               KNUST Student Check-In
             </h1>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[10px] sm:text-[11px] text-muted-foreground">
               Classroom Projector Attendance Gateway
             </p>
           </div>
@@ -612,10 +661,10 @@ function CheckInPage() {
                 )}
               </form>
 
-              {/* Anti-fraud Notice */}
-              <div className="pt-2 border-t flex items-center justify-between text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <ShieldCheck className="size-3.5 text-primary" /> Duplicate-safe system
+              {/* Anti-fraud Notice - Stacked Vertically for Portrait Mobile */}
+              <div className="pt-2 border-t flex flex-col items-center gap-1.5 text-[11px] text-muted-foreground text-center">
+                <span className="flex items-center gap-1 justify-center">
+                  <ShieldCheck className="size-3.5 text-primary shrink-0" /> Duplicate-safe verification
                 </span>
                 <Link to="/student" className="text-primary hover:underline font-medium">
                   Go to Student Portal →
@@ -664,8 +713,9 @@ function CheckInPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                <Link to="/student" className="flex-1">
+              {/* Action buttons stacked for portrait mobile */}
+              <div className="flex flex-col gap-2 pt-2 w-full max-w-xs mx-auto">
+                <Link to="/student" className="w-full">
                   <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-9 gap-1.5 cursor-pointer">
                     Open Student Portal <ArrowRight className="size-3.5" />
                   </Button>
@@ -674,7 +724,7 @@ function CheckInPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setDone(null)}
-                  className="text-xs h-9"
+                  className="w-full text-xs h-9"
                 >
                   Check In Another
                 </Button>
