@@ -16,6 +16,16 @@ import {
   GraduationCap,
   HelpCircle,
   CheckCircle2,
+  Settings,
+  Building2,
+  CalendarRange,
+  History,
+  Megaphone,
+  ClipboardList,
+  CreditCard,
+  FileText,
+  UserCheck,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -74,13 +84,6 @@ function Stat({
     </Card>
   );
 }
-
-const QUICK_ACTIONS = [
-  { to: "/scan", label: "Open scanner", desc: "Scan student QR codes", icon: QrCode },
-  { to: "/sessions", label: "Sessions", desc: "Open or reuse a session", icon: CalendarClock },
-  { to: "/students", label: "Students", desc: "Add, import, print QRs", icon: Users },
-  { to: "/reports", label: "Reports", desc: "Export Excel & PDF", icon: FileSpreadsheet },
-] as const;
 
 function Dashboard() {
   const { user, roles } = useAuth();
@@ -190,82 +193,115 @@ function Dashboard() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0">
-            <Link to={"/manual" as string} className="w-full sm:w-auto flex-1 sm:flex-initial">
+            <Link to={"/settings" as string} className="w-full sm:w-auto flex-1 sm:flex-initial">
               <Button
                 variant="outline"
                 className="w-full sm:w-auto justify-center bg-white/10 hover:bg-white/20 text-white border-white/20 font-medium h-10 sm:h-9 text-xs sm:text-sm"
               >
-                <HelpCircle className="size-4 mr-1.5" /> User Manual
+                <Settings className="size-4 mr-1.5" /> Settings
               </Button>
             </Link>
             <Link
-              to={"/scan" as string}
+              to={"/account" as string}
               className="w-full sm:w-auto flex-1 sm:flex-initial shrink-0"
             >
               <Button
-                variant="secondary"
-                className="w-full sm:w-auto justify-center shadow-sm font-medium h-10 sm:h-9 text-xs sm:text-sm"
+                className="w-full sm:w-auto justify-center bg-white text-[#00381c] hover:bg-emerald-50 font-bold h-10 sm:h-9 text-xs sm:text-sm shadow-md"
               >
-                <QrCode className="size-4 mr-1.5" /> Open Scanner
+                <UserCheck className="size-4 mr-1.5 text-[#00552b]" /> My Account
               </Button>
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Stats */}
+      {/* Stats - Strictly White, Black & Shades of Green */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat
           icon={Users}
           label="Total Students"
           value={data?.students ?? 0}
-          tint="bg-primary/10 text-primary"
+          tint="bg-[#00552b]/10 text-[#00552b] dark:text-emerald-400"
           delay={0}
         />
         <Stat
           icon={BookOpen}
           label="Active Courses"
           value={data?.courses ?? 0}
-          tint="bg-gold/20 text-gold"
+          tint="bg-emerald-600/15 text-emerald-800 dark:text-emerald-300"
           delay={80}
         />
         <Stat
           icon={CalendarClock}
           label="Total Sessions"
           value={data?.sessions ?? 0}
-          tint="bg-accent text-accent-foreground"
+          tint="bg-[#00381c]/10 text-[#00381c] dark:text-emerald-400"
           delay={160}
         />
         <Stat
           icon={Clock}
           label="Active Semesters"
           value={data?.semesters ?? 1}
-          tint="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+          tint="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
           delay={240}
         />
       </div>
 
-      {/* Quick actions */}
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {QUICK_ACTIONS.map((a, i) => (
-          <Link
-            key={a.to}
-            to={a.to as string}
-            className="group rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg animate-in fade-in slide-in-from-bottom-3"
-            style={{ animationDelay: `${360 + i * 70}ms`, animationFillMode: "backwards" }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                <a.icon className="size-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="truncate font-semibold">{a.label}</div>
-                <div className="truncate text-xs text-muted-foreground">{a.desc}</div>
-              </div>
-              <ArrowRight className="ml-auto size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
+      {/* Quick Access Actions: Settings & My Account (No other tools shown directly on dashboard) */}
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        {/* Settings Card */}
+        <Link
+          to={"/settings" as string}
+          className="group rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[#00552b] dark:hover:border-emerald-500 hover:shadow-lg animate-in fade-in slide-in-from-bottom-3"
+          style={{ animationDelay: "320ms", animationFillMode: "backwards" }}
+        >
+          <div className="flex items-start gap-4">
+            <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#00552b]/10 text-[#00552b] dark:text-emerald-400 transition-colors group-hover:bg-[#00552b] group-hover:text-white">
+              <Settings className="size-6" />
             </div>
-          </Link>
-        ))}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-bold text-base text-black dark:text-white">Settings</div>
+                <span className="text-[11px] font-semibold text-[#00552b] dark:text-emerald-400 px-2.5 py-0.5 rounded-full bg-[#00552b]/10 border border-[#00552b]/20">
+                  System
+                </span>
+              </div>
+              <p className="text-xs text-black/60 dark:text-white/60 mt-1 line-clamp-2 leading-relaxed">
+                Device limit control, push notification channels, active security sessions, and account options.
+              </p>
+              <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#00552b] dark:text-emerald-400 group-hover:underline">
+                Open Settings <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
+              </div>
+            </div>
+          </div>
+        </Link>
+
+        {/* My Account Card - Takes User to My Account Page */}
+        <Link
+          to={"/account" as string}
+          className="group rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[#00552b] dark:hover:border-emerald-500 hover:shadow-lg animate-in fade-in slide-in-from-bottom-3"
+          style={{ animationDelay: "380ms", animationFillMode: "backwards" }}
+        >
+          <div className="flex items-start gap-4">
+            <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#00552b]/10 text-[#00552b] dark:text-emerald-400 transition-colors group-hover:bg-[#00552b] group-hover:text-white">
+              <UserCheck className="size-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-bold text-base text-black dark:text-white">My Account</div>
+                <span className="text-[11px] font-semibold text-[#00552b] dark:text-emerald-400 px-2.5 py-0.5 rounded-full bg-[#00552b]/10 border border-[#00552b]/20">
+                  Academic Directory
+                </span>
+              </div>
+              <p className="text-xs text-black/60 dark:text-white/60 mt-1 line-clamp-2 leading-relaxed">
+                Click here to view your academic tools: Semesters, Departments, Courses, Academic History, Students & more.
+              </p>
+              <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#00552b] dark:text-emerald-400 group-hover:underline">
+                Open My Account <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
+              </div>
+            </div>
+          </div>
+        </Link>
       </div>
 
       <Card className="mt-8 border-primary/20 bg-card shadow-sm animate-in fade-in duration-700">
