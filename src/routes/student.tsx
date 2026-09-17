@@ -645,13 +645,13 @@ function StudentPortalPage() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-3.5 sm:py-6 md:py-8">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-3.5 sm:py-6 md:py-8 min-w-0 overflow-x-hidden">
         {!me ? (
           /* ========================================================================= */
           /* AUTHENTICATION SCREENS (INDEX CHECK, FIRST-TIME PASSWORD, LOGIN, RESET)   */
           /* ========================================================================= */
-          <div className="max-w-4xl mx-auto py-2 sm:py-6 px-0 sm:px-2">
-            <div className="rounded-2xl border border-primary/15 bg-card shadow-xl overflow-hidden grid md:grid-cols-12">
+          <div className="w-full max-w-4xl mx-auto py-2 sm:py-6 px-0 sm:px-2 min-w-0">
+            <div className="rounded-2xl border border-primary/15 bg-card shadow-xl overflow-hidden grid md:grid-cols-12 min-w-0">
               {/* Left Column / University Students Presentation Image */}
               <div className="relative md:col-span-5 hidden md:flex flex-col justify-between p-6 sm:p-8 text-white overflow-hidden bg-[#001f0f]">
                 <img
@@ -751,7 +751,7 @@ function StudentPortalPage() {
                       setPassword("");
                       setConfirmPassword("");
                     }}
-                    className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate ${
+                    className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate cursor-pointer ${
                       step === "login"
                         ? "bg-background text-foreground shadow-xs border"
                         : "text-muted-foreground hover:text-foreground"
@@ -766,7 +766,7 @@ function StudentPortalPage() {
                       setPassword("");
                       setConfirmPassword("");
                     }}
-                    className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate ${
+                    className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate cursor-pointer ${
                       step === "index" || step === "create"
                         ? "bg-background text-foreground shadow-xs border"
                         : "text-muted-foreground hover:text-foreground"
@@ -781,13 +781,14 @@ function StudentPortalPage() {
                       setPassword("");
                       setConfirmPassword("");
                     }}
-                    className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate ${
+                    className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate cursor-pointer ${
                       step === "reset"
                         ? "bg-background text-foreground shadow-xs border"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    Reset Password
+                    <span className="hidden xs:inline">Reset Password</span>
+                    <span className="xs:hidden">Reset</span>
                   </button>
                 </div>
 
@@ -1248,12 +1249,12 @@ function StudentPortalPage() {
           /* ========================================================================= */
           /* AUTHENTICATED STUDENT PORTAL DASHBOARD                                     */
           /* ========================================================================= */
-          <div className="space-y-3.5 sm:space-y-6">
+          <div className="space-y-3.5 sm:space-y-6 w-full min-w-0 max-w-full">
             {/* Student Header Card */}
-            <Card className="border shadow-xs overflow-hidden">
+            <Card className="border shadow-xs overflow-hidden w-full min-w-0">
               <div className="bg-gradient-to-r from-[#00381c] via-[#00552b] to-[#007a3d] p-3.5 sm:p-5 text-white">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                  <div className="space-y-1 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 min-w-0">
+                  <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                       <Badge className="bg-white/20 text-white border-none text-[10px] sm:text-[11px] font-mono">
                         {me.index_number}
@@ -1265,22 +1266,22 @@ function StudentPortalPage() {
                     <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-white truncate">
                       {me.full_name}
                     </h1>
-                    <p className="text-[11px] sm:text-xs text-white/80">
+                    <p className="text-[11px] sm:text-xs text-white/80 truncate">
                       {me.program || "Undergraduate Program"} · Level {me.level || "200"}
                       {me.email && ` · ${me.email}`}
                     </p>
                   </div>
 
                   {/* Attendance Grade Stat Box */}
-                  <div className="bg-white/10 backdrop-blur-xs rounded-xl p-2.5 sm:p-4 border border-white/15 w-full sm:w-auto text-left sm:text-right">
-                    <div className="flex sm:flex-col items-center sm:items-end justify-between">
+                  <div className="bg-white/10 backdrop-blur-xs rounded-xl p-2.5 sm:p-4 border border-white/15 w-full sm:w-auto text-left sm:text-right min-w-0">
+                    <div className="flex flex-col xs:flex-row sm:flex-col items-start xs:items-center sm:items-end justify-between gap-2 min-w-0">
                       <div>
                         <div className="text-[10px] sm:text-xs text-white/75 font-medium">Running Attendance</div>
                         <div className="text-2xl sm:text-3xl font-extrabold text-white">
                           {overallPercentage}%
                         </div>
                       </div>
-                      <div className="text-right sm:mt-1">
+                      <div className="text-left xs:text-right sm:text-right sm:mt-1">
                         <span className="text-[11px] sm:text-xs text-white/85 block">
                           {totalAttendedSessions} of {totalHeldSessions} attended
                         </span>
@@ -1305,11 +1306,11 @@ function StudentPortalPage() {
             </Card>
 
             {/* Quick Mobile Classroom Actions Bar */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 w-full min-w-0">
               <button
                 type="button"
                 onClick={() => setActiveTab("qr")}
-                className={`p-2.5 sm:p-3 rounded-xl border flex items-center gap-2.5 transition text-left cursor-pointer ${
+                className={`p-2.5 sm:p-3 rounded-xl border flex items-center gap-2.5 transition text-left cursor-pointer min-w-0 ${
                   activeTab === "qr"
                     ? "bg-primary text-primary-foreground border-primary shadow-xs"
                     : "bg-card hover:bg-muted/50 border-border text-foreground"
@@ -1322,7 +1323,7 @@ function StudentPortalPage() {
                 >
                   <QrCode className="size-4" />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <span className="text-xs font-bold block truncate">My QR Pass</span>
                   <span
                     className={`text-[10px] block truncate ${
@@ -1334,12 +1335,12 @@ function StudentPortalPage() {
                 </div>
               </button>
 
-              <Link to="/check-in" className="block">
-                <div className="p-2.5 sm:p-3 rounded-xl border bg-card hover:bg-muted/50 border-border text-foreground flex items-center gap-2.5 transition cursor-pointer">
+              <Link to="/check-in" className="block min-w-0">
+                <div className="p-2.5 sm:p-3 rounded-xl border bg-card hover:bg-muted/50 border-border text-foreground flex items-center gap-2.5 transition cursor-pointer min-w-0">
                   <div className="size-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                     <Navigation className="size-4" />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <span className="text-xs font-bold block truncate">Projector Check-In</span>
                     <span className="text-[10px] text-muted-foreground block truncate">
                       GPS Classroom Link
@@ -1351,7 +1352,7 @@ function StudentPortalPage() {
 
             {/* Attendance Risk Banner (If applicable) */}
             {atRiskCourses.length > 0 && (
-              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 sm:p-4 flex items-start gap-2.5 text-destructive animate-in fade-in">
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 sm:p-4 flex items-start gap-2.5 text-destructive animate-in fade-in min-w-0">
                 <AlertTriangle className="size-4 sm:size-5 shrink-0 mt-0.5" />
                 <div className="space-y-1 text-xs sm:text-sm min-w-0 flex-1">
                   <div className="font-bold text-destructive flex items-center gap-1.5">
@@ -1372,7 +1373,7 @@ function StudentPortalPage() {
             )}
 
             {warningCourses.length > 0 && atRiskCourses.length === 0 && (
-              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 sm:p-4 flex items-start gap-2.5 text-amber-900 animate-in fade-in">
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 sm:p-4 flex items-start gap-2.5 text-amber-900 animate-in fade-in min-w-0">
                 <AlertCircle className="size-4 sm:size-5 shrink-0 mt-0.5 text-amber-600" />
                 <div className="space-y-1 text-xs min-w-0 flex-1">
                   <div className="font-bold text-amber-900">Attendance Caution</div>
@@ -1387,12 +1388,12 @@ function StudentPortalPage() {
 
             {/* Multi-Lecturer Course & Faculty Filter Bar */}
             {courses.length > 0 && (
-              <div className="rounded-xl border bg-card p-2.5 sm:p-3.5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
-                <div className="flex items-center gap-2">
+              <div className="rounded-xl border bg-card p-2.5 sm:p-3.5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 w-full min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
                   <div className="size-7 sm:size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
                     <Filter className="size-3.5 sm:size-4" />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <span className="text-xs font-bold text-foreground block truncate">
                       Multi-Lecturer Scope
                     </span>
@@ -1405,12 +1406,12 @@ function StudentPortalPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex items-center gap-2 w-full sm:w-auto min-w-0">
                   <select
                     id="student-course-lecturer-filter"
                     value={selectedCourseFilter}
                     onChange={(e) => setSelectedCourseFilter(e.target.value)}
-                    className="text-xs bg-background border rounded-lg px-2.5 py-1.5 font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto max-w-full truncate"
+                    className="text-xs bg-background border rounded-lg px-2.5 py-1.5 font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto min-w-0 max-w-full truncate"
                   >
                     <option value="all">All Courses & Lecturers ({courses.length})</option>
                     {courses.map((c) => (
@@ -1425,7 +1426,7 @@ function StudentPortalPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setSelectedCourseFilter("all")}
-                      className="text-xs h-7 px-2 shrink-0 text-muted-foreground hover:text-foreground"
+                      className="text-xs h-7 px-2 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer"
                     >
                       Reset
                     </Button>
@@ -1446,9 +1447,9 @@ function StudentPortalPage() {
             />
 
             {/* Navigation Tabs */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <div className="overflow-x-auto no-scrollbar -mx-1 px-1 sm:mx-0 sm:px-0">
-                <TabsList className="flex overflow-x-auto no-scrollbar scroll-smooth w-full sm:grid sm:grid-cols-4 lg:grid-cols-8 h-auto p-1 bg-muted/60 rounded-xl gap-1">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 w-full min-w-0 max-w-full">
+              <div className="overflow-x-auto no-scrollbar w-full max-w-full min-w-0 py-0.5">
+                <TabsList className="inline-flex w-max min-w-full sm:w-full sm:grid sm:grid-cols-4 lg:grid-cols-8 h-auto p-1 bg-muted/60 rounded-xl gap-1">
                   <TabsTrigger
                     value="qr"
                     className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
@@ -2301,30 +2302,30 @@ function StudentPortalPage() {
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="grid grid-cols-2 gap-2 pt-1 min-w-0">
                       {qrUrl && (
                         <a
                           href={qrUrl}
                           download={`KNUST-${me.index_number}-Pass.png`}
-                          className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-secondary-foreground py-2.5 px-2 rounded-lg border transition shadow-xs"
+                          className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-secondary-foreground py-2.5 px-2 rounded-lg border transition shadow-xs min-w-0 truncate"
                         >
                           <Download className="size-3.5 shrink-0" />
-                          Save PNG
+                          <span className="truncate">Save PNG</span>
                         </a>
                       )}
-                      <Button onClick={printPass} className="w-full text-xs py-2.5">
+                      <Button onClick={printPass} className="w-full text-xs py-2.5 min-w-0 truncate">
                         <Printer className="size-3.5 mr-1 shrink-0" />
-                        Print Pass
+                        <span className="truncate">Print Pass</span>
                       </Button>
                     </div>
 
                     <div className="pt-2 border-t">
                       <Link
                         to="/check-in"
-                        className="flex items-center justify-center gap-1.5 text-xs font-semibold text-primary hover:underline bg-primary/5 hover:bg-primary/10 py-2 px-3 rounded-lg border border-primary/20 transition"
+                        className="flex items-center justify-center gap-1.5 text-xs font-semibold text-primary hover:underline bg-primary/5 hover:bg-primary/10 py-2.5 px-2 rounded-lg border border-primary/20 transition text-center"
                       >
                         <Navigation className="size-3.5 shrink-0" />
-                        Lecturer displaying QR on projector? Check-in here
+                        <span className="leading-tight">Lecturer projecting QR? Check-in here</span>
                       </Link>
                     </div>
                   </CardContent>

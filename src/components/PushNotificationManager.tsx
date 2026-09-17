@@ -17,11 +17,19 @@ import {
   FileText,
   Inbox,
   Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   getPushPermissionStatus,
@@ -33,6 +41,40 @@ import {
   PushPermissionStatus,
   PushUserContext,
 } from "@/lib/push-client";
+
+/** Crash-proof date formatter for notifications */
+function formatNotificationDate(rawDate: any): string {
+  if (!rawDate) return "Recently";
+  try {
+    let dateObj: Date;
+    if (typeof rawDate === "string" || typeof rawDate === "number") {
+      dateObj = new Date(rawDate);
+    } else if (rawDate && typeof rawDate === "object") {
+      if ("seconds" in rawDate) {
+        dateObj = new Date(rawDate.seconds * 1000);
+      } else if ("_seconds" in rawDate) {
+        dateObj = new Date(rawDate._seconds * 1000);
+      } else {
+        dateObj = new Date(rawDate);
+      }
+    } else {
+      dateObj = new Date(rawDate);
+    }
+
+    if (isNaN(dateObj.getTime())) {
+      return "Recently";
+    }
+
+    return dateObj.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "Recently";
+  }
+}
 
 interface PushNotificationManagerProps {
   userContext: PushUserContext;
@@ -573,7 +615,7 @@ export function PushNotificationManager({
                           </div>
                           <span className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
                             <Clock className="size-3" />
-                            {n.createdAt ? new Date(n.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recent"}
+                            {formatNotificationDate(n.createdAt)}
                           </span>
                         </div>
 
@@ -585,20 +627,27 @@ export function PushNotificationManager({
                           <Badge variant="outline" className="text-[10px] py-0 px-1.5 uppercase font-semibold">
                             {n.type || "UPDATE"}
                           </Badge>
-                          {n.url && (
-                            <a
-                              href={n.url}
-                              onClick={() => !n.isRead && markSingleRead(n.id)}
-                              className="text-[11px] text-primary hover:underline inline-flex items-center gap-1 font-semibold"
+                          {n.url && n.url !== "#" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!n.isRead) markSingleRead(n.id);
+                                if (n.url.startsWith("http")) {
+                                  window.open(n.url, "_blank", "noopener,noreferrer");
+                                } else {
+                                  window.location.href = n.url;
+                                }
+                              }}
+                              className="text-[11px] text-primary hover:underline inline-flex items-center gap-1 font-semibold cursor-pointer"
                             >
                               Open Update <ExternalLink className="size-3" />
-                            </a>
+                            </button>
                           )}
                           {!n.isRead && (
                             <button
                               type="button"
                               onClick={() => markSingleRead(n.id)}
-                              className="text-[11px] text-muted-foreground hover:text-foreground"
+                              className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
                             >
                               Mark as read
                             </button>
@@ -621,6 +670,7 @@ export function InAppNotificationCenter({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedAlert, setSelectedAlert] = useState<any | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     if (!userId) return;
@@ -655,6 +705,25 @@ export function InAppNotificationCenter({ userId }: { userId: string }) {
     }
   };
 
+  const handleOpenAlert = async (item: any) => {
+    setSelectedAlert(item);
+    setOpen(false);
+    if (!item.isRead) {
+      try {
+        await fetch("/api/push/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notificationId: item.id, userId }),
+        });
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n)),
+        );
+      } catch {
+        // Ignore
+      }
+    }
+  };
+
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
@@ -666,7 +735,7 @@ export function InAppNotificationCenter({ userId }: { userId: string }) {
           setOpen(!open);
           if (!open) fetchNotifications();
         }}
-        className="relative text-foreground hover:bg-muted"
+        className="relative text-foreground hover:bg-muted cursor-pointer"
         title="Notifications"
       >
         <Bell className="size-5" />
@@ -692,8 +761,9 @@ export function InAppNotificationCenter({ userId }: { userId: string }) {
             </div>
             {unreadCount > 0 && (
               <button
+                type="button"
                 onClick={markAllRead}
-                className="text-xs text-primary hover:underline font-medium"
+                className="text-xs text-primary hover:underline font-medium cursor-pointer"
               >
                 Mark all read
               </button>
@@ -714,29 +784,104 @@ export function InAppNotificationCenter({ userId }: { userId: string }) {
               </div>
             ) : (
               notifications.map((n) => (
-                <a
+                <button
                   key={n.id}
-                  href={n.url || "#"}
-                  onClick={() => setOpen(false)}
-                  className={`p-3.5 flex items-start gap-3 hover:bg-muted/50 transition-colors block ${
+                  type="button"
+                  onClick={() => handleOpenAlert(n)}
+                  className={`w-full text-left p-3.5 flex items-start gap-3 hover:bg-muted/50 transition-colors block cursor-pointer ${
                     !n.isRead ? "bg-primary/5" : ""
                   }`}
                 >
-                  <div className="mt-0.5 size-2 rounded-full shrink-0 bg-primary" style={{ opacity: n.isRead ? 0 : 1 }} />
-                  <div className="flex-1 space-y-0.5">
-                    <p className="text-xs font-semibold leading-tight text-foreground">{n.title}</p>
-                    <p className="text-xs text-muted-foreground leading-snug line-clamp-2">{n.body}</p>
+                  <div
+                    className="mt-1 size-2 rounded-full shrink-0 bg-primary"
+                    style={{ opacity: n.isRead ? 0 : 1 }}
+                  />
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-xs font-semibold leading-tight text-foreground truncate">
+                        {n.title}
+                      </p>
+                      {n.type && (
+                        <Badge variant="outline" className="text-[9px] px-1 py-0 uppercase shrink-0 font-medium">
+                          {n.type}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-snug line-clamp-2 break-words">
+                      {n.body}
+                    </p>
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground pt-1">
-                      <Clock className="size-3" />
-                      {new Date(n.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · {new Date(n.createdAt).toLocaleDateString()}
+                      <Clock className="size-3 shrink-0" />
+                      <span>{formatNotificationDate(n.createdAt)}</span>
                     </div>
                   </div>
-                </a>
+                </button>
               ))
             )}
           </div>
         </div>
       )}
+
+      {/* Full Notification Detail Modal */}
+      <Dialog
+        open={Boolean(selectedAlert)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setSelectedAlert(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md p-5 sm:p-6">
+          <DialogHeader className="space-y-2 text-left pb-2 border-b">
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs font-semibold uppercase bg-primary/10 text-primary">
+                {selectedAlert?.type || "Notice"}
+              </Badge>
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="size-3" />
+                {formatNotificationDate(selectedAlert?.createdAt)}
+              </span>
+            </div>
+            <DialogTitle className="text-base sm:text-lg font-bold text-foreground leading-snug">
+              {selectedAlert?.title}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-3 space-y-3">
+            <div className="p-3.5 rounded-xl bg-muted/40 border text-xs sm:text-sm text-foreground whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+              {selectedAlert?.body}
+            </div>
+          </div>
+
+          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedAlert(null)}
+              className="w-full sm:w-auto text-xs"
+            >
+              Close
+            </Button>
+
+            {selectedAlert?.url && selectedAlert.url !== "#" && selectedAlert.url !== "/" && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  const targetUrl = selectedAlert.url;
+                  setSelectedAlert(null);
+                  if (targetUrl.startsWith("http")) {
+                    window.open(targetUrl, "_blank", "noopener,noreferrer");
+                  } else {
+                    window.location.href = targetUrl;
+                  }
+                }}
+                className="w-full sm:w-auto text-xs gap-1.5 font-semibold"
+              >
+                <span>View Related Page</span>
+                <ExternalLink className="size-3.5" />
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
