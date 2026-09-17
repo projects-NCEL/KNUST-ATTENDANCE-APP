@@ -146,10 +146,10 @@ interface AssignmentItem {
   created_at: string;
 }
 
-type AuthStep = "index" | "create" | "login" | "reset";
+type AuthStep = "login" | "register" | "index" | "create" | "reset";
 
 function StudentPortalPage() {
-  const [step, setStep] = useState<AuthStep>("index");
+  const [step, setStep] = useState<AuthStep>("login");
   const [index, setIndex] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -157,6 +157,18 @@ function StudentPortalPage() {
   const [busy, setBusy] = useState(false);
   const [hasEmail, setHasEmail] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // New Student Self-Registration State
+  const [regFullName, setRegFullName] = useState("");
+  const [regIndex, setRegIndex] = useState("");
+  const [regLevel, setRegLevel] = useState("100");
+  const [regDepartment, setRegDepartment] = useState("");
+  const [regProgram, setRegProgram] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = useState("");
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [departmentsList, setDepartmentsList] = useState<{ id: string; name: string }[]>([]);
 
   // Authenticated State
   const [me, setMe] = useState<StudentMe | null>(null);
@@ -220,6 +232,86 @@ function StudentPortalPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch available academic departments for new student registration
+  useEffect(() => {
+    fetch("/api/public/student-auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "departments", index: "INIT" }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d.departments) && d.departments.length > 0) {
+          setDepartmentsList(d.departments);
+          setRegDepartment((prev) => prev || d.departments[0].name);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSelfRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = regFullName.trim();
+    const cleanIndex = regIndex.trim().toUpperCase();
+    const cleanEmail = regEmail.trim().toLowerCase();
+    const cleanProg = regProgram.trim() || regDepartment.trim() || "General Studies";
+
+    if (!cleanName) {
+      toast.error("Please enter your full legal name");
+      return;
+    }
+    if (!cleanIndex) {
+      toast.error("Please enter your student index number");
+      return;
+    }
+    if (!cleanEmail) {
+      toast.error("Please enter your email address");
+      return;
+    }
+    if (!regPassword || regPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    if (regPassword !== regConfirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const res = await fetch("/api/public/student-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "register_new_student",
+          index: cleanIndex,
+          full_name: cleanName,
+          level: regLevel || "100",
+          program: cleanProg,
+          email: cleanEmail,
+          password: regPassword,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Registration failed");
+      }
+
+      toast.success("✓ Registration complete! Your personal attendance pass is ready.");
+      sessionStorage.setItem(
+        STORE,
+        JSON.stringify({ i: data.student?.index_number || cleanIndex, p: regPassword }),
+      );
+      setMe(data.student);
+      setStep("login");
+    } catch (err: any) {
+      toast.error(err?.message || "Registration failed. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const callApi = async (payload: any) => {
     const res = await fetch("/api/public/student-auth", {
@@ -650,7 +742,7 @@ function StudentPortalPage() {
           /* ========================================================================= */
           /* AUTHENTICATION SCREENS (INDEX CHECK, FIRST-TIME PASSWORD, LOGIN, RESET)   */
           /* ========================================================================= */
-          <div className="w-full max-w-4xl mx-auto py-2 sm:py-6 px-0 sm:px-2 min-w-0">
+          <div className="w-full max-w-sm sm:max-w-md md:max-w-4xl mx-auto py-1 sm:py-6 px-1 sm:px-2 min-w-0">
             <div className="rounded-2xl border border-primary/15 bg-card shadow-xl overflow-hidden grid md:grid-cols-12 min-w-0">
               {/* Left Column / University Students Presentation Image */}
               <div className="relative md:col-span-5 hidden md:flex flex-col justify-between p-6 sm:p-8 text-white overflow-hidden bg-[#001f0f]">
@@ -743,7 +835,7 @@ function StudentPortalPage() {
                 <div className="h-1.5 bg-gradient-to-r from-[#00381c] via-[#00552b] to-[#007a3d]" />
 
                 {/* Mode Selector Tabs */}
-                <div className="p-1.5 sm:p-2 bg-muted/60 border-b grid grid-cols-3 gap-1 text-[11px] sm:text-xs">
+                <div className="p-1 sm:p-1.5 bg-muted/70 border-b grid grid-cols-2 sm:grid-cols-4 gap-1 text-[11px] sm:text-xs">
                   <button
                     type="button"
                     onClick={() => {
@@ -751,7 +843,7 @@ function StudentPortalPage() {
                       setPassword("");
                       setConfirmPassword("");
                     }}
-                    className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate cursor-pointer ${
+                    className={`py-2 px-1.5 rounded-lg font-semibold transition text-center truncate cursor-pointer ${
                       step === "login"
                         ? "bg-background text-foreground shadow-xs border"
                         : "text-muted-foreground hover:text-foreground"
@@ -762,17 +854,33 @@ function StudentPortalPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      setStep("register");
+                      setRegPassword("");
+                      setRegConfirmPassword("");
+                    }}
+                    className={`py-2 px-1.5 rounded-lg font-bold transition text-center truncate cursor-pointer flex items-center justify-center gap-1 ${
+                      step === "register"
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-primary bg-primary/10 hover:bg-primary/20"
+                    }`}
+                  >
+                    <UserPlus className="size-3.5 shrink-0" />
+                    <span>Register New</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
                       setStep("index");
                       setPassword("");
                       setConfirmPassword("");
                     }}
-                    className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate cursor-pointer ${
+                    className={`py-2 px-1.5 rounded-lg font-semibold transition text-center truncate cursor-pointer ${
                       step === "index" || step === "create"
                         ? "bg-background text-foreground shadow-xs border"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    Sign Up
+                    Activate
                   </button>
                   <button
                     type="button"
@@ -781,16 +889,197 @@ function StudentPortalPage() {
                       setPassword("");
                       setConfirmPassword("");
                     }}
-                    className={`py-2 px-1 sm:px-2 rounded-md font-semibold transition text-center truncate cursor-pointer ${
+                    className={`py-2 px-1.5 rounded-lg font-semibold transition text-center truncate cursor-pointer ${
                       step === "reset"
                         ? "bg-background text-foreground shadow-xs border"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    <span className="hidden xs:inline">Reset Password</span>
-                    <span className="xs:hidden">Reset</span>
+                    Reset Password
                   </button>
                 </div>
+
+                {/* Distinct New Student Registration Screen */}
+                {step === "register" && (
+                  <>
+                    <CardHeader className="text-center pb-3 pt-5 px-4 sm:px-6">
+                      <div className="flex justify-center mb-2 md:hidden">
+                        <KnustEmblem size={42} />
+                      </div>
+                      <CardTitle className="text-lg sm:text-xl font-bold flex items-center justify-center gap-2 text-primary">
+                        <UserPlus className="size-5" /> New Student Registration
+                      </CardTitle>
+                      <CardDescription className="text-xs max-w-sm mx-auto">
+                        Kwame Nkrumah University of Science and Technology. Register once to create your student account and get your permanent QR attendance pass.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4 px-4 sm:px-6">
+                      <form onSubmit={handleSelfRegistration} className="space-y-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">Full Legal Name</Label>
+                          <Input
+                            placeholder="e.g. Kwame Mensah"
+                            value={regFullName}
+                            onChange={(e) => setRegFullName(e.target.value)}
+                            required
+                            className="h-10 text-sm"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">Student Index Number</Label>
+                          <Input
+                            placeholder="e.g. 2084931"
+                            value={regIndex}
+                            onChange={(e) => setRegIndex(e.target.value)}
+                            required
+                            className="h-10 font-mono text-sm uppercase tracking-wide"
+                          />
+                        </div>
+
+                        {/* Stacked Vertically for Portrait Mobile Compatibility */}
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs font-semibold">Academic Level</Label>
+                            <Select value={regLevel} onValueChange={setRegLevel}>
+                              <SelectTrigger className="h-10 text-sm">
+                                <SelectValue placeholder="Select level" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="100">Level 100 (Freshman)</SelectItem>
+                                <SelectItem value="200">Level 200 (Sophomore)</SelectItem>
+                                <SelectItem value="300">Level 300 (Junior)</SelectItem>
+                                <SelectItem value="400">Level 400 (Senior)</SelectItem>
+                                <SelectItem value="500">Level 500 (Final Year / Eng)</SelectItem>
+                                <SelectItem value="600">Level 600 (Clinical / Pharm)</SelectItem>
+                                <SelectItem value="Postgraduate">Postgraduate</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label className="text-xs font-semibold">Department / Faculty</Label>
+                            {departmentsList.length > 0 ? (
+                              <Select value={regDepartment} onValueChange={setRegDepartment}>
+                                <SelectTrigger className="h-10 text-sm">
+                                  <SelectValue placeholder="Select Department" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {departmentsList.map((d) => (
+                                    <SelectItem key={d.id} value={d.name}>
+                                      {d.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Input
+                                placeholder="e.g. Computer Science"
+                                value={regDepartment}
+                                onChange={(e) => setRegDepartment(e.target.value)}
+                                className="h-10 text-sm"
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">Program of Study (Major)</Label>
+                          <Input
+                            placeholder="e.g. BSc Computer Science"
+                            value={regProgram}
+                            onChange={(e) => setRegProgram(e.target.value)}
+                            className="h-10 text-sm"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">Email Address</Label>
+                          <Input
+                            type="email"
+                            placeholder="student@example.com"
+                            value={regEmail}
+                            onChange={(e) => setRegEmail(e.target.value)}
+                            required
+                            className="h-10 text-sm"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs font-semibold">Create Password</Label>
+                            <button
+                              type="button"
+                              onClick={() => setShowRegPassword(!showRegPassword)}
+                              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                            >
+                              {showRegPassword ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                              {showRegPassword ? "Hide" : "Show"}
+                            </button>
+                          </div>
+                          <Input
+                            type={showRegPassword ? "text" : "password"}
+                            placeholder="Minimum 6 characters"
+                            value={regPassword}
+                            onChange={(e) => setRegPassword(e.target.value)}
+                            minLength={6}
+                            required
+                            className="h-10"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">Confirm Password</Label>
+                          <Input
+                            type={showRegPassword ? "text" : "password"}
+                            placeholder="Re-enter password"
+                            value={regConfirmPassword}
+                            onChange={(e) => setRegConfirmPassword(e.target.value)}
+                            minLength={6}
+                            required
+                            className="h-10"
+                          />
+                        </div>
+
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-[11px] text-muted-foreground flex items-start gap-2">
+                          <CheckCircle2 className="size-3.5 shrink-0 text-primary mt-0.5" />
+                          <span>
+                            Upon registration, your personal QR attendance pass will be generated instantly for all your enrolled courses.
+                          </span>
+                        </div>
+
+                        <Button
+                          type="submit"
+                          className="w-full h-11 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition shadow-sm cursor-pointer"
+                          disabled={busy}
+                        >
+                          {busy ? (
+                            <span className="flex items-center gap-2">
+                              <RefreshCw className="size-4 animate-spin" /> Registering Student...
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-2">
+                              <UserPlus className="size-4" /> Register & Generate QR Pass
+                            </span>
+                          )}
+                        </Button>
+
+                        <div className="pt-1 text-center">
+                          <p className="text-xs text-muted-foreground">
+                            Already have an account?{" "}
+                            <button
+                              type="button"
+                              onClick={() => setStep("login")}
+                              className="text-primary font-semibold hover:underline"
+                            >
+                              Sign In
+                            </button>
+                          </p>
+                        </div>
+                      </form>
+                    </CardContent>
+                  </>
+                )}
 
                 {step === "index" && (
                   <>
@@ -798,10 +1087,9 @@ function StudentPortalPage() {
                       <div className="flex justify-center mb-2 md:hidden">
                         <KnustEmblem size={42} />
                       </div>
-                      <CardTitle className="text-lg sm:text-xl font-bold">Student Sign Up</CardTitle>
+                      <CardTitle className="text-lg sm:text-xl font-bold">Student Account Activation</CardTitle>
                       <CardDescription className="text-xs max-w-sm mx-auto">
-                        Enter your university index number and registered email to activate your account
-                        and set your password.
+                        For students already pre-enrolled by their lecturer. Enter your index number and email to set up your password.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4 px-4 sm:px-6">
@@ -1052,6 +1340,35 @@ function StudentPortalPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4 px-4 sm:px-6">
+                    {/* Distinct Prominent New Student Registration Banner */}
+                    <div className="rounded-xl border border-primary/25 bg-primary/5 p-3 flex flex-col gap-2">
+                      <div className="flex items-start gap-2.5">
+                        <div className="p-1 rounded-md bg-primary/10 text-primary shrink-0 mt-0.5">
+                          <UserPlus className="size-4" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs font-bold text-foreground">New student and not yet in the system?</p>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                            You can register yourself directly to get your universal QR attendance pass.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setStep("register");
+                          setRegPassword("");
+                          setRegConfirmPassword("");
+                        }}
+                        className="w-full h-8 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 cursor-pointer"
+                      >
+                        <UserPlus className="size-3.5 mr-1.5" />
+                        Register as New Student
+                      </Button>
+                    </div>
+
                     <form onSubmit={handleLoginSubmit} className="space-y-3.5">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold">Student Index Number</Label>
@@ -1118,15 +1435,15 @@ function StudentPortalPage() {
                         )}
                       </Button>
 
-                      <div className="pt-1 text-center space-y-1">
+                      <div className="pt-1 text-center space-y-2 border-t mt-3">
                         <p className="text-xs text-muted-foreground">
-                          First time logging in?{" "}
+                          Pre-enrolled by lecturer?{" "}
                           <button
                             type="button"
                             onClick={() => setStep("index")}
                             className="text-primary font-semibold hover:underline"
                           >
-                            Sign Up
+                            Activate Enrolled Account
                           </button>
                         </p>
                       </div>

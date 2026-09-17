@@ -28,6 +28,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -627,15 +628,17 @@ export function PushNotificationManager({
                           <Badge variant="outline" className="text-[10px] py-0 px-1.5 uppercase font-semibold">
                             {n.type || "UPDATE"}
                           </Badge>
-                          {n.url && n.url !== "#" && (
+                          {n.url && typeof n.url === "string" && n.url !== "#" && (
                             <button
                               type="button"
                               onClick={() => {
                                 if (!n.isRead) markSingleRead(n.id);
-                                if (n.url.startsWith("http")) {
-                                  window.open(n.url, "_blank", "noopener,noreferrer");
+                                const safeUrl = String(n.url || "").trim();
+                                if (!safeUrl) return;
+                                if (safeUrl.startsWith("http://") || safeUrl.startsWith("https://")) {
+                                  window.open(safeUrl, "_blank", "noopener,noreferrer");
                                 } else {
-                                  window.location.href = n.url;
+                                  window.location.assign(safeUrl);
                                 }
                               }}
                               className="text-[11px] text-primary hover:underline inline-flex items-center gap-1 font-semibold cursor-pointer"
@@ -841,13 +844,16 @@ export function InAppNotificationCenter({ userId }: { userId: string }) {
               </span>
             </div>
             <DialogTitle className="text-base sm:text-lg font-bold text-foreground leading-snug">
-              {selectedAlert?.title}
+              {selectedAlert?.title || "Notification"}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {selectedAlert?.type ? `${selectedAlert.type} alert details` : "Notification details"}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="py-3 space-y-3">
             <div className="p-3.5 rounded-xl bg-muted/40 border text-xs sm:text-sm text-foreground whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
-              {selectedAlert?.body}
+              {selectedAlert?.body || "No details provided."}
             </div>
           </div>
 
@@ -861,24 +867,28 @@ export function InAppNotificationCenter({ userId }: { userId: string }) {
               Close
             </Button>
 
-            {selectedAlert?.url && selectedAlert.url !== "#" && selectedAlert.url !== "/" && (
-              <Button
-                size="sm"
-                onClick={() => {
-                  const targetUrl = selectedAlert.url;
-                  setSelectedAlert(null);
-                  if (targetUrl.startsWith("http")) {
-                    window.open(targetUrl, "_blank", "noopener,noreferrer");
-                  } else {
-                    window.location.href = targetUrl;
-                  }
-                }}
-                className="w-full sm:w-auto text-xs gap-1.5 font-semibold"
-              >
-                <span>View Related Page</span>
-                <ExternalLink className="size-3.5" />
-              </Button>
-            )}
+            {selectedAlert?.url &&
+              typeof selectedAlert.url === "string" &&
+              selectedAlert.url !== "#" &&
+              selectedAlert.url !== "/" && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const targetUrl = String(selectedAlert.url || "").trim();
+                    setSelectedAlert(null);
+                    if (!targetUrl) return;
+                    if (targetUrl.startsWith("http://") || targetUrl.startsWith("https://")) {
+                      window.open(targetUrl, "_blank", "noopener,noreferrer");
+                    } else {
+                      window.location.assign(targetUrl);
+                    }
+                  }}
+                  className="w-full sm:w-auto text-xs gap-1.5 font-semibold"
+                >
+                  <span>View Related Page</span>
+                  <ExternalLink className="size-3.5" />
+                </Button>
+              )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

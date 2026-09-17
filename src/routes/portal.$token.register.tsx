@@ -299,81 +299,85 @@ function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col">
-      <div className="flex-1 flex flex-col items-center p-6">
-        <div className="w-full max-w-md mt-4 mb-4">
+    <div className="min-h-screen bg-muted/30 flex flex-col justify-between">
+      <div className="flex-1 flex flex-col items-center justify-center px-3 py-4 sm:py-6 w-full max-w-sm sm:max-w-md mx-auto min-w-0">
+        <div className="w-full max-w-sm sm:max-w-md mt-2 mb-3">
           <Link to="/portal/$token" params={{ token }}>
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="size-4 mr-1" />
+            <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
+              <ArrowLeft className="size-3.5 mr-1" />
               Back to portal
             </Button>
           </Link>
         </div>
 
         {!created ? (
-          <Card className="w-full max-w-md shadow-md border">
-            <CardHeader className="text-center pb-2">
-              <div className="flex justify-center mb-2">
-                <KnustEmblem size={44} />
+          <Card className="w-full max-w-sm sm:max-w-md shadow-md border-primary/20">
+            <CardHeader className="text-center p-4 sm:p-5 pb-2">
+              <div className="flex justify-center mb-1.5">
+                <KnustEmblem size={40} />
               </div>
-              <CardTitle className="flex items-center justify-center gap-2 text-lg">
-                <UserPlus className="size-5 text-primary" /> New Student Registration
+              <CardTitle className="flex items-center justify-center gap-1.5 text-base sm:text-lg font-bold">
+                <UserPlus className="size-4 text-primary" /> New Student Registration
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs leading-relaxed">
                 Kwame Nkrumah University of Science and Technology. Register once to receive your universal QR attendance pass.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleFormSubmit} className="space-y-3">
-                <div>
-                  <Label>Full name</Label>
+            <CardContent className="p-4 sm:p-5 pt-2">
+              <form onSubmit={handleFormSubmit} className="flex flex-col gap-3 w-full">
+                <div className="flex flex-col gap-1 text-left">
+                  <Label className="text-xs font-semibold">Full name</Label>
                   <Input
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="e.g. John Doe"
                     required
+                    className="h-10 text-sm"
                   />
                 </div>
-                <div>
-                  <Label>Index number</Label>
+                <div className="flex flex-col gap-1 text-left">
+                  <Label className="text-xs font-semibold">Index number</Label>
                   <Input
                     value={index}
                     onChange={(e) => setIndex(e.target.value)}
                     placeholder="e.g. 20700000"
                     required
+                    className="h-10 font-mono text-sm uppercase"
                   />
                 </div>
-                <div>
-                  <Label>Email</Label>
+                <div className="flex flex-col gap-1 text-left">
+                  <Label className="text-xs font-semibold">Email address</Label>
                   <Input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="student@example.com"
                     required
+                    className="h-10 text-sm"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label>Level</Label>
+                {/* Stacked Vertically for Portrait Mobile */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1 text-left">
+                    <Label className="text-xs font-semibold">Level</Label>
                     <Select value={level} onValueChange={setLevel} required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select" />
+                      <SelectTrigger className="h-10 text-sm">
+                        <SelectValue placeholder="Select level" />
                       </SelectTrigger>
                       <SelectContent>
                         {levels.map((l) => (
                           <SelectItem key={l} value={l}>
-                            {l}
+                            Level {l}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label>Department</Label>
+                  <div className="flex flex-col gap-1 text-left">
+                    <Label className="text-xs font-semibold">Department</Label>
                     <Select value={departmentId} onValueChange={setDepartmentId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Department" />
+                      <SelectTrigger className="h-10 text-sm">
+                        <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>
                         {departments.map((d) => (
@@ -385,17 +389,18 @@ function RegisterPage() {
                     </Select>
                   </div>
                 </div>
-                <div>
-                  <Label>Program / Major (optional)</Label>
+                <div className="flex flex-col gap-1 text-left">
+                  <Label className="text-xs font-semibold">Program / Major (optional)</Label>
                   <Input
                     value={program}
                     onChange={(e) => setProgram(e.target.value)}
                     placeholder="e.g. BSc Computer Science"
+                    className="h-10 text-sm"
                   />
                 </div>
 
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
-                  <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-[11px] text-amber-900 dark:text-amber-200 flex items-start gap-2">
+                  <AlertTriangle className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
                   <div>
                     <span className="font-semibold">⚠️ Attention:</span> Please cross-check all your
                     information carefully before submitting. Your details will be registered
@@ -403,30 +408,29 @@ function RegisterPage() {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full h-10 text-xs sm:text-sm font-semibold mt-1 cursor-pointer" disabled={loading}>
                   {loading ? "Checking details..." : "Review & Register"}
                 </Button>
               </form>
             </CardContent>
           </Card>
         ) : (
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>{created.full_name}</CardTitle>
-              <CardDescription>
-                {created.index_number} · Level {created.level} · {created.department}
+          <Card className="w-full max-w-sm sm:max-w-md border-primary/20 shadow-md">
+            <CardHeader className="text-center p-4 sm:p-5 pb-2">
+              <CardTitle className="text-base sm:text-lg font-bold">{created.full_name}</CardTitle>
+              <CardDescription className="text-xs">
+                <span className="font-mono font-semibold">{created.index_number}</span> · Level {created.level} · {created.department}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-center p-4 bg-white rounded-lg border">
-                <img src={qrDataUrl} alt="Student QR Code" className="size-64" />
+            <CardContent className="p-4 sm:p-5 pt-2 flex flex-col gap-3">
+              <div className="flex justify-center p-3 bg-white rounded-xl border shadow-inner max-w-[240px] mx-auto w-full">
+                <img src={qrDataUrl} alt="Student QR Code" className="w-full h-auto aspect-square max-w-[220px] object-contain" />
               </div>
-              <Button onClick={downloadPng} className="w-full">
-                <Download className="size-4 mr-1" /> Download PNG
+              <Button onClick={downloadPng} className="w-full h-9 text-xs font-semibold cursor-pointer">
+                <Download className="size-3.5 mr-1" /> Download PNG
               </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                Save this image to your phone gallery. You can show it in any lecture session to
-                verify attendance.
+              <p className="text-[11px] text-muted-foreground text-center">
+                Save this image to your phone gallery. You can show it in any lecture session to verify attendance.
               </p>
             </CardContent>
           </Card>

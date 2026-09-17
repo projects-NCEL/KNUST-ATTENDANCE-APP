@@ -180,46 +180,63 @@ function PortalPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col">
-      <div className="flex-1 flex flex-col items-center p-6">
-        <div className="flex items-center gap-3 mb-6 mt-4">
-          <KnustEmblem size={36} />
-          <h1 className="text-2xl font-bold">KNUST Student QR Portal</h1>
+    <div className="min-h-screen bg-muted/30 flex flex-col justify-between">
+      <div className="flex-1 flex flex-col items-center justify-center px-3 py-4 sm:py-6 w-full max-w-sm sm:max-w-md mx-auto min-w-0">
+        <div className="flex flex-col items-center text-center gap-2 mb-4 mt-2">
+          <KnustEmblem size={38} />
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+              KNUST Student QR Portal
+            </h1>
+            <p className="text-xs text-muted-foreground">Universal Academic Attendance Pass</p>
+          </div>
         </div>
 
         {!student ? (
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Get your QR code</CardTitle>
-              <CardDescription>
-                Enter your index number and the email you registered with. Your QR works for every
-                course you are enrolled in.
+          <Card className="w-full max-w-sm sm:max-w-md border-primary/20 shadow-md">
+            <CardHeader className="p-4 sm:p-5 text-center pb-2">
+              <CardTitle className="text-base sm:text-lg font-bold">Get your QR code</CardTitle>
+              <CardDescription className="text-xs leading-relaxed">
+                Enter your university index number and registered email. Your QR works for all enrolled courses.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={lookup} className="space-y-3">
-                <div>
-                  <Label>Index number</Label>
-                  <Input value={index} onChange={(e) => setIndex(e.target.value)} required />
+            <CardContent className="p-4 sm:p-5 pt-2 space-y-3.5">
+              <form onSubmit={lookup} className="flex flex-col gap-3 w-full">
+                <div className="flex flex-col gap-1.5 text-left">
+                  <Label className="text-xs font-semibold">Index number</Label>
+                  <Input
+                    placeholder="e.g. 2084931"
+                    value={index}
+                    onChange={(e) => setIndex(e.target.value)}
+                    required
+                    className="h-10 text-sm font-mono uppercase"
+                  />
                 </div>
-                <div>
-                  <Label>Email</Label>
+                <div className="flex flex-col gap-1.5 text-left">
+                  <Label className="text-xs font-semibold">Email address</Label>
                   <Input
                     type="email"
+                    placeholder="student@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    className="h-10 text-sm"
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Looking up..." : "Show my QR"}
+                <Button
+                  type="submit"
+                  className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs sm:text-sm mt-1 cursor-pointer"
+                  disabled={loading}
+                >
+                  {loading ? "Looking up..." : "Show my QR Code"}
                 </Button>
               </form>
-              <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 p-3 text-center text-sm">
-                <p className="text-muted-foreground mb-2">New student and not in the system yet?</p>
-                <Link to="/portal/$token/register" params={{ token }}>
-                  <Button variant="outline" className="w-full">
-                    <UserPlus className="size-4 mr-1" />
+
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-center flex flex-col gap-2">
+                <p className="text-xs text-muted-foreground">New student and not in the system yet?</p>
+                <Link to="/portal/$token/register" params={{ token }} className="w-full">
+                  <Button variant="outline" className="w-full h-9 text-xs font-medium cursor-pointer">
+                    <UserPlus className="size-3.5 mr-1.5 text-primary" />
                     Register as a new student
                   </Button>
                 </Link>
@@ -227,36 +244,54 @@ function PortalPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>{student.full_name}</CardTitle>
-              <CardDescription>
-                {student.index_number} · Level {student.level} · {student.department}
+          <Card className="w-full max-w-sm sm:max-w-md border-primary/20 shadow-md">
+            <CardHeader className="p-4 sm:p-5 text-center pb-2">
+              <CardTitle className="text-base sm:text-lg font-bold text-foreground">
+                {student.full_name}
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Index: <span className="font-mono font-semibold">{student.index_number}</span> · Level {student.level}
+                <br />
+                <span className="text-muted-foreground">{student.department}</span>
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-center p-4 bg-white rounded-lg border">
-                <img src={qrDataUrl} alt="QR Code" className="size-64" />
+            <CardContent className="p-4 sm:p-5 pt-2 flex flex-col gap-3">
+              <div className="flex justify-center p-3 bg-white rounded-xl border shadow-inner max-w-[240px] mx-auto w-full">
+                <img
+                  src={qrDataUrl}
+                  alt="Student Attendance QR"
+                  className="w-full h-auto aspect-square max-w-[220px] object-contain"
+                />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" onClick={downloadPng} className="w-full">
-                  <Download className="size-4 mr-1" /> Download PNG
+
+              {/* Stacked Vertically for Portrait Mobile */}
+              <div className="flex flex-col gap-2 w-full pt-1">
+                <Button
+                  variant="outline"
+                  onClick={downloadPng}
+                  className="w-full h-9 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="size-3.5 text-primary" /> Download PNG
                 </Button>
-                <Button variant="outline" onClick={downloadPdf} className="w-full">
-                  <FileText className="size-4 mr-1" /> Download PDF
+                <Button
+                  variant="outline"
+                  onClick={downloadPdf}
+                  className="w-full h-9 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <FileText className="size-3.5 text-primary" /> Download PDF Badge
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full h-8 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                  onClick={() => {
+                    setStudent(null);
+                    setIndex("");
+                    setEmail("");
+                  }}
+                >
+                  Look up another student
                 </Button>
               </div>
-              <Button
-                variant="ghost"
-                className="w-full"
-                onClick={() => {
-                  setStudent(null);
-                  setIndex("");
-                  setEmail("");
-                }}
-              >
-                Look up another index
-              </Button>
             </CardContent>
           </Card>
         )}

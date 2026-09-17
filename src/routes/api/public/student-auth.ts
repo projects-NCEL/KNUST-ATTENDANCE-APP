@@ -109,6 +109,230 @@ export const Route = createFileRoute("/api/public/student-auth")({
             }
           }
 
+          // ACTION: Fetch Departments for Registration
+          if (action === "departments") {
+            try {
+              const depts = await queryCollectionRest("departments", { limit: 100 });
+              return Response.json({
+                departments: depts.map((d: any) => ({
+                  id: d.id,
+                  name: d.name || "",
+                  code: d.code || "",
+                })),
+              });
+            } catch (deptErr) {
+              console.error("Failed to query departments:", deptErr);
+              return Response.json({ departments: [] });
+            }
+          }
+
+          // ACTION: Register New Student (Self-Registration)
+          if (action === "register_new_student") {
+            const { full_name, level, program, email, password } = body;
+            const cleanName = (full_name || "").trim();
+            const cleanEmail = (email || "").trim().toLowerCase();
+            const cleanProg = (program || "General").trim();
+            const cleanLvl = String(level || "100").trim();
+            const upperIndex = cleanIndex.toUpperCase();
+
+            if (!cleanName) {
+              return Response.json({ error: "Full legal name is required" }, { status: 400 });
+            }
+            if (!password || password.length < 6) {
+              return Response.json(
+                { error: "Password must be at least 6 characters" },
+                { status: 400 },
+              );
+            }
+
+            // Check if student with this index number already exists
+            let existingStudents = await queryCollectionRest("students", {
+              where: [{ field: "index_number", op: "EQUAL", value: cleanIndex }],
+            });
+            if (existingStudents.length === 0 && cleanIndex !== upperIndex) {
+              existingStudents = await queryCollectionRest("students", {
+                where: [{ field: "index_number", op: "EQUAL", value: upperIndex }],
+              });
+            }
+
+            if (existingStudents.length > 0) {
+              return Response.json(
+                {
+                  error: `Index number ${upperIndex} is already registered. Please sign in or use reset password if you forgot your credentials.`,
+                  already_exists: true,
+                },
+                { status: 409 },
+              );
+            }
+
+            // Generate UUID for QR
+            const newQrUuid = randomBytes(16).toString("hex");
+            const newStudentDocId = sanitizeDocId(`stud_${upperIndex}`);
+
+            const newStudentData = {
+              full_name: cleanName,
+              index_number: upperIndex,
+              level: cleanLvl,
+              program: cleanProg,
+              email: cleanEmail,
+              qr_uuid: newQrUuid,
+              created_at: new Date().toISOString(),
+              self_registered: true,
+            };
+
+            await setDocRest("students", newStudentDocId, newStudentData);
+
+            // Create account with password
+            const salt = randomBytes(16).toString("hex");
+            const hash = hashPassword(password, salt);
+
+            const accountPayload = {
+              student_id: newStudentDocId,
+              index_number: upperIndex,
+              email: cleanEmail,
+              password_salt: salt,
+              password_hash: hash,
+              updated_at: new Date().toISOString(),
+            };
+
+            await setDocRest("student_accounts", newStudentDocId, accountPayload);
+            await setDocRest("student_accounts", sanitizeDocId(upperIndex), accountPayload);
+
+            return Response.json({
+              ok: true,
+              message: "Student registration completed successfully!",
+              student: {
+                id: newStudentDocId,
+                full_name: cleanName,
+                index_number: upperIndex,
+                level: cleanLvl,
+                program: cleanProg,
+                email: cleanEmail,
+                qr_uuid: newQrUuid,
+                lecturers_count: 1,
+              },
+            });
+          }
+
+          // ACTION: Projector QR Check-in (Direct attendance recording)
+          if (action === "projector_check_in") {
+            const { session_id, user_lat, user_lng, accuracy, distance_m, geofence_flagged } = body;
+            const upperIndex = cleanIndex.toUpperCase();
+
+            if (!session_id) {
+              return Response.json({ error: "Session ID is required" }, { status: 400 });
+            }
+
+            // 1. Verify session exists and is active
+            const sessionData = await getDocRest("attendance_sessions", session_id);
+            if (!sessionData) {
+              return Response.json(
+                { error: "Attendance session not found or has expired." },
+                { status: 404 },
+              );
+            }
+
+            if (sessionData.status === "CLOSED" || sessionData.is_active === false) {
+              return Response.json(
+                { error: "This attendance session has already been closed by the lecturer." },
+                { status: 400 },
+              );
+            }
+
+            // 2. Find student by index number
+            let studentDocs = await queryCollectionRest("students", {
+              where: [{ field: "index_number", op: "EQUAL", value: cleanIndex }],
+            });
+            if (studentDocs.length === 0 && cleanIndex !== upperIndex) {
+              studentDocs = await queryCollectionRest("students", {
+                where: [{ field: "index_number", op: "EQUAL", value: upperIndex }],
+              });
+            }
+
+            let studentDocId = studentDocs[0]?.id;
+            let studentFullName = studentDocs[0]?.full_name || studentDocs[0]?.name;
+
+            if (!studentDocId) {
+              studentDocId = sanitizeDocId(`stud_${upperIndex}`);
+              studentFullName = `Student (${upperIndex})`;
+              // Auto-create student doc so they exist in student list
+              try {
+                await setDocRest("students", studentDocId, {
+                  full_name: studentFullName,
+                  index_number: upperIndex,
+                  level: sessionData.level ? String(sessionData.level) : "100",
+                  owner_id: sessionData.owner_id || null,
+                  created_at: new Date().toISOString(),
+                });
+              } catch (createErr) {
+                console.warn("Auto-create student note:", createErr);
+              }
+            }
+
+            // 3. Duplicate check for this session
+            const existingRecords = await queryCollectionRest("attendance_records", {
+              where: [{ field: "session_id", op: "EQUAL", value: session_id }],
+            });
+
+            const alreadyMarked = existingRecords.find((r: any) => {
+              const rIndex = (r.index_number || "").toString().trim().toUpperCase();
+              const rStudentId = r.student_id;
+              return rIndex === upperIndex || rStudentId === studentDocId;
+            });
+
+            const nowIso = new Date().toISOString();
+            const today = nowIso.slice(0, 10);
+
+            if (alreadyMarked) {
+              const formattedTime = alreadyMarked.check_in_at
+                ? new Date(alreadyMarked.check_in_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "earlier today";
+              return Response.json({
+                ok: true,
+                already_marked: true,
+                student_name: studentFullName,
+                index_number: upperIndex,
+                time: formattedTime,
+                message: `Already marked present for this session (${formattedTime})`,
+              });
+            }
+
+            // 4. Save new attendance record in Firestore
+            const recordDocId = sanitizeDocId(`rec_${session_id}_${upperIndex}`);
+            const recordPayload = {
+              session_id,
+              student_id: studentDocId,
+              index_number: upperIndex,
+              student_name: studentFullName,
+              course_id: sessionData.course_id || null,
+              owner_id: sessionData.owner_id || null,
+              session_date: today,
+              check_in_at: nowIso,
+              status: "PRESENT",
+              source: "projector_qr",
+              geo_lat: typeof user_lat === "number" ? user_lat : null,
+              geo_lng: typeof user_lng === "number" ? user_lng : null,
+              geo_accuracy_m: typeof accuracy === "number" ? accuracy : null,
+              distance_m: typeof distance_m === "number" ? distance_m : 0,
+              geofence_flagged: Boolean(geofence_flagged),
+              created_at: nowIso,
+            };
+
+            await setDocRest("attendance_records", recordDocId, recordPayload);
+
+            return Response.json({
+              ok: true,
+              already_marked: false,
+              student_name: studentFullName,
+              index_number: upperIndex,
+              distance_m: typeof distance_m === "number" ? distance_m : 0,
+              message: `Attendance marked present for ${studentFullName}`,
+            });
+          }
+
           // 1. Fetch all student records matching this index number across all lecturers
           let matchingStudents = await queryCollectionRest("students", {
             where: [{ field: "index_number", op: "EQUAL", value: cleanIndex }],

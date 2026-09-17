@@ -325,7 +325,51 @@ function CheckInPage() {
         }
       }
 
-      // 3. Find registered student by index number
+      // 3. Call reliable server API first for fast, atomic, permission-safe check-in
+      try {
+        const apiRes = await fetch("/api/public/student-auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "projector_check_in",
+            session_id: session,
+            index: cleanIndex,
+            user_lat: userLat,
+            user_lng: userLng,
+            accuracy: accuracy,
+            distance_m: Math.round(distanceM),
+            geofence_flagged: geofenceFlagged,
+          }),
+        });
+
+        const apiData = await apiRes.json();
+        if (apiRes.ok && apiData.ok) {
+          setDone({
+            name: apiData.student_name || `Student (${cleanIndex})`,
+            indexNumber: cleanIndex,
+            distance: Math.round(distanceM),
+            alreadyMarked: Boolean(apiData.already_marked),
+            time: apiData.time,
+          });
+
+          if (apiData.already_marked) {
+            toast.info(apiData.message || `Already marked present for this session`);
+          } else {
+            toast.success(`✓ Marked Present: ${apiData.student_name || cleanIndex}`);
+          }
+          return;
+        } else if (!apiRes.ok && apiData.error) {
+          // If server explicitly reported an error (like session closed), throw it
+          throw new Error(apiData.error);
+        }
+      } catch (apiErr: any) {
+        if (apiErr.message && !apiErr.message.includes("fetch") && !apiErr.message.includes("Failed")) {
+          throw apiErr;
+        }
+        console.warn("API check-in encountered network issue, attempting client-side fallback:", apiErr);
+      }
+
+      // 4. Fallback client-side recording if server is unreachable
       let studentDoc: any = null;
       let studentData: any = null;
 
@@ -361,7 +405,7 @@ function CheckInPage() {
 
       const today = new Date().toISOString().slice(0, 10);
 
-      // 4. Duplicate Check: check if student has already checked in TODAY for this session
+      // Duplicate Check: check if student has already checked in for this session
       let existingRecord: any = null;
       try {
         const recQuery = await getDocs(
@@ -372,12 +416,7 @@ function CheckInPage() {
           ),
         );
 
-        existingRecord = recQuery.docs.find((d) => {
-          const rData = d.data();
-          const recDate =
-            rData.session_date || (rData.check_in_at ? rData.check_in_at.slice(0, 10) : "");
-          return recDate === today;
-        });
+        existingRecord = recQuery.docs[0];
 
         // Also check by index_number directly in case student_id differs
         if (!existingRecord) {
@@ -388,12 +427,7 @@ function CheckInPage() {
               where("index_number", "==", cleanIndex),
             ),
           );
-          existingRecord = indexRecQuery.docs.find((d) => {
-            const rData = d.data();
-            const recDate =
-              rData.session_date || (rData.check_in_at ? rData.check_in_at.slice(0, 10) : "");
-            return recDate === today;
-          });
+          existingRecord = indexRecQuery.docs[0];
         }
       } catch (dupErr) {
         console.warn("Duplicate check query note:", dupErr);
@@ -416,7 +450,7 @@ function CheckInPage() {
         return;
       }
 
-      // 5. Record new attendance record
+      // Record new attendance record in Firestore client
       const now = new Date();
       await addDoc(collection(firestoreDb, "attendance_records"), {
         session_id: session,
@@ -427,7 +461,7 @@ function CheckInPage() {
         owner_id: sessData.owner_id || null,
         session_date: today,
         check_in_at: now.toISOString(),
-        status: "PRESENT", // Standard uppercase matching scanner and continuous assessment engine
+        status: "PRESENT",
         source: "projector_qr",
         geo_lat: userLat,
         geo_lng: userLng,

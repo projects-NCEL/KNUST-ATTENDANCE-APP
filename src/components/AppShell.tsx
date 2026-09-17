@@ -1,4 +1,4 @@
-import { Link, useRouter, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   LogOut,
@@ -10,7 +10,6 @@ import {
   FileBarChart,
   Building2,
   Menu,
-  Share2,
   Settings,
   CreditCard,
   FileText,
@@ -19,7 +18,10 @@ import {
   History,
   Megaphone,
   ClipboardList,
+  ArrowLeft,
+  Home,
 } from "lucide-react";
+import { motion } from "motion/react";
 import { firebaseAuth } from "@/integrations/firebase/config";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -66,12 +68,6 @@ const nav: NavItem[] = [
   },
   { to: "/sessions", label: "Sessions", icon: CalendarClock },
   { to: "/scan", label: "Scanner", icon: ScanLine },
-  {
-    to: "/portal-links",
-    label: "Student QR Portal",
-    icon: Share2,
-    adminOnly: true,
-  },
   { to: "/reports", label: "Reports", icon: FileBarChart },
   { to: "/history", label: "Academic History", icon: History },
   { to: "/announcements", label: "Announcements & Tasks", icon: Megaphone },
@@ -186,8 +182,121 @@ function SidebarBody({
   );
 }
 
+function TutorFloatingNav() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  const leftItems = [
+    { to: "/scan", label: "Scanner", icon: ScanLine },
+    { to: "/sessions", label: "Sessions", icon: CalendarClock },
+  ];
+
+  const rightItems = [
+    { to: "/reports", label: "Reports", icon: FileBarChart },
+    { to: "/announcements", label: "Announcements", icon: Megaphone },
+  ];
+
+  const isHomeActive = pathname === "/dashboard";
+
+  return (
+    <motion.nav
+      initial={{ y: 80, opacity: 0, scale: 0.95 }}
+      animate={{ y: 0, opacity: 1, scale: 1 }}
+      transition={{ type: "spring", stiffness: 260, damping: 20 }}
+      className="fixed bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-40 max-w-[95vw] pointer-events-auto select-none"
+      aria-label="Tutor Quick Access Navigation"
+    >
+      <div className="relative flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full backdrop-blur-xl bg-background/85 dark:bg-card/90 border border-border/70 shadow-[0_12px_40px_rgba(0,0,0,0.18)] dark:shadow-[0_16px_50px_rgba(0,0,0,0.6)] ring-1 ring-black/5 dark:ring-white/10">
+        {/* Left items: Scanner, Sessions */}
+        {leftItems.map((item) => {
+          const isActive = pathname.startsWith(item.to);
+          const Icon = item.icon;
+          return (
+            <Link key={item.to} to={item.to as string} className="relative group">
+              <motion.div
+                whileHover={{ scale: 1.08, y: -2 }}
+                whileTap={{ scale: 0.92 }}
+                className={`relative flex flex-col items-center justify-center px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full transition-all duration-200 cursor-pointer ${
+                  isActive
+                    ? "text-primary font-bold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="floating-nav-indicator"
+                    className="absolute inset-0 rounded-full bg-primary/15 dark:bg-primary/25 border border-primary/30"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <Icon className="size-4.5 sm:size-5 shrink-0 z-10 transition-transform group-hover:scale-110" />
+                <span className="text-[10px] sm:text-[11px] font-semibold leading-tight mt-0.5 tracking-tight z-10 hidden xs:inline">
+                  {item.label}
+                </span>
+              </motion.div>
+            </Link>
+          );
+        })}
+
+        {/* Center item: Home (Dashboard) */}
+        <Link to={"/dashboard" as string} className="relative group mx-0.5 sm:mx-1">
+          <motion.div
+            whileHover={{ scale: 1.12, y: -3 }}
+            whileTap={{ scale: 0.9 }}
+            className="relative flex flex-col items-center justify-center cursor-pointer"
+          >
+            <div
+              className={`size-11 sm:size-12 rounded-full flex flex-col items-center justify-center shadow-lg transition-all duration-300 ${
+                isHomeActive
+                  ? "bg-gradient-to-tr from-[#00381c] via-[#00552b] to-[#007a3d] text-white ring-4 ring-primary/25 shadow-primary/30 scale-105"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-primary/25"
+              }`}
+            >
+              <Home className="size-5 sm:size-5.5 shrink-0" />
+              <span className="text-[9px] font-bold leading-none mt-0.5 tracking-tight">
+                Home
+              </span>
+            </div>
+          </motion.div>
+        </Link>
+
+        {/* Right items: Reports, Announcements */}
+        {rightItems.map((item) => {
+          const isActive = pathname.startsWith(item.to);
+          const Icon = item.icon;
+          return (
+            <Link key={item.to} to={item.to as string} className="relative group">
+              <motion.div
+                whileHover={{ scale: 1.08, y: -2 }}
+                whileTap={{ scale: 0.92 }}
+                className={`relative flex flex-col items-center justify-center px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full transition-all duration-200 cursor-pointer ${
+                  isActive
+                    ? "text-primary font-bold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="floating-nav-indicator"
+                    className="absolute inset-0 rounded-full bg-primary/15 dark:bg-primary/25 border border-primary/30"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <Icon className="size-4.5 sm:size-5 shrink-0 z-10 transition-transform group-hover:scale-110" />
+                <span className="text-[10px] sm:text-[11px] font-semibold leading-tight mt-0.5 tracking-tight z-10 hidden xs:inline">
+                  {item.label}
+                </span>
+              </motion.div>
+            </Link>
+          );
+        })}
+      </div>
+    </motion.nav>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const navigate = useNavigate();
   const { user, isAdmin, roles } = useAuth();
   const [open, setOpen] = useState(false);
   const [deviceLimitOpen, setDeviceLimitOpen] = useState(false);
@@ -235,10 +344,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
       )}
 
-      <main className="flex-1 min-w-0 bg-background flex flex-col">
+      <main className="flex-1 min-w-0 bg-background flex flex-col relative">
         {/* Header navigation */}
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 px-3 sm:px-6 py-2.5 border-b bg-background/95 backdrop-blur shadow-xs">
-          <div className="flex items-center gap-2.5 min-w-0">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-6 py-2.5 border-b bg-background/95 backdrop-blur shadow-xs">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button
@@ -269,13 +378,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <Link
               to={"/dashboard" as string}
-              className="flex items-center gap-2.5 min-w-0 group"
+              className="flex items-center gap-2 sm:gap-2.5 min-w-0 group"
             >
-              <div className="size-9 sm:size-10 rounded-xl bg-primary/10 p-1 shadow-sm ring-1 ring-primary/20 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                <KnustEmblem size={32} />
+              <div className="size-8 sm:size-10 rounded-xl bg-primary/10 p-1 shadow-sm ring-1 ring-primary/20 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+                <KnustEmblem size={28} />
               </div>
               <div className="min-w-0">
-                <div className="text-sm sm:text-base font-bold tracking-tight leading-none text-foreground truncate">
+                <div className="text-xs sm:text-base font-bold tracking-tight leading-none text-foreground truncate">
                   KNUST-ATTENDANCE-APP
                 </div>
                 <div className="text-[10px] text-muted-foreground hidden sm:block tracking-wide uppercase font-semibold">
@@ -283,36 +392,63 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
               </div>
             </Link>
-          </div>
 
-          <div className="flex items-center gap-1.5">
-            {user?.id && <InAppNotificationCenter userId={user.id} />}
-            <Link to={"/dashboard" as string} aria-label="Dashboard">
+            {/* Back Button & Home Button (Required on every page) */}
+            <div className="flex items-center gap-1 sm:gap-1.5 ml-1 sm:ml-2 pl-1.5 sm:pl-2.5 border-l border-border/70 shrink-0">
               <Button
                 variant="ghost"
                 size="sm"
-                className="hidden sm:inline-flex text-xs font-semibold gap-1.5 h-8"
+                onClick={() => {
+                  if (typeof window !== "undefined" && window.history.length > 1) {
+                    window.history.back();
+                  } else {
+                    navigate({ to: "/dashboard" });
+                  }
+                }}
+                aria-label="Go Back"
+                className="h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg"
+                title="Go back to previous page"
               >
-                <LayoutDashboard className="size-3.5" /> Dashboard
+                <ArrowLeft className="size-4 shrink-0" />
+                <span className="hidden xs:inline">Back</span>
               </Button>
-            </Link>
+              <Link to={"/dashboard" as string}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Home Dashboard"
+                  className="h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg"
+                  title="Dashboard Home"
+                >
+                  <Home className="size-4 shrink-0" />
+                  <span className="hidden xs:inline">Home</span>
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {user?.id && <InAppNotificationCenter userId={user.id} />}
             <Button
               variant="outline"
               size="sm"
               onClick={signOut}
               aria-label="Sign out"
-              className="text-xs h-8 px-2.5 font-medium"
+              className="text-xs h-8 px-2 sm:px-2.5 font-medium"
             >
-              <LogOut className="size-3.5 mr-1" />
+              <LogOut className="size-3.5 sm:mr-1" />
               <span className="hidden sm:inline">Sign out</span>
             </Button>
           </div>
         </header>
 
-        {/* Content area: well-proportioned responsive container */}
-        <div className="flex-1 w-full max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8 min-w-0">
+        {/* Content area: well-proportioned responsive container with bottom padding for floating nav */}
+        <div className="flex-1 w-full max-w-[1400px] mx-auto p-3.5 sm:p-6 lg:p-8 pb-28 sm:pb-32 min-w-0">
           {children}
         </div>
+
+        {/* Tutor Dynamic Animated Quick Access Floating Bar */}
+        <TutorFloatingNav />
       </main>
     </div>
   );
