@@ -82,27 +82,23 @@ function TutorFloatingNav() {
           );
         })}
 
-        {/* Center item: Home (Dashboard) */}
-        <Link to={"/dashboard" as string} className="relative group mx-0.5 sm:mx-1.5">
-          <motion.div
-            whileHover={{ scale: 1.1, y: -3 }}
-            whileTap={{ scale: 0.92 }}
-            className="relative flex flex-col items-center justify-center cursor-pointer"
-          >
-            <div
-              className={`size-[48px] sm:size-[56px] rounded-full flex flex-col items-center justify-center shadow-lg transition-all duration-300 ${
-                isHomeActive
-                  ? "bg-gradient-to-tr from-[#00381c] via-[#00552b] to-[#007a3d] text-white ring-4 ring-primary/30 shadow-primary/35 scale-105"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-primary/25"
-              }`}
+        {/* Center item: Home (Dashboard) - only shown when not on the dashboard page */}
+        {!isHomeActive && (
+          <Link to={"/dashboard" as string} className="relative group mx-0.5 sm:mx-1.5">
+            <motion.div
+              whileHover={{ scale: 1.1, y: -3 }}
+              whileTap={{ scale: 0.92 }}
+              className="relative flex flex-col items-center justify-center cursor-pointer"
             >
-              <Home className="size-5 sm:size-6 shrink-0" />
-              <span className="text-[9px] sm:text-[10px] font-bold leading-none mt-0.5 tracking-tight">
-                Home
-              </span>
-            </div>
-          </motion.div>
-        </Link>
+              <div className="size-[48px] sm:size-[56px] rounded-full flex flex-col items-center justify-center shadow-lg transition-all duration-300 bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-primary/25">
+                <Home className="size-5 sm:size-6 shrink-0" />
+                <span className="text-[9px] sm:text-[10px] font-bold leading-none mt-0.5 tracking-tight">
+                  Home
+                </span>
+              </div>
+            </motion.div>
+          </Link>
+        )}
 
         {/* Right items: Reports, Announcements */}
         {rightItems.map((item) => {
@@ -142,6 +138,8 @@ function TutorFloatingNav() {
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const navigate = useNavigate();
+  const pathname = router.state.location.pathname;
+  const isDashboard = pathname === "/dashboard" || pathname === "/";
   const { user } = useAuth();
   const [deviceLimitOpen, setDeviceLimitOpen] = useState(false);
   const [activeDevices, setActiveDevices] = useState<UserDevice[]>([]);
@@ -208,38 +206,40 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </Link>
 
-            {/* Back Button & Home Button (Required on every page) */}
-            <div className="flex items-center gap-1 sm:gap-1.5 ml-1 sm:ml-2 pl-1.5 sm:pl-2.5 border-l border-border/70 shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  if (typeof window !== "undefined" && window.history.length > 1) {
-                    window.history.back();
-                  } else {
-                    navigate({ to: "/dashboard" });
-                  }
-                }}
-                aria-label="Go Back"
-                className="h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg"
-                title="Go back to previous page"
-              >
-                <ArrowLeft className="size-4 shrink-0" />
-                <span className="hidden xs:inline">Back</span>
-              </Button>
-              <Link to={"/dashboard" as string}>
+            {/* Back Button & Home Button (Shown on every page EXCEPT dashboard) */}
+            {!isDashboard && (
+              <div className="flex items-center gap-1 sm:gap-1.5 ml-1 sm:ml-2 pl-1.5 sm:pl-2.5 border-l border-border/70 shrink-0">
                 <Button
                   variant="ghost"
                   size="sm"
-                  aria-label="Home Dashboard"
+                  onClick={() => {
+                    if (typeof window !== "undefined" && window.history.length > 1) {
+                      window.history.back();
+                    } else {
+                      navigate({ to: "/dashboard" });
+                    }
+                  }}
+                  aria-label="Go Back"
                   className="h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg"
-                  title="Dashboard Home"
+                  title="Go back to previous page"
                 >
-                  <Home className="size-4 shrink-0" />
-                  <span className="hidden xs:inline">Home</span>
+                  <ArrowLeft className="size-4 shrink-0" />
+                  <span className="hidden xs:inline">Back</span>
                 </Button>
-              </Link>
-            </div>
+                <Link to={"/dashboard" as string}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Home Dashboard"
+                    className="h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg"
+                    title="Dashboard Home"
+                  >
+                    <Home className="size-4 shrink-0" />
+                    <span className="hidden xs:inline">Home</span>
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
@@ -255,18 +255,21 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span className="hidden sm:inline">My Account</span>
               </Button>
             </Link>
-            <Link to={"/settings" as string}>
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label="Settings"
-                className="h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg"
-                title="Settings"
-              >
-                <Settings className="size-4 shrink-0" />
-                <span className="hidden sm:inline">Settings</span>
-              </Button>
-            </Link>
+            {/* Settings button shown on other pages, but hidden from the top on dashboard */}
+            {!isDashboard && (
+              <Link to={"/settings" as string}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Settings"
+                  className="h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg"
+                  title="Settings"
+                >
+                  <Settings className="size-4 shrink-0" />
+                  <span className="hidden sm:inline">Settings</span>
+                </Button>
+              </Link>
+            )}
             {user?.id && <InAppNotificationCenter userId={user.id} />}
             <Button
               variant="outline"

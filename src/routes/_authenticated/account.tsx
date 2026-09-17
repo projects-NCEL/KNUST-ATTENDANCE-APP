@@ -1,8 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { linkWithPopup, unlink } from "firebase/auth";
+import { firebaseAuth, googleProvider } from "@/integrations/firebase/config";
+import { PushNotificationManager } from "@/components/PushNotificationManager";
+import {
+  getUserDevices,
+  revokeDevice,
+  revokeOtherDevices,
+  getDeviceId,
+  type UserDevice,
+  MAX_DEVICES_PER_ACCOUNT,
+} from "@/lib/device-manager";
 import {
   UserCheck,
   CalendarRange,
@@ -16,15 +30,20 @@ import {
   CalendarClock,
   ScanLine,
   FileBarChart,
-  Settings,
+  Settings as SettingsIcon,
   CreditCard,
   HelpCircle,
   FileText,
   Shield,
   ArrowRight,
   ShieldCheck,
-  GraduationCap,
-  Sparkles,
+  CheckCircle2,
+  Laptop,
+  Smartphone,
+  Tablet,
+  Trash2,
+  RefreshCw,
+  Link2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/account")({
@@ -33,14 +52,14 @@ export const Route = createFileRoute("/_authenticated/account")({
       { title: "My Account & Academic Directory — KNUST-ATTENDANCE-APP" },
       {
         name: "description",
-        content: "Access academic tools, semesters, departments, courses, student records and system settings.",
+        content: "Access academic tools, semesters, departments, courses, student records, and embedded account settings.",
       },
     ],
   }),
   component: AccountPage,
 });
 
-// Grouped sections for clean hierarchy, strictly styled in white, black, and different shades of green
+// Grouped sections for clean hierarchy, strictly styled in white, black, and shades of green
 const ACCOUNT_SECTIONS = [
   {
     category: "Academic Structure & Terms",
@@ -133,15 +152,9 @@ const ACCOUNT_SECTIONS = [
     ],
   },
   {
-    category: "System Settings & Institutional Info",
-    description: "Account configuration, security limits, billing plans, and documentation.",
+    category: "Institutional Info & Documentation",
+    description: "Subscription tier, SMS credit balance, user manual, and university policies.",
     items: [
-      {
-        to: "/settings",
-        label: "System Settings",
-        desc: "Device limit controls, push notification channels, and active login sessions.",
-        icon: Settings,
-      },
       {
         to: "/billing",
         label: "Billing & Plans",
@@ -170,9 +183,127 @@ const ACCOUNT_SECTIONS = [
   },
 ];
 
+type Identity = { provider: string; email?: string };
+
 function AccountPage() {
   const { user, roles, isAdmin } = useAuth();
   const primaryRole = roles[0] || (isAdmin ? "Administrator" : "Lecturer");
+  const [activeTab, setActiveTab] = useState<"directory" | "settings">("directory");
+
+  // Embedded Settings State
+  const [identities, setIdentities] = useState<Identity[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [devices, setDevices] = useState<UserDevice[]>([]);
+  const [loadingDevices, setLoadingDevices] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const currentDeviceId = getDeviceId();
+
+  const fetchDevices = async () => {
+    if (!user?.id) return;
+    setLoadingDevices(true);
+    try {
+      const list = await getUserDevices(user.id);
+      setDevices(list);
+    } catch (err) {
+      console.error("Error fetching devices:", err);
+    } finally {
+      setLoadingDevices(false);
+    }
+  };
+
+  const handleRevokeDevice = async (d: UserDevice) => {
+    if (d.device_id === currentDeviceId) {
+      if (!confirm("Are you sure you want to sign out this device?")) return;
+    }
+    setRevokingId(d.id);
+    try {
+      await revokeDevice(d.id);
+      toast.success(`Revoked ${d.device_name}`);
+      await fetchDevices();
+      if (d.device_id === currentDeviceId) {
+        await firebaseAuth.signOut();
+        window.location.href = "/auth";
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to revoke device");
+    } finally {
+      setRevokingId(null);
+    }
+  };
+
+  const handleRevokeOthers = async () => {
+    if (!user?.id) return;
+    if (
+      !confirm("Revoke all other logged-in sessions? You will stay logged in only on this device.")
+    )
+      return;
+    setLoadingDevices(true);
+    try {
+      await revokeOtherDevices(user.id, currentDeviceId);
+      toast.success("All other device sessions revoked.");
+      await fetchDevices();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to revoke other devices");
+    } finally {
+      setLoadingDevices(false);
+    }
+  };
+
+  const refreshAuth = () => {
+    const fbUser = firebaseAuth.currentUser;
+    if (!fbUser) return;
+    const ids: Identity[] = (fbUser.providerData || []).map((p) => ({
+      provider:
+        p.providerId === "google.com"
+          ? "google"
+          : p.providerId === "password"
+            ? "email"
+            : p.providerId,
+      email: p.email || undefined,
+    }));
+    setIdentities(ids);
+  };
+
+  useEffect(() => {
+    refreshAuth();
+    void fetchDevices();
+  }, [user?.id]);
+
+  const hasGoogle =
+    user?.provider === "google" ||
+    identities.some((i) => i.provider === "google" || i.provider === "google.com");
+
+  const hasPassword = identities.some((i) => i.provider === "email" || i.provider === "password");
+
+  const linkGoogle = async () => {
+    const current = firebaseAuth.currentUser;
+    if (!current) return;
+    setBusy(true);
+    try {
+      await linkWithPopup(current, googleProvider);
+      toast.success("Google account linked successfully!");
+      refreshAuth();
+    } catch (e: any) {
+      toast.error(e?.message || "Could not link Google account");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const unlinkGoogle = async () => {
+    const current = firebaseAuth.currentUser;
+    if (!current) return;
+    setBusy(true);
+    try {
+      await unlink(current, "google.com");
+      toast.success("Google unlinked");
+      refreshAuth();
+    } catch (e: any) {
+      toast.error(e?.message || "Could not unlink Google");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <AppShell>
@@ -216,64 +347,293 @@ function AccountPage() {
                   {isAdmin ? "Full Admin" : "Faculty Tutor"}
                 </div>
               </div>
-              <Link to={"/settings" as string}>
-                <Button
-                  variant="secondary"
-                  className="bg-white text-[#00381c] hover:bg-emerald-50 border-0 font-semibold shadow-xs"
-                >
-                  <Settings className="size-4 mr-1.5 text-[#00552b]" /> Security & Settings
-                </Button>
-              </Link>
+              <Button
+                variant="secondary"
+                onClick={() => setActiveTab(activeTab === "settings" ? "directory" : "settings")}
+                className="bg-white text-[#00381c] hover:bg-emerald-50 border-0 font-semibold shadow-xs"
+              >
+                <SettingsIcon className="size-4 mr-1.5 text-[#00552b]" />
+                {activeTab === "settings" ? "View Academic Tools" : "Embedded Settings"}
+              </Button>
             </div>
           </div>
         </section>
 
-        {/* Directory Sections */}
-        <div className="space-y-8">
-          {ACCOUNT_SECTIONS.map((section, sIndex) => (
-            <div key={section.category} className="space-y-3.5">
-              <div className="border-b border-black/10 dark:border-white/10 pb-2">
-                <h2 className="text-lg font-bold tracking-tight text-black dark:text-white flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-[#00552b] dark:bg-emerald-400" />
-                  {section.category}
-                </h2>
-                <p className="text-xs text-black/65 dark:text-white/65 mt-0.5">
-                  {section.description}
-                </p>
-              </div>
+        {/* Navigation Tabs - Strictly White, Black & Shades of Green */}
+        <div className="flex items-center gap-2 border-b border-black/10 dark:border-white/10 pb-3">
+          <Button
+            variant={activeTab === "directory" ? "default" : "ghost"}
+            onClick={() => setActiveTab("directory")}
+            className={`font-semibold rounded-xl text-sm ${
+              activeTab === "directory"
+                ? "bg-[#00552b] hover:bg-[#00381c] text-white"
+                : "text-black/70 dark:text-white/70 hover:bg-[#00552b]/10 hover:text-[#00552b] dark:hover:text-emerald-400"
+            }`}
+          >
+            <BookOpen className="size-4 mr-2" />
+            Academic Tools Directory
+          </Button>
+          <Button
+            variant={activeTab === "settings" ? "default" : "ghost"}
+            onClick={() => setActiveTab("settings")}
+            className={`font-semibold rounded-xl text-sm ${
+              activeTab === "settings"
+                ? "bg-[#00552b] hover:bg-[#00381c] text-white"
+                : "text-black/70 dark:text-white/70 hover:bg-[#00552b]/10 hover:text-[#00552b] dark:hover:text-emerald-400"
+            }`}
+          >
+            <SettingsIcon className="size-4 mr-2" />
+            Account Settings & Security
+          </Button>
+        </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {section.items.map((item, iIndex) => (
-                  <Link
-                    key={item.to}
-                    to={item.to as string}
-                    className="group rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black p-4 transition-all duration-200 hover:-translate-y-1 hover:border-[#00552b] dark:hover:border-emerald-500 hover:shadow-lg hover:shadow-[#00552b]/5 relative overflow-hidden"
-                    style={{
-                      animationDelay: `${(sIndex * 4 + iIndex) * 30}ms`,
-                    }}
-                  >
-                    <div className="flex items-start gap-3.5">
-                      <div className="size-11 shrink-0 rounded-xl bg-[#00552b]/10 dark:bg-emerald-950/50 text-[#00552b] dark:text-emerald-400 border border-[#00552b]/20 dark:border-emerald-800/40 grid place-items-center transition-all duration-300 group-hover:bg-[#00552b] group-hover:text-white group-hover:scale-105">
-                        <item.icon className="size-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="font-bold text-sm text-black dark:text-white truncate group-hover:text-[#00552b] dark:group-hover:text-emerald-400 transition-colors">
-                            {item.label}
-                          </span>
-                          <ArrowRight className="size-4 shrink-0 text-black/40 dark:text-white/40 transition-transform group-hover:translate-x-1 group-hover:text-[#00552b] dark:group-hover:text-emerald-400" />
+        {/* TAB 1: ACADEMIC TOOLS DIRECTORY */}
+        {activeTab === "directory" && (
+          <div className="space-y-8 animate-in fade-in duration-300">
+            {ACCOUNT_SECTIONS.map((section, sIndex) => (
+              <div key={section.category} className="space-y-3.5">
+                <div className="border-b border-black/10 dark:border-white/10 pb-2">
+                  <h2 className="text-lg font-bold tracking-tight text-black dark:text-white flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-[#00552b] dark:bg-emerald-400" />
+                    {section.category}
+                  </h2>
+                  <p className="text-xs text-black/65 dark:text-white/65 mt-0.5">
+                    {section.description}
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {section.items.map((item, iIndex) => (
+                    <Link
+                      key={item.to}
+                      to={item.to as string}
+                      className="group rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black p-4 transition-all duration-200 hover:-translate-y-1 hover:border-[#00552b] dark:hover:border-emerald-500 hover:shadow-lg hover:shadow-[#00552b]/5 relative overflow-hidden"
+                      style={{
+                        animationDelay: `${(sIndex * 4 + iIndex) * 30}ms`,
+                      }}
+                    >
+                      <div className="flex items-start gap-3.5">
+                        <div className="size-11 shrink-0 rounded-xl bg-[#00552b]/10 dark:bg-emerald-950/50 text-[#00552b] dark:text-emerald-400 border border-[#00552b]/20 dark:border-emerald-800/40 grid place-items-center transition-all duration-300 group-hover:bg-[#00552b] group-hover:text-white group-hover:scale-105">
+                          <item.icon className="size-5" />
                         </div>
-                        <p className="text-xs text-black/60 dark:text-white/60 mt-1 line-clamp-2 leading-relaxed">
-                          {item.desc}
-                        </p>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-bold text-sm text-black dark:text-white truncate group-hover:text-[#00552b] dark:group-hover:text-emerald-400 transition-colors">
+                              {item.label}
+                            </span>
+                            <ArrowRight className="size-4 shrink-0 text-black/40 dark:text-white/40 transition-transform group-hover:translate-x-1 group-hover:text-[#00552b] dark:group-hover:text-emerald-400" />
+                          </div>
+                          <p className="text-xs text-black/60 dark:text-white/60 mt-1 line-clamp-2 leading-relaxed">
+                            {item.desc}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* TAB 2: EMBEDDED SETTINGS & SECURITY */}
+        {activeTab === "settings" && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Signed-in Account Info */}
+            <Card className="border border-black/10 dark:border-white/10 bg-white dark:bg-black">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base text-black dark:text-white">
+                  <ShieldCheck className="size-5 text-[#00552b] dark:text-emerald-400" /> Signed-In Account Details
+                </CardTitle>
+                <CardDescription className="text-black/60 dark:text-white/60">
+                  {user?.email} · {primaryRole}
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            {/* Connected Sign-In Methods */}
+            <Card className="border border-black/10 dark:border-white/10 bg-white dark:bg-black">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base text-black dark:text-white">
+                  <Link2 className="size-5 text-[#00552b] dark:text-emerald-400" /> Connected Sign-In Methods
+                </CardTitle>
+                <CardDescription className="text-black/60 dark:text-white/60">
+                  Manage authentication methods linked to your academic credentials.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="size-9 rounded-lg bg-white dark:bg-black border border-black/10 dark:border-white/10 grid place-items-center shrink-0">
+                      <CheckCircle2 className="size-5 text-[#00552b] dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-sm text-black dark:text-white">Google Authentication</div>
+                      <div className="text-xs text-black/60 dark:text-white/60">
+                        {hasGoogle
+                          ? "Connected to Google Sign-In"
+                          : "Link your Google account for quick login"}
                       </div>
                     </div>
-                  </Link>
-                ))}
+                  </div>
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
+                    {hasGoogle ? (
+                      <div className="flex items-center gap-2">
+                        <Badge className="gap-1 bg-[#00552b]/15 text-[#00552b] dark:text-emerald-300 border border-[#00552b]/30">
+                          <CheckCircle2 className="size-3" /> Linked
+                        </Badge>
+                        {hasPassword && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={unlinkGoogle}
+                            disabled={busy}
+                            className="text-xs text-black dark:text-white hover:bg-[#00552b]/10"
+                          >
+                            Unlink
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={linkGoogle}
+                        disabled={busy}
+                        className="bg-[#00552b] hover:bg-[#00381c] text-white"
+                      >
+                        Link Google
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Push Notifications */}
+            {user?.id && (
+              <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black p-4 sm:p-5">
+                <PushNotificationManager
+                  userContext={{
+                    userId: user.id,
+                    userRole: (user.role as any) || "lecturer",
+                  }}
+                />
               </div>
-            </div>
-          ))}
-        </div>
+            )}
+
+            {/* Logged-In Devices */}
+            <Card className="border border-black/10 dark:border-white/10 bg-white dark:bg-black">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base text-black dark:text-white">
+                    <Laptop className="size-5 text-[#00552b] dark:text-emerald-400" /> Active Logged-in Devices
+                  </CardTitle>
+                  <CardDescription className="text-xs text-black/60 dark:text-white/60">
+                    Maximum <b>{MAX_DEVICES_PER_ACCOUNT} devices</b> can be logged in per account simultaneously.
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    className="bg-[#00552b]/15 text-[#00552b] dark:text-emerald-300 border border-[#00552b]/30"
+                  >
+                    {devices.length} of {MAX_DEVICES_PER_ACCOUNT} used
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 text-black dark:text-white hover:bg-[#00552b]/10"
+                    onClick={fetchDevices}
+                    disabled={loadingDevices}
+                    aria-label="Refresh devices"
+                  >
+                    <RefreshCw className={`size-3.5 ${loadingDevices ? "animate-spin" : ""}`} />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {devices.length === 0 ? (
+                  <p className="text-xs text-black/60 dark:text-white/60 py-2">
+                    {loadingDevices ? "Loading devices..." : "No active devices recorded."}
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {devices.map((d) => {
+                      const isCurrent = d.device_id === currentDeviceId;
+                      return (
+                        <div
+                          key={d.id}
+                          className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border text-sm gap-2 transition-all ${
+                            isCurrent
+                              ? "bg-[#00552b]/5 border-[#00552b]/30"
+                              : "bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="size-9 rounded-lg bg-white dark:bg-black border border-black/10 dark:border-white/10 grid place-items-center shrink-0">
+                              {d.device_type === "mobile" ? (
+                                <Smartphone className="size-4 text-[#00552b] dark:text-emerald-400" />
+                              ) : d.device_type === "tablet" ? (
+                                <Tablet className="size-4 text-[#00552b] dark:text-emerald-400" />
+                              ) : (
+                                <Laptop className="size-4 text-[#00552b] dark:text-emerald-400" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-xs sm:text-sm text-black dark:text-white truncate">
+                                  {d.device_name}
+                                </span>
+                                {isCurrent && (
+                                  <Badge
+                                    className="text-[10px] px-1.5 py-0 bg-[#00552b]/15 text-[#00552b] dark:text-emerald-300 border border-[#00552b]/30"
+                                  >
+                                    This device
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-black/60 dark:text-white/60 truncate">
+                                Active: {new Date(d.last_active).toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-8 shrink-0 text-black/80 dark:text-white/80 hover:bg-[#00552b]/15 hover:text-[#00552b] dark:hover:text-emerald-300"
+                            disabled={revokingId === d.id}
+                            onClick={() => void handleRevokeDevice(d)}
+                          >
+                            <Trash2 className="size-3.5 mr-1" />
+                            {revokingId === d.id
+                              ? "Revoking..."
+                              : isCurrent
+                                ? "Sign out device"
+                                : "Revoke"}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {devices.length > 1 && (
+                  <div className="pt-2 flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs border-black/20 dark:border-white/20 text-black dark:text-white hover:bg-[#00552b]/10"
+                      onClick={handleRevokeOthers}
+                      disabled={loadingDevices}
+                    >
+                      Revoke All Other Devices
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </AppShell>
   );

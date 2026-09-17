@@ -192,15 +192,7 @@ function Dashboard() {
               {user?.email} · {roles.join(", ") || "Tutor"}
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0">
-            <Link to={"/settings" as string} className="w-full sm:w-auto flex-1 sm:flex-initial">
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto justify-center bg-white/10 hover:bg-white/20 text-white border-white/20 font-medium h-10 sm:h-9 text-xs sm:text-sm"
-              >
-                <Settings className="size-4 mr-1.5" /> Settings
-              </Button>
-            </Link>
+          <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0">
             <Link
               to={"/account" as string}
               className="w-full sm:w-auto flex-1 sm:flex-initial shrink-0"
@@ -247,58 +239,36 @@ function Dashboard() {
         />
       </div>
 
-      {/* Quick Access Actions: Settings & My Account (No other tools shown directly on dashboard) */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {/* Settings Card */}
-        <Link
-          to={"/settings" as string}
-          className="group rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[#00552b] dark:hover:border-emerald-500 hover:shadow-lg animate-in fade-in slide-in-from-bottom-3"
-          style={{ animationDelay: "320ms", animationFillMode: "backwards" }}
-        >
-          <div className="flex items-start gap-4">
-            <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#00552b]/10 text-[#00552b] dark:text-emerald-400 transition-colors group-hover:bg-[#00552b] group-hover:text-white">
-              <Settings className="size-6" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <div className="font-bold text-base text-black dark:text-white">Settings</div>
-                <span className="text-[11px] font-semibold text-[#00552b] dark:text-emerald-400 px-2.5 py-0.5 rounded-full bg-[#00552b]/10 border border-[#00552b]/20">
-                  System
-                </span>
-              </div>
-              <p className="text-xs text-black/60 dark:text-white/60 mt-1 line-clamp-2 leading-relaxed">
-                Device limit control, push notification channels, active security sessions, and account options.
-              </p>
-              <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#00552b] dark:text-emerald-400 group-hover:underline">
-                Open Settings <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
-              </div>
-            </div>
-          </div>
-        </Link>
-
-        {/* My Account Card - Takes User to My Account Page */}
+      {/* Primary Gateway: My Account (All tools & settings accessed after clicking My Account) */}
+      <div className="mt-6">
         <Link
           to={"/account" as string}
-          className="group rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[#00552b] dark:hover:border-emerald-500 hover:shadow-lg animate-in fade-in slide-in-from-bottom-3"
-          style={{ animationDelay: "380ms", animationFillMode: "backwards" }}
+          className="group block rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black p-5 sm:p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[#00552b] dark:hover:border-emerald-500 hover:shadow-xl hover:shadow-[#00552b]/5 animate-in fade-in slide-in-from-bottom-3"
+          style={{ animationDelay: "320ms", animationFillMode: "backwards" }}
         >
-          <div className="flex items-start gap-4">
-            <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#00552b]/10 text-[#00552b] dark:text-emerald-400 transition-colors group-hover:bg-[#00552b] group-hover:text-white">
-              <UserCheck className="size-6" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="grid size-13 sm:size-14 shrink-0 place-items-center rounded-2xl bg-[#00552b]/10 text-[#00552b] dark:text-emerald-400 border border-[#00552b]/20 transition-all duration-300 group-hover:bg-[#00552b] group-hover:text-white group-hover:scale-105">
+                <UserCheck className="size-6 sm:size-7" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-base sm:text-lg text-black dark:text-white group-hover:text-[#00552b] dark:group-hover:text-emerald-400 transition-colors">
+                    My Account
+                  </span>
+                  <span className="text-[11px] font-semibold text-[#00552b] dark:text-emerald-400 px-2.5 py-0.5 rounded-full bg-[#00552b]/10 border border-[#00552b]/20">
+                    Academic Directory & Embedded Settings
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-black/65 dark:text-white/65 mt-1 leading-relaxed max-w-2xl">
+                  Click to open your account portal. Manage Semesters, Departments, Courses, Academic History, Students Roster, Attendance Reports, and your complete Device & System Settings.
+                </p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <div className="font-bold text-base text-black dark:text-white">My Account</div>
-                <span className="text-[11px] font-semibold text-[#00552b] dark:text-emerald-400 px-2.5 py-0.5 rounded-full bg-[#00552b]/10 border border-[#00552b]/20">
-                  Academic Directory
-                </span>
-              </div>
-              <p className="text-xs text-black/60 dark:text-white/60 mt-1 line-clamp-2 leading-relaxed">
-                Click here to view your academic tools: Semesters, Departments, Courses, Academic History, Students & more.
-              </p>
-              <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#00552b] dark:text-emerald-400 group-hover:underline">
-                Open My Account <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
-              </div>
+            <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+              <Button className="bg-[#00552b] hover:bg-[#00381c] text-white font-semibold shadow-xs">
+                Open My Account <ArrowRight className="size-4 ml-1.5 transition-transform group-hover:translate-x-1" />
+              </Button>
             </div>
           </div>
         </Link>
