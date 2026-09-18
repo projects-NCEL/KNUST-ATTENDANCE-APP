@@ -32,7 +32,7 @@ import { useAuth } from "@/lib/auth";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "Dashboard — KNUST-ATTENDANCE-APP" },
+      { title: "Dashboard — KNUST ATTENDANCE APP" },
       {
         name: "description",
         content: "Live KNUST-ATTENDANCE-APP dashboard: students, courses, sessions and scan activity at a glance.",
@@ -192,21 +192,13 @@ function Dashboard() {
               {user?.email} · {roles.join(", ") || "Tutor"}
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0">
-            <Link to={"/settings" as string} className="w-full sm:w-auto flex-1 sm:flex-initial">
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto justify-center bg-white/10 hover:bg-white/20 text-white border-white/20 font-medium h-10 sm:h-9 text-xs sm:text-sm"
-              >
-                <Settings className="size-4 mr-1.5" /> Settings
-              </Button>
-            </Link>
+          <div className="flex items-stretch sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0">
             <Link
               to={"/account" as string}
-              className="w-full sm:w-auto flex-1 sm:flex-initial shrink-0"
+              className="w-full sm:w-auto shrink-0"
             >
               <Button
-                className="w-full sm:w-auto justify-center bg-white text-[#00381c] hover:bg-emerald-50 font-bold h-10 sm:h-9 text-xs sm:text-sm shadow-md"
+                className="w-full sm:w-auto justify-center bg-white text-[#00381c] hover:bg-emerald-50 font-bold h-10 sm:h-9 text-xs sm:text-sm shadow-md px-4"
               >
                 <UserCheck className="size-4 mr-1.5 text-[#00552b]" /> My Account
               </Button>
@@ -247,58 +239,32 @@ function Dashboard() {
         />
       </div>
 
-      {/* Quick Access Actions: Settings & My Account (No other tools shown directly on dashboard) */}
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {/* Settings Card */}
-        <Link
-          to={"/settings" as string}
-          className="group rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[#00552b] dark:hover:border-emerald-500 hover:shadow-lg animate-in fade-in slide-in-from-bottom-3"
-          style={{ animationDelay: "320ms", animationFillMode: "backwards" }}
-        >
-          <div className="flex items-start gap-4">
-            <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#00552b]/10 text-[#00552b] dark:text-emerald-400 transition-colors group-hover:bg-[#00552b] group-hover:text-white">
-              <Settings className="size-6" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <div className="font-bold text-base text-black dark:text-white">Settings</div>
-                <span className="text-[11px] font-semibold text-[#00552b] dark:text-emerald-400 px-2.5 py-0.5 rounded-full bg-[#00552b]/10 border border-[#00552b]/20">
-                  System
-                </span>
-              </div>
-              <p className="text-xs text-black/60 dark:text-white/60 mt-1 line-clamp-2 leading-relaxed">
-                Device limit control, push notification channels, active security sessions, and account options.
-              </p>
-              <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#00552b] dark:text-emerald-400 group-hover:underline">
-                Open Settings <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
-              </div>
-            </div>
-          </div>
-        </Link>
-
-        {/* My Account Card - Takes User to My Account Page */}
+      {/* Quick Access: My Account Hub (Tools & Settings are accessed inside My Account) */}
+      <div className="mt-6">
         <Link
           to={"/account" as string}
-          className="group rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[#00552b] dark:hover:border-emerald-500 hover:shadow-lg animate-in fade-in slide-in-from-bottom-3"
-          style={{ animationDelay: "380ms", animationFillMode: "backwards" }}
+          className="group block rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00552b] dark:hover:border-emerald-500 hover:shadow-lg animate-in fade-in slide-in-from-bottom-3"
+          style={{ animationDelay: "320ms", animationFillMode: "backwards" }}
         >
-          <div className="flex items-start gap-4">
-            <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#00552b]/10 text-[#00552b] dark:text-emerald-400 transition-colors group-hover:bg-[#00552b] group-hover:text-white">
-              <UserCheck className="size-6" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#00552b]/10 text-[#00552b] dark:text-emerald-400 transition-colors group-hover:bg-[#00552b] group-hover:text-white">
+                <UserCheck className="size-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="font-bold text-base text-black dark:text-white">My Account & Academic Directory</div>
+                  <span className="text-[11px] font-semibold text-[#00552b] dark:text-emerald-400 px-2.5 py-0.5 rounded-full bg-[#00552b]/10 border border-[#00552b]/20">
+                    Faculty Hub
+                  </span>
+                </div>
+                <p className="text-xs text-black/60 dark:text-white/60 mt-1 max-w-2xl leading-relaxed">
+                  Click here to access your academic tools: Semesters, Departments, Courses, Academic History, Students Directory, and embedded Account Settings.
+                </p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <div className="font-bold text-base text-black dark:text-white">My Account</div>
-                <span className="text-[11px] font-semibold text-[#00552b] dark:text-emerald-400 px-2.5 py-0.5 rounded-full bg-[#00552b]/10 border border-[#00552b]/20">
-                  Academic Directory
-                </span>
-              </div>
-              <p className="text-xs text-black/60 dark:text-white/60 mt-1 line-clamp-2 leading-relaxed">
-                Click here to view your academic tools: Semesters, Departments, Courses, Academic History, Students & more.
-              </p>
-              <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#00552b] dark:text-emerald-400 group-hover:underline">
-                Open My Account <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
-              </div>
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#00552b] dark:text-emerald-400 group-hover:underline self-end sm:self-center shrink-0">
+              Open My Account <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
             </div>
           </div>
         </Link>
