@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/departments")({
-  head: () => ({ meta: [{ title: "Departments & Academic Years — QRoll" }] }),
+  head: () => ({ meta: [{ title: "Departments & Academic Years — KNUST ATTENDANCE APP" }] }),
   component: DeptPage,
 });
 

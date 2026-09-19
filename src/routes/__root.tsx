@@ -79,17 +79,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "theme-color", content: "#00552b" },
-      { title: "KNUST-ATTENDANCE-APP — Official Student Attendance System" },
+      { title: "KNUST ATTENDANCE APP — Official Student Attendance System" },
       {
         name: "description",
         content:
-          "KNUST-ATTENDANCE-APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
+          "KNUST ATTENDANCE APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
       },
-      { property: "og:title", content: "KNUST-ATTENDANCE-APP — Official Student Attendance System" },
+      { property: "og:title", content: "KNUST ATTENDANCE APP — Official Student Attendance System" },
       {
         property: "og:description",
         content:
-          "KNUST-ATTENDANCE-APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
+          "KNUST ATTENDANCE APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
       },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
@@ -98,11 +98,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { property: "og:image", content: "/pwa-512x512.png" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "KNUST-ATTENDANCE-APP — Official Student Attendance System" },
+      { name: "twitter:title", content: "KNUST ATTENDANCE APP — Official Student Attendance System" },
       {
         name: "twitter:description",
         content:
-          "KNUST-ATTENDANCE-APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
+          "KNUST ATTENDANCE APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
       },
       { name: "twitter:image", content: "/pwa-512x512.png" },
     ],

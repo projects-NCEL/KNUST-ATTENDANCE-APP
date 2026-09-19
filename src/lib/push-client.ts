@@ -169,7 +169,7 @@ export async function subscribeDeviceToPush(userContext: PushUserContext): Promi
     return {
       success: false,
       status: "ios_pwa_required",
-      message: "On iPhone/iPad, please add QRoll to your Home Screen first to enable push notifications.",
+      message: "On iPhone/iPad, please add KNUST ATTENDANCE APP to your Home Screen first to enable push notifications.",
     };
   }
 

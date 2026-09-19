@@ -35,7 +35,7 @@ const search = z.object({ session: z.string().optional() });
 export const Route = createFileRoute("/check-in")({
   ssr: false,
   validateSearch: search,
-  head: () => ({ meta: [{ title: "Classroom Check In — KNUST QRoll" }] }),
+  head: () => ({ meta: [{ title: "Classroom Check In — KNUST ATTENDANCE APP" }] }),
   component: CheckInPage,
 });
 

@@ -5,7 +5,7 @@ import { AnnouncementsAndAssignmentsPage } from "./announcements";
 export const Route = createFileRoute("/_authenticated/assignments")({
   head: () => ({
     meta: [
-      { title: "Assignments & Announcements — QRoll" },
+      { title: "Assignments & Announcements — KNUST ATTENDANCE APP" },
       {
         name: "description",
         content:

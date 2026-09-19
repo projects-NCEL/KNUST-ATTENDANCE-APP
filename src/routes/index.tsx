@@ -10,25 +10,25 @@ import { PublicFooter } from "@/components/PublicFooter";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "KNUST-ATTENDANCE-APP — Official Student Attendance System" },
+      { title: "KNUST ATTENDANCE APP — Official Student Attendance System" },
       {
         name: "description",
         content:
-          "KNUST-ATTENDANCE-APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
+          "KNUST ATTENDANCE APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
       },
-      { property: "og:title", content: "KNUST-ATTENDANCE-APP — Official Student Attendance System" },
+      { property: "og:title", content: "KNUST ATTENDANCE APP — Official Student Attendance System" },
       {
         property: "og:description",
         content:
-          "KNUST-ATTENDANCE-APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
+          "KNUST ATTENDANCE APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "KNUST-ATTENDANCE-APP — Official Student Attendance System" },
+      { name: "twitter:title", content: "KNUST ATTENDANCE APP — Official Student Attendance System" },
       {
         name: "twitter:description",
         content:
-          "KNUST-ATTENDANCE-APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
+          "KNUST ATTENDANCE APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
       },
     ],
   }),
@@ -51,7 +51,7 @@ function Landing() {
               <KnustEmblem size={34} />
             </div>
             <div className="leading-tight min-w-0">
-              <div className="font-bold truncate text-foreground">KNUST-ATTENDANCE-APP</div>
+              <div className="font-bold truncate text-foreground">KNUST ATTENDANCE APP</div>
               <div className="text-xs text-muted-foreground truncate">Kwame Nkrumah University of Science and Technology</div>
             </div>
           </div>

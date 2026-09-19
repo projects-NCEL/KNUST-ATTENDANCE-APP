@@ -143,7 +143,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isDashboard = pathname === "/dashboard" || pathname === "/dashboard/";
+  const isDashboard =
+    pathname === "/dashboard" ||
+    pathname === "/dashboard/" ||
+    pathname.startsWith("/dashboard");
   const { user } = useAuth();
   const [deviceLimitOpen, setDeviceLimitOpen] = useState(false);
   const [activeDevices, setActiveDevices] = useState<UserDevice[]>([]);
@@ -202,7 +205,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
               <div className="min-w-0">
                 <div className="text-xs sm:text-base font-bold tracking-tight leading-none text-foreground truncate">
-                  KNUST-ATTENDANCE-APP
+                  KNUST ATTENDANCE APP
                 </div>
                 <div className="text-[10px] text-muted-foreground hidden sm:block tracking-wide uppercase font-semibold">
                   Attendance System

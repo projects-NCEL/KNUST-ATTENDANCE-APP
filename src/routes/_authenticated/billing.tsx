@@ -19,13 +19,13 @@ import { useAuth } from "@/lib/auth";
 export const Route = createFileRoute("/_authenticated/billing")({
   head: () => ({
     meta: [
-      { title: "Free Academic Access — KNUST-ATTENDANCE-APP" },
+      { title: "Free Academic Access — KNUST ATTENDANCE APP" },
       {
         name: "description",
         content:
-          "KNUST-ATTENDANCE-APP is completely free for all lecturers, faculty, and students with no subscriptions or fees.",
+          "KNUST ATTENDANCE APP is completely free for all lecturers, faculty, and students with no subscriptions or fees.",
       },
-      { property: "og:title", content: "Free Academic Access — KNUST-ATTENDANCE-APP" },
+      { property: "og:title", content: "Free Academic Access — KNUST ATTENDANCE APP" },
       {
         property: "og:description",
         content: "100% free university attendance system with unlimited courses, sessions, and exports.",
@@ -75,7 +75,7 @@ function FreeAccessPage() {
             </div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">University Access & Plan</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              KNUST-ATTENDANCE-APP is completely free for all university faculty, lecturers, and students.
+              KNUST ATTENDANCE APP is completely free for all university faculty, lecturers, and students.
             </p>
           </div>
           <Link to={"/dashboard" as string} className="w-full sm:w-auto">

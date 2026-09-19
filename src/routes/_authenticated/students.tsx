@@ -61,7 +61,7 @@ import {
 import { parseExcelFile, exportToExcel } from "@/lib/exporters";
 
 export const Route = createFileRoute("/_authenticated/students")({
-  head: () => ({ meta: [{ title: "Students — QRoll" }] }),
+  head: () => ({ meta: [{ title: "Students Directory — KNUST ATTENDANCE APP" }] }),
   component: StudentsPage,
 });
 

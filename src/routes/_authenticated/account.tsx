@@ -52,7 +52,7 @@ import {
 export const Route = createFileRoute("/_authenticated/account")({
   head: () => ({
     meta: [
-      { title: "My Account & Academic Directory — KNUST-ATTENDANCE-APP" },
+      { title: "My Account & Academic Directory — KNUST ATTENDANCE APP" },
       {
         name: "description",
         content: "Access academic tools, semesters, departments, courses, student records, and embedded account settings.",
@@ -97,20 +97,14 @@ const ACCOUNT_SECTIONS = [
     ],
   },
   {
-    category: "Students & Self-Registration",
-    description: "Student rosters, biometric identification, and token registration links.",
+    category: "Students Directory",
+    description: "Student rosters, biometric identification, and student QR ID cards.",
     items: [
       {
         to: "/students",
         label: "Students Directory",
         desc: "Enrolled student rosters, index numbers, and printable scannable QR cards.",
         icon: Users,
-      },
-      {
-        to: "/portal-links",
-        label: "Student Registration",
-        desc: "Generate self-service registration tokens and links for students.",
-        icon: QrCode,
       },
     ],
   },
@@ -145,14 +139,8 @@ const ACCOUNT_SECTIONS = [
       {
         to: "/announcements",
         label: "Announcements & Tasks",
-        desc: "Broadcast classroom notices, schedule changes, and priority alerts.",
+        desc: "Broadcast classroom notices, schedule changes, coursework tasks, and priority alerts.",
         icon: Megaphone,
-      },
-      {
-        to: "/assignments",
-        label: "Assignments",
-        desc: "Publish homework deadlines, project guidelines, and track submissions.",
-        icon: ClipboardList,
       },
     ],
   },
@@ -324,94 +312,100 @@ function AccountPage() {
   return (
     <AppShell>
       <div className="space-y-8 animate-in fade-in duration-400">
-        {/* Profile & Account Banner - Strictly Green, White, and Black */}
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#00381c] via-[#00552b] to-[#007a3d] text-white p-6 sm:p-8 shadow-md border border-[#00381c]">
+        {/* Profile & Account Banner - Strictly Green, White, and Black, Optimized for Mobile & Desktop */}
+        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#00381c] via-[#00552b] to-[#007a3d] text-white p-5 sm:p-8 shadow-md border border-[#00381c]">
           <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-white/10 blur-2xl" />
           <div className="pointer-events-none absolute -left-10 -bottom-10 size-40 rounded-full bg-white/5 blur-2xl" />
 
-          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-start sm:items-center gap-4 min-w-0">
-              <div className="size-16 sm:size-20 rounded-2xl bg-white/10 border-2 border-white/20 p-1 flex items-center justify-center shrink-0 shadow-lg text-white">
-                <UserCheck className="size-8 sm:size-10 text-emerald-200" />
+          <div className="relative flex flex-col gap-5">
+            {/* Top row: Avatar, Verified Badge, Account Title & User Email */}
+            <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+              <div className="size-14 sm:size-20 rounded-2xl bg-white/10 border-2 border-white/20 p-1 flex items-center justify-center shrink-0 shadow-lg text-white">
+                <UserCheck className="size-7 sm:size-10 text-emerald-200" />
               </div>
-              <div className="min-w-0">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-0.5 text-[11px] font-semibold tracking-wider uppercase text-emerald-100 border border-white/20">
-                  <ShieldCheck className="size-3.5" />
-                  <span>Verified Academic Account</span>
+              <div className="min-w-0 flex-1">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 sm:px-3 py-0.5 text-[10px] sm:text-[11px] font-semibold tracking-wider uppercase text-emerald-100 border border-white/20">
+                  <ShieldCheck className="size-3 sm:size-3.5 shrink-0" />
+                  <span className="truncate">Verified Academic Account</span>
                 </div>
-                <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-white truncate">
+                <h1 className="mt-1 sm:mt-2 text-xl sm:text-3xl font-bold tracking-tight text-white truncate">
                   My Account
                 </h1>
-                <p className="mt-1 text-sm text-emerald-100/90 font-mono truncate">
+                <p className="mt-0.5 text-xs sm:text-sm text-emerald-100/90 font-mono truncate">
                   {user?.email || "Academic User"}
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5 shrink-0 pt-2 md:pt-0">
-              <div className="px-3.5 py-2 rounded-xl bg-black/25 border border-white/15 backdrop-blur-xs text-left">
+            {/* Bottom/Secondary row: Role, Access Level & Settings button nicely arranged for mobile & desktop */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/15 sm:border-t-0 sm:pt-0">
+              <div className="flex-1 min-w-[130px] px-3 py-2 rounded-xl bg-black/25 border border-white/15 backdrop-blur-xs text-left">
                 <div className="text-[10px] uppercase font-semibold text-emerald-200 tracking-wider">
                   Assigned Role
                 </div>
-                <div className="text-sm font-bold text-white capitalize">{primaryRole}</div>
+                <div className="text-xs sm:text-sm font-bold text-white capitalize truncate">
+                  {primaryRole}
+                </div>
               </div>
-              <div className="px-3.5 py-2 rounded-xl bg-black/25 border border-white/15 backdrop-blur-xs text-left">
+              <div className="flex-1 min-w-[130px] px-3 py-2 rounded-xl bg-black/25 border border-white/15 backdrop-blur-xs text-left">
                 <div className="text-[10px] uppercase font-semibold text-emerald-200 tracking-wider">
                   Access Level
                 </div>
-                <div className="text-sm font-bold text-white">
+                <div className="text-xs sm:text-sm font-bold text-white truncate">
                   {isAdmin ? "Full Admin" : "Faculty Tutor"}
                 </div>
               </div>
               <Button
                 variant="secondary"
                 onClick={scrollToSettings}
-                className="bg-white text-[#00381c] hover:bg-emerald-50 border-0 font-semibold shadow-xs cursor-pointer"
+                className="w-full sm:w-auto bg-white text-[#00381c] hover:bg-emerald-50 border-0 font-semibold shadow-xs cursor-pointer h-9 px-3.5 text-xs sm:text-sm"
               >
-                <Settings className="size-4 mr-1.5 text-[#00552b]" /> Account Settings
+                <Settings className="size-4 mr-1.5 text-[#00552b] shrink-0" /> Account Settings
               </Button>
             </div>
           </div>
         </section>
 
-        {/* View Selection Filter Tabs */}
-        <div className="flex items-center gap-2 border-b border-black/10 dark:border-white/10 pb-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setActiveTab("all")}
-            className={`rounded-lg text-xs font-semibold px-3 py-1.5 ${
-              activeTab === "all"
-                ? "bg-[#00552b] text-white hover:bg-[#00381c]"
-                : "text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5"
-            }`}
-          >
-            All Tools & Settings
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setActiveTab("directory")}
-            className={`rounded-lg text-xs font-semibold px-3 py-1.5 ${
-              activeTab === "directory"
-                ? "bg-[#00552b] text-white hover:bg-[#00381c]"
-                : "text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5"
-            }`}
-          >
-            Academic Directory
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setActiveTab("settings")}
-            className={`rounded-lg text-xs font-semibold px-3 py-1.5 ${
-              activeTab === "settings"
-                ? "bg-[#00552b] text-white hover:bg-[#00381c]"
-                : "text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5"
-            }`}
-          >
-            Settings & Security
-          </Button>
+        {/* View Selection Filter Tabs — Horizontally Scrollable & Movable */}
+        <div className="overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 border-b border-black/10 dark:border-white/10 pb-2">
+          <div className="flex items-center gap-2 min-w-max">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveTab("all")}
+              className={`rounded-lg text-xs font-semibold px-3 py-1.5 shrink-0 whitespace-nowrap cursor-pointer transition-colors ${
+                activeTab === "all"
+                  ? "bg-[#00552b] text-white hover:bg-[#00381c]"
+                  : "text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              All Tools & Settings
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveTab("directory")}
+              className={`rounded-lg text-xs font-semibold px-3 py-1.5 shrink-0 whitespace-nowrap cursor-pointer transition-colors ${
+                activeTab === "directory"
+                  ? "bg-[#00552b] text-white hover:bg-[#00381c]"
+                  : "text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              Academic Directory
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveTab("settings")}
+              className={`rounded-lg text-xs font-semibold px-3 py-1.5 shrink-0 whitespace-nowrap cursor-pointer transition-colors ${
+                activeTab === "settings"
+                  ? "bg-[#00552b] text-white hover:bg-[#00381c]"
+                  : "text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              Settings & Security
+            </Button>
+          </div>
         </div>
 
         {/* Academic Directory Sections */}
@@ -483,7 +477,7 @@ function AccountPage() {
                   <Link2 className="size-4.5 text-[#00552b] dark:text-emerald-400" /> Connected Sign-in Methods
                 </CardTitle>
                 <CardDescription className="text-xs text-black/60 dark:text-white/60">
-                  Manage authentication methods linked to your QRoll academic account.
+                  Manage authentication methods linked to your KNUST ATTENDANCE APP academic account.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">

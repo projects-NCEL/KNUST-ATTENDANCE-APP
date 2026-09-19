@@ -5,8 +5,8 @@ import { PublicFooter } from "@/components/PublicFooter";
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
-      { title: "Privacy Policy — KNUST-ATTENDANCE-APP" },
-      { name: "description", content: "Privacy policy for KNUST-ATTENDANCE-APP." },
+      { title: "Privacy Policy — KNUST ATTENDANCE APP" },
+      { name: "description", content: "Privacy policy for KNUST ATTENDANCE APP." },
     ],
   }),
   component: PrivacyPage,
@@ -19,7 +19,7 @@ function PrivacyPage() {
         <div className="max-w-4xl mx-auto px-6 py-3.5 flex justify-between items-center">
           <Link to={"/" as string} className="flex items-center gap-2.5 font-bold text-primary">
             <KnustEmblem size={32} />
-            <span className="tracking-tight">KNUST-ATTENDANCE-APP</span>
+            <span className="tracking-tight">KNUST ATTENDANCE APP</span>
           </Link>
           <div className="flex gap-4 text-sm">
             <Link to={"/terms" as string} className="hover:text-primary transition-colors">
@@ -45,7 +45,7 @@ function PrivacyPage() {
 
         <h2 className="text-xl font-semibold mt-8">1. Who we are</h2>
         <p>
-          KNUST-ATTENDANCE-APP is a QR-based attendance-tracking Service designed for the Kwame Nkrumah
+          KNUST ATTENDANCE APP is a QR-based attendance-tracking Service designed for the Kwame Nkrumah
           University of Science and Technology community.
         </p>
 
@@ -115,7 +115,7 @@ function PrivacyPage() {
         </p>
 
         <h2 className="text-xl font-semibold mt-8">10. Contact</h2>
-        <p>Direct any privacy request to your Master Admin lecturer or to the KNUST-ATTENDANCE-APP administrators.</p>
+        <p>Direct any privacy request to your Master Admin lecturer or to the KNUST ATTENDANCE APP administrators.</p>
 
         <p className="mt-10 text-sm">
           <Link to={"/" as string} className="text-primary hover:underline">

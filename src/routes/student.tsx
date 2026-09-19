@@ -57,13 +57,13 @@ export const Route = createFileRoute("/student")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Student Portal — KNUST-ATTENDANCE-APP" },
+      { title: "Student Portal — KNUST ATTENDANCE APP" },
       {
         name: "description",
         content:
           "Access your student attendance records, download your KNUST QR pass, view enrolled courses, announcements, and assignments.",
       },
-      { property: "og:title", content: "Student Portal — KNUST-ATTENDANCE-APP" },
+      { property: "og:title", content: "Student Portal — KNUST ATTENDANCE APP" },
       {
         property: "og:description",
         content: "Track your attendance percentage, QR code, enrolled courses, and announcements.",
@@ -766,7 +766,7 @@ function StudentPortalPage() {
                     </div>
                     <div>
                       <h2 className="font-extrabold text-base tracking-tight text-white drop-shadow-xs">
-                        KNUST-ATTENDANCE-APP
+                        KNUST ATTENDANCE APP
                       </h2>
                       <p className="text-[11px] font-semibold text-white/80 uppercase tracking-wider">
                         Student Portal

@@ -13,7 +13,7 @@ export function PublicFooter() {
               Kwame Nkrumah University of Science and Technology
             </div>
             <div className="text-xs">
-              © {new Date().getFullYear()} KNUST-ATTENDANCE-APP · Smart Academic Attendance
+              © {new Date().getFullYear()} KNUST ATTENDANCE APP · Smart Academic Attendance
             </div>
           </div>
         </div>

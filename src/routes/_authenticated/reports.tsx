@@ -27,13 +27,13 @@ import { isStudentInCourse } from "@/lib/class-matching";
 export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({
     meta: [
-      { title: "Attendance Reports — KNUST-ATTENDANCE-APP" },
+      { title: "Attendance Reports — KNUST ATTENDANCE APP" },
       {
         name: "description",
         content:
           "Daily and whole-semester attendance reports per course, with at-risk absentee tracking and Excel, CSV and PDF export.",
       },
-      { property: "og:title", content: "Attendance Reports — KNUST-ATTENDANCE-APP" },
+      { property: "og:title", content: "Attendance Reports — KNUST ATTENDANCE APP" },
       {
         property: "og:description",
         content: "Daily and semester attendance reports with export and absentee alerts.",

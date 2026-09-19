@@ -18,7 +18,7 @@ export function exportToExcel(rows: Record<string, unknown>[], filename: string,
 export function exportToCSV(rows: Record<string, unknown>[], filename: string) {
   const ws = XLSX.utils.json_to_sheet(rows);
   const csv = XLSX.utils.sheet_to_csv(ws);
-  const header = `# KWAME NKRUMAH UNIVERSITY OF SCIENCE AND TECHNOLOGY (KNUST)\n# KNUST-ATTENDANCE-APP REPORT: ${filename}\n# Generated: ${new Date().toISOString()}\n`;
+  const header = `# KWAME NKRUMAH UNIVERSITY OF SCIENCE AND TECHNOLOGY (KNUST)\n# KNUST ATTENDANCE APP REPORT: ${filename}\n# Generated: ${new Date().toISOString()}\n`;
   const blob = new Blob([header + csv], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
@@ -56,7 +56,7 @@ export async function exportToPDF(
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(15, 23, 42);
-  doc.text("KNUST-ATTENDANCE-APP — " + title, 36, 20);
+  doc.text("KNUST ATTENDANCE APP — " + title, 36, 20);
 
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
@@ -74,7 +74,7 @@ export async function exportToPDF(
       doc.setFontSize(7);
       doc.setTextColor(148, 163, 184);
       doc.text(
-        `KNUST-ATTENDANCE-APP · Kumasi, Ghana · Page ${data.pageNumber} of ${pageCount}`,
+        `KNUST ATTENDANCE APP · Kumasi, Ghana · Page ${data.pageNumber} of ${pageCount}`,
         14,
         doc.internal.pageSize.height - 8,
       );

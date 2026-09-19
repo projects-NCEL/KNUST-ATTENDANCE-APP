@@ -5,8 +5,8 @@ import { PublicFooter } from "@/components/PublicFooter";
 export const Route = createFileRoute("/terms")({
   head: () => ({
     meta: [
-      { title: "Terms of Service — KNUST-ATTENDANCE-APP" },
-      { name: "description", content: "Terms of Service for KNUST-ATTENDANCE-APP." },
+      { title: "Terms of Service — KNUST ATTENDANCE APP" },
+      { name: "description", content: "Terms of Service for KNUST ATTENDANCE APP." },
     ],
   }),
   component: TermsPage,
@@ -19,7 +19,7 @@ function TermsPage() {
         <div className="max-w-4xl mx-auto px-6 py-3.5 flex justify-between items-center">
           <Link to={"/" as string} className="flex items-center gap-2.5 font-bold text-primary">
             <KnustEmblem size={32} />
-            <span className="tracking-tight">KNUST-ATTENDANCE-APP</span>
+            <span className="tracking-tight">KNUST ATTENDANCE APP</span>
           </Link>
           <div className="flex gap-4 text-sm">
             <Link to={"/privacy" as string} className="hover:text-primary transition-colors">
@@ -45,7 +45,7 @@ function TermsPage() {
 
         <h2 className="text-xl font-semibold mt-8">1. Acceptance</h2>
         <p>
-          By creating an account or using the KNUST-ATTENDANCE-APP application ("the Service"), you agree to be
+          By creating an account or using the KNUST ATTENDANCE APP application ("the Service"), you agree to be
           bound by these Terms of Service. If you do not agree, do not use the Service.
         </p>
 

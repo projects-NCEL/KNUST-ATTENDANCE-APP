@@ -203,7 +203,7 @@ export function PushNotificationManager({
         toast.success(result.message || "Push notifications enabled!");
       } else {
         if (result.status === "ios_pwa_required") {
-          toast.error("Add QRoll to Home Screen first on iPhone/iPad to enable push notifications.");
+          toast.error("Add KNUST ATTENDANCE APP to Home Screen first on iPhone/iPad to enable push notifications.");
         } else {
           toast.error(result.message || "Failed to enable notifications");
         }
@@ -266,7 +266,7 @@ export function PushNotificationManager({
           userId: userContext.userId,
           payload: {
             type: "TEST",
-            title: "KNUST QRoll Push Verified",
+            title: "KNUST Attendance Push Verified",
             body: "Real OS/browser push notifications are active and functioning correctly on this device!",
             url: "/student",
             icon: "/favicon.png",
@@ -385,7 +385,7 @@ export function PushNotificationManager({
               {status === "denied"
                 ? "Notifications are currently blocked. Click the lock/info icon in your browser URL bar to allow notifications."
                 : isSubscribed
-                ? "You will receive attendance, announcements, and assignment alerts even when QRoll is closed."
+                ? "You will receive attendance, announcements, and assignment alerts even when the app is closed."
                 : "Grant notification permission so your browser can receive background academic alerts."}
             </p>
           </div>
@@ -938,7 +938,7 @@ export function StudentPushBanner({
             userId: userContext.userId,
             payload: {
               type: "GENERAL",
-              title: "🔔 QRoll Alerts Connected!",
+              title: "🔔 Alerts Connected!",
               body: "You will now receive lecturer announcements and assignments on this phone.",
               url: "/student",
             },
@@ -1001,7 +1001,7 @@ export function StudentPushBanner({
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
-              Turn on push notifications so your device receives class notices, coursework postings, and attendance session alerts in real-time, even when QRoll is closed.
+              Turn on push notifications so your device receives class notices, coursework postings, and attendance session alerts in real-time, even when the app is closed.
             </p>
           </div>
         </div>

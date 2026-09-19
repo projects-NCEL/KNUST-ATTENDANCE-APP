@@ -36,13 +36,13 @@ import { PublicFooter } from "@/components/PublicFooter";
 export const Route = createFileRoute("/manual")({
   head: () => ({
     meta: [
-      { title: "User Manual & System Guide — KNUST-ATTENDANCE-APP" },
+      { title: "User Manual & System Guide — KNUST ATTENDANCE APP" },
       {
         name: "description",
         content:
-          "Comprehensive step-by-step user manual for lecturers, administrators, and students using KNUST-ATTENDANCE-APP.",
+          "Comprehensive step-by-step user manual for lecturers, administrators, and students using KNUST ATTENDANCE APP.",
       },
-      { property: "og:title", content: "User Manual & System Guide — KNUST-ATTENDANCE-APP" },
+      { property: "og:title", content: "User Manual & System Guide — KNUST ATTENDANCE APP" },
       {
         property: "og:description",
         content: "Step-by-step guide for QR code attendance, grading, scanning, and reports.",
@@ -126,7 +126,7 @@ const SECTIONS: GuideSection[] = [
       },
       {
         title: "Bulk Excel Import",
-        desc: "Click 'Import Excel'. Upload an .xlsx file with column headers: 'Full Name', 'Index Number', 'Level', and 'Department'. QRoll automatically generates unique QR credentials for every student.",
+        desc: "Click 'Import Excel'. Upload an .xlsx file with column headers: 'Full Name', 'Index Number', 'Level', and 'Department'. The app automatically generates unique QR credentials for every student.",
       },
       {
         title: "Generate & Print Student QR Passes",
@@ -155,7 +155,7 @@ const SECTIONS: GuideSection[] = [
       },
       {
         title: "Students Scan to Self Check-In",
-        desc: "Students scan the projected screen using their smartphone camera or QRoll student page. Their attendance is recorded instantaneously.",
+        desc: "Students scan the projected screen using their smartphone camera or student check-in page. Their attendance is recorded instantaneously.",
       },
       {
         title: "Anti-Cheating & Dynamic Token",
@@ -207,7 +207,7 @@ const SECTIONS: GuideSection[] = [
       },
       {
         title: "10-Mark Attendance Grading Formula",
-        desc: "KNUST-ATTENDANCE-APP automatically computes the standard university 10-mark continuous assessment score based on attended sessions over total sessions.",
+        desc: "KNUST ATTENDANCE APP automatically computes the standard university 10-mark continuous assessment score based on attended sessions over total sessions.",
       },
       {
         title: "Identify At-Risk Students",
@@ -256,7 +256,7 @@ const SECTIONS: GuideSection[] = [
     steps: [
       {
         title: "100% Free Forever",
-        desc: "KNUST-ATTENDANCE-APP is completely free for all university faculty, lecturers, teaching assistants, and students.",
+        desc: "KNUST ATTENDANCE APP is completely free for all university faculty, lecturers, teaching assistants, and students.",
       },
       {
         title: "Unlimited Usage",
@@ -294,7 +294,7 @@ const SECTIONS: GuideSection[] = [
       },
       {
         title: "What if there is no internet in the lecture hall?",
-        desc: "QRoll works offline! The scanner tool queues all scans on your local device and syncs them as soon as you reconnect to Wi-Fi or mobile data.",
+        desc: "The app works offline! The scanner tool queues all scans on your local device and syncs them as soon as you reconnect to Wi-Fi or mobile data.",
       },
     ],
   },
@@ -338,7 +338,7 @@ function ManualPage() {
             <KnustEmblem size={36} />
             <div>
               <h1 className="text-base sm:text-lg font-bold leading-tight">
-                KNUST-ATTENDANCE-APP System Manual
+                KNUST ATTENDANCE APP System Manual
               </h1>
               <p className="text-xs text-muted-foreground hidden sm:block">
                 Complete walkthrough for lecturers, administrators & students
@@ -385,7 +385,7 @@ function ManualPage() {
                 Official Documentation
               </Badge>
               <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                Welcome to the KNUST-ATTENDANCE-APP Knowledge Base
+                Welcome to the KNUST ATTENDANCE APP Knowledge Base
               </h2>
               <p className="text-sm sm:text-base text-primary-foreground/85 leading-relaxed">
                 Find detailed explanations for every tool in the suite: session creation, QR

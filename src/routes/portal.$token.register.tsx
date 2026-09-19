@@ -47,13 +47,13 @@ export const Route = createFileRoute("/portal/$token/register")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Student Registration — KNUST-ATTENDANCE-APP" },
+      { title: "Student Registration — KNUST ATTENDANCE APP" },
       {
         name: "description",
         content:
           "New students register themselves and instantly receive their personal KNUST attendance QR code.",
       },
-      { property: "og:title", content: "Student Registration — KNUST-ATTENDANCE-APP" },
+      { property: "og:title", content: "Student Registration — KNUST ATTENDANCE APP" },
       {
         property: "og:description",
         content: "Register once and get your personal attendance QR code.",

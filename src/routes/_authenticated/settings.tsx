@@ -33,7 +33,7 @@ import {
 } from "@/lib/device-manager";
 
 export const Route = createFileRoute("/_authenticated/settings")({
-  head: () => ({ meta: [{ title: "Account Settings — KNUST-ATTENDANCE-APP" }] }),
+  head: () => ({ meta: [{ title: "Account Settings — KNUST ATTENDANCE APP" }] }),
   component: SettingsPage,
 });
 
@@ -162,7 +162,7 @@ function SettingsPage() {
           <div>
             <h1 className="text-2xl md:text-3xl font-bold">Account Settings</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Manage how you sign in to your QRoll account.
+              Manage how you sign in to your KNUST ATTENDANCE APP account.
             </p>
           </div>
           <div className="flex gap-2">

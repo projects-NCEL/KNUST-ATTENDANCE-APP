@@ -59,7 +59,7 @@ import { toast } from "sonner";
 import { getPublicOrigin } from "@/lib/public-origin";
 
 export const Route = createFileRoute("/_authenticated/sessions")({
-  head: () => ({ meta: [{ title: "Sessions — KNUST-ATTENDANCE-APP" }] }),
+  head: () => ({ meta: [{ title: "Sessions — KNUST ATTENDANCE APP" }] }),
   component: SessionsPage,
 });
 

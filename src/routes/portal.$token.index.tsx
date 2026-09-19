@@ -15,7 +15,7 @@ import { KnustEmblem } from "@/components/KnustEmblem";
 
 export const Route = createFileRoute("/portal/$token/")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Student QR Portal — KNUST-ATTENDANCE-APP" }] }),
+  head: () => ({ meta: [{ title: "Student QR Portal — KNUST ATTENDANCE APP" }] }),
   component: PortalPage,
 });
 

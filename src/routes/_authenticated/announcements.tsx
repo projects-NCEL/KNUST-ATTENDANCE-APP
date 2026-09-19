@@ -39,13 +39,13 @@ export const Route = createFileRoute("/_authenticated/announcements")({
   }),
   head: () => ({
     meta: [
-      { title: "Announcements & Assignments — QRoll" },
+      { title: "Announcements & Assignments — KNUST ATTENDANCE APP" },
       {
         name: "description",
         content:
           "Manage class announcements, deadlines, homework assignments and submission links in one unified portal.",
       },
-      { property: "og:title", content: "Announcements & Assignments — QRoll" },
+      { property: "og:title", content: "Announcements & Assignments — KNUST ATTENDANCE APP" },
       {
         property: "og:description",
         content:

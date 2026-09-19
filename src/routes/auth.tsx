@@ -17,7 +17,7 @@ import { KnustEmblem } from "@/components/KnustEmblem";
 import knustStudentsHero from "@/assets/knust-students-hero.jpg";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Sign in — KNUST-ATTENDANCE-APP" }] }),
+  head: () => ({ meta: [{ title: "Sign in — KNUST ATTENDANCE APP" }] }),
   component: AuthPage,
 });
 
@@ -86,7 +86,7 @@ function AuthPage() {
             <div className="size-10 rounded-full bg-white/10 flex items-center justify-center p-0.5 shadow-md border border-white/20">
               <KnustEmblem size={36} />
             </div>
-            <span className="font-bold text-xl tracking-tight text-white drop-shadow">KNUST-ATTENDANCE-APP</span>
+            <span className="font-bold text-xl tracking-tight text-white drop-shadow">KNUST ATTENDANCE APP</span>
           </Link>
           <Link to="/">
             <Button
@@ -114,7 +114,7 @@ function AuthPage() {
           </p>
         </div>
         <div className="relative z-10 text-xs text-white/70">
-          © {new Date().getFullYear()} KNUST-ATTENDANCE-APP
+          © {new Date().getFullYear()} KNUST ATTENDANCE APP
         </div>
       </div>
 
@@ -142,7 +142,7 @@ function AuthPage() {
                 <div className="size-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20">
                   <KnustEmblem size={28} />
                 </div>
-                <span className="truncate font-semibold drop-shadow text-white">KNUST-ATTENDANCE-APP</span>
+                <span className="truncate font-semibold drop-shadow text-white">KNUST ATTENDANCE APP</span>
               </Link>
               <Link to="/">
                 <Button variant="secondary" size="sm" className="shrink-0">
@@ -164,7 +164,7 @@ function AuthPage() {
           <div className="px-4 md:px-0">
             <Card className="border-border/60 shadow-lg">
               <CardHeader className="space-y-1 text-center pb-4">
-                <CardTitle className="text-2xl font-bold">Welcome to KNUST-ATTENDANCE-APP</CardTitle>
+                <CardTitle className="text-2xl font-bold">Welcome to KNUST ATTENDANCE APP</CardTitle>
                 <CardDescription>
                   Sign in to manage courses, attendance sessions, and student rolls.
                 </CardDescription>
@@ -273,7 +273,7 @@ function AuthPage() {
                     </Button>
 
                     <p className="text-center text-xs text-muted-foreground leading-relaxed pt-1">
-                      New to KNUST-ATTENDANCE-APP? Sign in with your Google account to automatically set up your
+                      New to KNUST ATTENDANCE APP? Sign in with your Google account to automatically set up your
                       lecturer profile in seconds.
                     </p>
 

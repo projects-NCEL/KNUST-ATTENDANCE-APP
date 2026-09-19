@@ -35,12 +35,12 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
       { title: "Dashboard — KNUST ATTENDANCE APP" },
       {
         name: "description",
-        content: "Live KNUST-ATTENDANCE-APP dashboard: students, courses, sessions and scan activity at a glance.",
+        content: "Live KNUST ATTENDANCE APP dashboard: students, courses, sessions and scan activity at a glance.",
       },
-      { property: "og:title", content: "Dashboard — KNUST-ATTENDANCE-APP" },
+      { property: "og:title", content: "Dashboard — KNUST ATTENDANCE APP" },
       {
         property: "og:description",
-        content: "Live KNUST-ATTENDANCE-APP dashboard: students, courses, sessions and scan activity at a glance.",
+        content: "Live KNUST ATTENDANCE APP dashboard: students, courses, sessions and scan activity at a glance.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -275,7 +275,7 @@ function Dashboard() {
           <div>
             <CardTitle className="text-base font-bold flex items-center gap-2">
               <CheckCircle2 className="size-5 text-primary" />
-              Quick 4-Step QRoll Workflow Guide
+              Quick 4-Step Attendance Workflow Guide
             </CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">
               Follow these simple steps to manage your classroom attendance from start to finish.

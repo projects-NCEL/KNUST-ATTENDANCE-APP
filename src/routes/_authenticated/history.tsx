@@ -33,13 +33,13 @@ import { exportToExcel, exportToCSV, exportToPDF } from "@/lib/exporters";
 export const Route = createFileRoute("/_authenticated/history")({
   head: () => ({
     meta: [
-      { title: "Academic History — KNUST-ATTENDANCE-APP" },
+      { title: "Academic History — KNUST ATTENDANCE APP" },
       {
         name: "description",
         content:
           "Search attendance history across every academic year and semester, including archived terms, and export historical course or student records.",
       },
-      { property: "og:title", content: "Academic History — KNUST-ATTENDANCE-APP" },
+      { property: "og:title", content: "Academic History — KNUST ATTENDANCE APP" },
       {
         property: "og:description",
         content:
@@ -47,7 +47,7 @@ export const Route = createFileRoute("/_authenticated/history")({
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "Academic History — QRoll" },
+      { name: "twitter:title", content: "Academic History — KNUST ATTENDANCE APP" },
       {
         name: "twitter:description",
         content: "Cross-semester attendance history and archive search.",
@@ -370,7 +370,7 @@ function HistoryPage() {
       termId === "all"
         ? "all-semesters"
         : (termLabel.get(termId) ?? "semester").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
-    return `qroll-history-${scope}-${term}`;
+    return `knust-attendance-history-${scope}-${term}`;
   };
 
   return (

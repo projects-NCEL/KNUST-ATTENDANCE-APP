@@ -42,13 +42,13 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/semesters")({
   head: () => ({
     meta: [
-      { title: "Semesters & Archive — QRoll" },
+      { title: "Semesters & Archive — KNUST ATTENDANCE APP" },
       {
         name: "description",
         content:
           "Organise courses by academic year and semester, mark the current semester, and archive completed semesters so their records are preserved permanently.",
       },
-      { property: "og:title", content: "Semesters & Archive — QRoll" },
+      { property: "og:title", content: "Semesters & Archive — KNUST ATTENDANCE APP" },
       {
         property: "og:description",
         content: "Academic year and semester management with permanent archiving.",
