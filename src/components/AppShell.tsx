@@ -290,9 +290,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        {/* Content area: well-proportioned responsive container with bottom padding for floating nav */}
-        <div className="flex-1 w-full max-w-[1400px] mx-auto p-3.5 sm:p-6 lg:p-8 pb-32 sm:pb-36 min-w-0">
+        {/* Content area: well-proportioned responsive container with generous bottom clearance on desktop/laptop for floating nav */}
+        <div className="flex-1 w-full max-w-[1400px] mx-auto p-3.5 sm:p-6 lg:p-8 pb-32 sm:pb-36 md:pb-52 lg:pb-60 xl:pb-64 min-w-0">
           {children}
+          {/* Explicit safe clearance buffer for desktop/laptop devices so bottom content is never obscured by the floating nav */}
+          <div className="hidden md:block h-16 lg:h-24 w-full pointer-events-none select-none" aria-hidden="true" />
         </div>
 
         {/* Tutor Dynamic Animated Quick Access Floating Bar */}

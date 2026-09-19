@@ -77,6 +77,48 @@ export const Route = createFileRoute("/student")({
 
 const STORE = "knust.student.session.v2";
 const BRAND_GREEN = "#00552b";
+const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+
+interface StoredStudentSession {
+  i: string;
+  p: string;
+  lastActive: number;
+}
+
+function saveStudentSession(index: string, pass: string) {
+  try {
+    const payload: StoredStudentSession = {
+      i: index.trim().toUpperCase(),
+      p: pass,
+      lastActive: Date.now(),
+    };
+    localStorage.setItem(STORE, JSON.stringify(payload));
+  } catch (err) {
+    console.warn("Failed to persist student session:", err);
+  }
+}
+
+function touchStudentActivity() {
+  try {
+    const raw = localStorage.getItem(STORE);
+    if (raw) {
+      const parsed: StoredStudentSession = JSON.parse(raw);
+      parsed.lastActive = Date.now();
+      localStorage.setItem(STORE, JSON.stringify(parsed));
+    }
+  } catch (e) {
+    console.debug("Activity touch skipped", e);
+  }
+}
+
+function clearStudentSession() {
+  try {
+    localStorage.removeItem(STORE);
+    sessionStorage.removeItem(STORE);
+  } catch (e) {
+    console.debug("Session clear error", e);
+  }
+}
 
 interface StudentMe {
   id: string;
@@ -218,17 +260,33 @@ function StudentPortalPage() {
     setTimeout(() => w.print(), 400);
   };
 
-  // Session auto-restore on page load
+  // Session auto-restore on page load with 14-day inactivity timeout
   useEffect(() => {
-    const raw = sessionStorage.getItem(STORE);
-    if (!raw) return;
     try {
-      const { i, p } = JSON.parse(raw);
-      if (i && p) {
-        void executeSignIn(i, p, true);
+      const raw = localStorage.getItem(STORE) || sessionStorage.getItem(STORE);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      const { i, p, lastActive } = parsed;
+
+      if (!i || !p) {
+        clearStudentSession();
+        return;
       }
+
+      const now = Date.now();
+      // If inactive for more than 14 days, sign out automatically
+      if (lastActive && now - lastActive > FOURTEEN_DAYS_MS) {
+        clearStudentSession();
+        toast.info("Your student session has expired after 14 days of inactivity. Please sign in again.");
+        return;
+      }
+
+      // Valid session: refresh lastActive timestamp in localStorage and execute sign in
+      saveStudentSession(i, p);
+      void executeSignIn(i, p, true);
     } catch {
-      sessionStorage.removeItem(STORE);
+      clearStudentSession();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -300,10 +358,7 @@ function StudentPortalPage() {
       }
 
       toast.success("✓ Registration complete! Your personal attendance pass is ready.");
-      sessionStorage.setItem(
-        STORE,
-        JSON.stringify({ i: data.student?.index_number || cleanIndex, p: regPassword }),
-      );
+      saveStudentSession(data.student?.index_number || cleanIndex, regPassword);
       setMe(data.student);
       setStep("login");
     } catch (err: any) {
@@ -328,6 +383,7 @@ function StudentPortalPage() {
   };
 
   const fetchStudentData = async (indexNum: string, pass: string) => {
+    touchStudentActivity();
     try {
       const data = await callApi({ action: "data", index: indexNum, password: pass });
       if (data.student) setMe(data.student);
@@ -358,7 +414,7 @@ function StudentPortalPage() {
         return false;
       }
 
-      sessionStorage.setItem(STORE, JSON.stringify({ i: indexNum, p: pass }));
+      saveStudentSession(indexNum, pass);
       setIndex(indexNum);
       setPassword(pass);
       setMe(data.student);
@@ -609,8 +665,8 @@ function StudentPortalPage() {
       }
 
       toast.success("Password changed successfully!");
-      // Update session storage with new password
-      sessionStorage.setItem(STORE, JSON.stringify({ i: index.trim(), p: newPassword }));
+      // Update persistent session with new password
+      saveStudentSession(index.trim(), newPassword);
       setPassword(newPassword);
       setCurrentPassword("");
       setNewPassword("");
@@ -622,7 +678,7 @@ function StudentPortalPage() {
   };
 
   const handleSignOut = () => {
-    sessionStorage.removeItem(STORE);
+    clearStudentSession();
     setMe(null);
     setPassword("");
     setConfirmPassword("");

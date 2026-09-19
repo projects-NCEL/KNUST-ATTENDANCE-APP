@@ -45,8 +45,10 @@ import {
   Mail,
   AlertTriangle,
   Pencil,
+  GraduationCap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { StudentPromotionModal } from "@/components/StudentPromotionModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,6 +75,7 @@ function StudentsPage() {
   const [tab, setTab] = useState<string>("all");
   const [open, setOpen] = useState(false);
   const [levelsOpen, setLevelsOpen] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
   const [newLevel, setNewLevel] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
   const [exportLevel, setExportLevel] = useState<string>("all");
@@ -855,6 +858,26 @@ function StudentsPage() {
               </div>
             </DialogContent>
           </Dialog>
+
+          <Button
+            variant="outline"
+            className="border-primary/40 text-primary hover:bg-primary/10 font-medium"
+            onClick={() => setPromoteOpen(true)}
+          >
+            <GraduationCap className="size-4 mr-1.5" />
+            Promote Classes
+          </Button>
+
+          <StudentPromotionModal
+            open={promoteOpen}
+            onOpenChange={setPromoteOpen}
+            students={students ?? []}
+            levels={levels}
+            onSuccess={() => {
+              qc.invalidateQueries({ queryKey: ["students"] });
+              qc.invalidateQueries({ queryKey: ["class-levels"] });
+            }}
+          />
 
           <AlertDialog>
             <AlertDialogTrigger asChild>

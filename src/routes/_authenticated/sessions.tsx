@@ -164,15 +164,24 @@ function SessionsPage() {
     );
   };
 
+  const courseSessions = (sessions ?? []).filter((s: any) => s.course_id === form.course_id);
+  const nextSessionNum = courseSessions.length + 1;
+
   const create = async () => {
     if (!form.course_id) return toast.error("Pick a course");
     const lat = form.latitude ?? null;
     const lng = form.longitude ?? null;
     const currentUid = firebaseAuth.currentUser?.uid;
+
+    const matchedSessions = (sessions ?? []).filter((s: any) => s.course_id === form.course_id);
+    const successionNum = matchedSessions.length + 1;
+    const autoTitle = form.title?.trim() || `Session ${successionNum}`;
+
     try {
       const docRef = await addDoc(collection(firestoreDb, "attendance_sessions"), {
         course_id: form.course_id,
-        title: form.title || null,
+        session_number: successionNum,
+        title: autoTitle,
         mode: form.mode,
         latitude: lat,
         longitude: lng,
@@ -183,7 +192,7 @@ function SessionsPage() {
         starts_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
       });
-      toast.success("Session created — reuse it every class day");
+      toast.success(`Session ${successionNum} created`);
       const chosenCourse = courses?.find((c: any) => c.id === form.course_id);
       fetch("/api/push/send", {
         method: "POST",
@@ -192,8 +201,8 @@ function SessionsPage() {
           courseId: form.course_id,
           payload: {
             type: "ATTENDANCE",
-            title: "Attendance Session Active",
-            body: `Attendance for ${chosenCourse?.code || "your class"} is now open. Tap to scan or check in.`,
+            title: `Session ${successionNum} Active`,
+            body: `Attendance for ${chosenCourse?.code || "your class"} (Session ${successionNum}) is now open. Tap to check in.`,
             url: `/check-in?session=${docRef.id}`,
             entityId: docRef.id,
             entityType: "attendance_session",
@@ -344,13 +353,29 @@ function SessionsPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="rounded-lg border bg-muted/40 p-3 flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">
+                    Succession Number
+                  </div>
+                  <div className="text-base font-bold text-primary">
+                    {form.course_id ? `Session ${nextSessionNum}` : "Select a course to auto-number"}
+                  </div>
+                </div>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">
+                  Auto-Numbered
+                </span>
+              </div>
               <div>
-                <Label>Title (optional)</Label>
+                <Label>Topic / Description (optional)</Label>
                 <Input
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="Week 4 lecture"
+                  placeholder={form.course_id ? `e.g. Session ${nextSessionNum} or Lecture topic` : "e.g. Logic Gates"}
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Sessions are automatically numbered in order (Session 1, 2, 3...) for tracking and reports.
+                </p>
               </div>
               <div>
                 <Label>Attendance method</Label>
@@ -411,9 +436,18 @@ function SessionsPage() {
           <Card key={s.id}>
             <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
               <div>
-                <div className="font-semibold">
-                  {s.courses?.code} · {s.courses?.title}
-                  {s.courses?.level ? ` · L${s.courses.level}` : ""}
+                <div className="font-semibold flex items-center gap-2 flex-wrap">
+                  <span>
+                    {s.courses?.code} · {s.courses?.title}
+                    {s.courses?.level ? ` · L${s.courses.level}` : ""}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                    {s.session_number
+                      ? `Session ${s.session_number}`
+                      : s.title && s.title.toLowerCase().startsWith("session")
+                        ? s.title
+                        : "Session"}
+                  </span>
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {s.title ?? "—"} · last opened {new Date(s.starts_at).toLocaleString()} ·{" "}

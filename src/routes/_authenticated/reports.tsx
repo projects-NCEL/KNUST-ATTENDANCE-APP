@@ -218,11 +218,9 @@ function ReportsPage() {
     return Array.from(set).sort();
   }, [raw]);
 
-  const weekOfDay = (d: string) => {
-    if (!allDays.length) return 1;
-    const first = new Date(allDays[0] + "T00:00:00").getTime();
-    const diff = new Date(d + "T00:00:00").getTime() - first;
-    return Math.max(1, Math.floor(diff / (7 * 24 * 60 * 60 * 1000)) + 1);
+  const sessionNumOfDay = (d: string) => {
+    const idx = allDays.indexOf(d);
+    return idx >= 0 ? idx + 1 : 1;
   };
 
   const activeDays = useMemo(() => {
@@ -304,7 +302,7 @@ function ReportsPage() {
       .sort((a, b) => a.full_name.localeCompare(b.full_name));
 
     return { rows, days: activeDays };
-  }, [raw, courseId, activeDays, maxMisses, gradeWeight]);
+  }, [raw, courseId, courses, activeDays, maxMisses, gradeWeight]);
 
   const visibleRows = useMemo(() => {
     if (!report) return [];
@@ -352,7 +350,7 @@ function ReportsPage() {
       scanned.get(rec.student_id)!.add(d);
     }
 
-    const dayHeaders = allDays.map((d) => `W${weekOfDay(d)} · ${prettyDay(d)}`);
+    const dayHeaders = allDays.map((d, idx) => `Session ${idx + 1} (${prettyDay(d)})`);
     const headers = [
       "Name",
       "Index Number",
@@ -480,12 +478,12 @@ function ReportsPage() {
       "Check-in Time": s.time,
     }));
 
-    const filename = `${courseLabel?.code ?? "Course"}-Session-W${weekOfDay(target)}-${target}`;
+    const filename = `${courseLabel?.code ?? "Course"}-Session-${sessionNumOfDay(target)}-${target}`;
     if (fmt === "xlsx") exportToExcel(rows, filename);
     else if (fmt === "csv") exportToCSV(rows, filename);
     else {
       exportToPDF(
-        `${courseLabel?.code} — ${courseLabel?.title} (Session: Week ${weekOfDay(target)} · ${prettyDay(target)})`,
+        `${courseLabel?.code} — ${courseLabel?.title} (Session ${sessionNumOfDay(target)} · ${prettyDay(target)})`,
         headers,
         rows.map((r) => headers.map((h) => r[h] ?? "")),
         filename,
@@ -539,15 +537,15 @@ function ReportsPage() {
           </div>
           {mode === "daily" && (
             <div>
-              <Label className="text-xs text-muted-foreground">Week / day</Label>
+              <Label className="text-xs text-muted-foreground">Class session</Label>
               <Select value={day} onValueChange={setDay}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pick a class day" />
+                  <SelectValue placeholder="Pick a class session" />
                 </SelectTrigger>
                 <SelectContent>
                   {allDays.map((d) => (
                     <SelectItem key={d} value={d}>
-                      Week {weekOfDay(d)} · {prettyDay(d)}
+                      Session {sessionNumOfDay(d)} · {prettyDay(d)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -668,7 +666,7 @@ function ReportsPage() {
                 <SelectContent>
                   {allDays.map((d) => (
                     <SelectItem key={d} value={d}>
-                      Week {weekOfDay(d)} · {prettyDay(d)}
+                      Session {sessionNumOfDay(d)} · {prettyDay(d)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -746,8 +744,8 @@ function ReportsPage() {
                     <th className="p-3">Level</th>
                     {report.days.map((d) => (
                       <th key={d} className="p-3 text-center whitespace-nowrap text-xs">
-                        <div className="font-semibold text-primary">Week {weekOfDay(d)}</div>
-                        <div>{prettyDay(d)}</div>
+                        <div className="font-semibold text-primary">Session {sessionNumOfDay(d)}</div>
+                        <div className="text-muted-foreground">{prettyDay(d)}</div>
                       </th>
                     ))}
                     <th className="p-3 text-center">Scans</th>
