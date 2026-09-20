@@ -2,14 +2,12 @@ import { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -21,15 +19,16 @@ import {
   ArrowRight,
   RotateCcw,
   Search,
-  Users,
-  CheckCircle2,
-  AlertTriangle,
   GraduationCap,
   Sparkles,
+  Check,
+  X,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { doc, writeBatch, collection, addDoc, getDocs, query, where } from "firebase/firestore";
 import { firestoreDb, firebaseAuth } from "@/integrations/firebase/config";
+import { useAuth } from "@/lib/auth";
 
 interface StudentPromotionModalProps {
   open: boolean;
@@ -46,23 +45,25 @@ export function StudentPromotionModal({
   levels,
   onSuccess,
 }: StudentPromotionModalProps) {
-  // Promotion mode: "cascade" (all classes step up) or "single" (one specific class)
+  const { user } = useAuth();
+  const currentUid = user?.id || firebaseAuth.currentUser?.uid;
+
+  // Mode: "cascade" (all classes step up) or "single" (one class)
   const [mode, setMode] = useState<"cascade" | "single">("cascade");
   const [sourceLevel, setSourceLevel] = useState<string>(levels[0] || "100");
   const [targetLevel, setTargetLevel] = useState<string>(levels[1] || "200");
-  const [graduatedLabel, setGraduatedLabel] = useState<string>("Graduated");
 
-  // IDs of students selected to REPEAT (stay in their current class)
+  // IDs of students marked to repeat
   const [repeatIds, setRepeatIds] = useState<Set<string>>(new Set());
 
-  // Search & view filter
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterLevel, setFilterLevel] = useState<string>("all");
-  const [decisionFilter, setDecisionFilter] = useState<"all" | "promoting" | "repeating">("all");
+  // Search & filters
+  const [search, setSearch] = useState("");
+  const [levelFilter, setLevelFilter] = useState<string>("all");
+  const [showOnlyRepeaters, setShowOnlyRepeaters] = useState(false);
 
   const [executing, setExecuting] = useState(false);
 
-  // Sorted levels array
+  // Sorted levels list (e.g. 100, 200, 300, 400)
   const sortedLevels = useMemo(() => {
     return [...levels].sort((a, b) => {
       const an = parseInt(a, 10),
@@ -72,40 +73,37 @@ export function StudentPromotionModal({
     });
   }, [levels]);
 
-  // Determine destination level for a given current level in cascade mode
+  const firstLevel = sortedLevels[0] || "100";
+
+  // Destination level in cascade mode
   const getNextLevelCascade = (currentLvl: string): string => {
     const idx = sortedLevels.indexOf(currentLvl);
     if (idx === -1) return currentLvl;
-    if (idx === sortedLevels.length - 1) {
-      return graduatedLabel;
-    }
+    if (idx === sortedLevels.length - 1) return "Graduated";
     return sortedLevels[idx + 1];
   };
 
-  // Determine target for any student based on mode
-  const getStudentTargetLevel = (student: any): string => {
-    const current = String(student.level || "").trim();
+  const getTargetForStudent = (student: any): string => {
+    const lvl = String(student.level || "").trim();
     if (mode === "single") {
-      return current === sourceLevel ? targetLevel : current;
+      return lvl === sourceLevel ? targetLevel : lvl;
     }
-    return getNextLevelCascade(current);
+    return getNextLevelCascade(lvl);
   };
 
-  // Filter students eligible for promotion in the current configuration
+  // Eligible students
   const eligibleStudents = useMemo(() => {
     return (students ?? []).filter((s) => {
-      if (mode === "single") {
-        return String(s.level) === sourceLevel;
-      }
+      if (mode === "single") return String(s.level) === sourceLevel;
       return sortedLevels.includes(String(s.level));
     });
   }, [students, mode, sourceLevel, sortedLevels]);
 
-  // Filtered view list for the student review table
-  const displayStudents = useMemo(() => {
+  // Filtered students for touch list
+  const filteredStudents = useMemo(() => {
     let list = eligibleStudents;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
       list = list.filter(
         (s) =>
           s.full_name?.toLowerCase().includes(q) ||
@@ -113,119 +111,77 @@ export function StudentPromotionModal({
           s.program?.toLowerCase().includes(q),
       );
     }
-    if (filterLevel !== "all") {
-      list = list.filter((s) => String(s.level) === filterLevel);
+    if (mode === "cascade" && levelFilter !== "all") {
+      list = list.filter((s) => String(s.level) === levelFilter);
     }
-    if (decisionFilter === "repeating") {
+    if (showOnlyRepeaters) {
       list = list.filter((s) => repeatIds.has(s.id));
-    } else if (decisionFilter === "promoting") {
-      list = list.filter((s) => !repeatIds.has(s.id));
     }
     return list;
-  }, [eligibleStudents, searchQuery, filterLevel, decisionFilter, repeatIds]);
+  }, [eligibleStudents, search, levelFilter, showOnlyRepeaters, repeatIds, mode]);
 
-  // Toggle repeating status for an individual student
-  const toggleRepeat = (studentId: string) => {
+  // Toggle repeating status
+  const toggleRepeat = (id: string) => {
     setRepeatIds((prev) => {
       const next = new Set(prev);
-      if (next.has(studentId)) {
-        next.delete(studentId);
-      } else {
-        next.add(studentId);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
 
-  // Bulk actions for visible students
-  const markFilteredToRepeat = () => {
-    setRepeatIds((prev) => {
-      const next = new Set(prev);
-      displayStudents.forEach((s) => next.add(s.id));
-      return next;
-    });
-    toast.info(`Marked ${displayStudents.length} student(s) to repeat`);
-  };
-
-  const markFilteredToPromote = () => {
-    setRepeatIds((prev) => {
-      const next = new Set(prev);
-      displayStudents.forEach((s) => next.delete(s.id));
-      return next;
-    });
-    toast.info(`Marked ${displayStudents.length} student(s) to promote`);
-  };
-
-  const clearAllRepeaters = () => {
-    setRepeatIds(new Set());
-    toast.info("Reset all students to promote");
-  };
-
-  // Stats
-  const totalEligible = eligibleStudents.length;
   const repeatCount = eligibleStudents.filter((s) => repeatIds.has(s.id)).length;
-  const promoteCount = totalEligible - repeatCount;
-
-  // First class info (e.g. Level 100)
-  const firstLevel = sortedLevels[0] || "100";
-  const firstLevelStudents = (students ?? []).filter((s) => String(s.level) === firstLevel);
-  const firstLevelRepeaters = firstLevelStudents.filter((s) => repeatIds.has(s.id)).length;
+  const promoteCount = eligibleStudents.length - repeatCount;
 
   // Execute promotion
   const handlePromote = async () => {
     if (promoteCount === 0) {
-      toast.error("No students are set to be promoted");
+      toast.error("No students are scheduled to be promoted");
       return;
     }
 
     setExecuting(true);
-    const toastId = toast.loading("Executing class promotions...");
-    const currentUid = firebaseAuth.currentUser?.uid;
+    const toastId = toast.loading("Promoting students...");
 
     try {
-      // 1. Prepare student updates
-      // Students to update: eligible students who are NOT in repeatIds
       const studentsToPromote = eligibleStudents.filter((s) => !repeatIds.has(s.id));
 
-      // Group students by current level to promote from highest to lowest
-      // (This avoids potential collisions in level capacity)
-      const promotionPlan: { student: any; nextLevel: string }[] = studentsToPromote.map((s) => ({
+      const plan = studentsToPromote.map((s) => ({
         student: s,
-        nextLevel: getStudentTargetLevel(s),
+        nextLevel: getTargetForStudent(s),
       }));
 
-      // Sort plan so highest levels are updated first (e.g. 400 -> Graduated, then 300 -> 400, etc.)
-      promotionPlan.sort((a, b) => {
+      // Sort descending by level (e.g. 400 first, then 300, 200, 100)
+      plan.sort((a, b) => {
         const idxA = sortedLevels.indexOf(String(a.student.level));
         const idxB = sortedLevels.indexOf(String(b.student.level));
         return idxB - idxA;
       });
 
-      // 2. Ensure destination levels exist in class_levels if needed
-      if (currentUid && mode === "cascade" && graduatedLabel) {
+      // Ensure "Graduated" class level exists in DB if needed
+      if (currentUid && mode === "cascade") {
         try {
           const snap = await getDocs(
             query(
               collection(firestoreDb, "class_levels"),
               where("owner_id", "==", currentUid),
-              where("name", "==", graduatedLabel),
+              where("name", "==", "Graduated"),
             ),
           );
           if (snap.empty) {
             await addDoc(collection(firestoreDb, "class_levels"), {
-              name: graduatedLabel,
+              name: "Graduated",
               owner_id: currentUid,
             });
           }
         } catch {
-          // ignore error adding graduated level
+          // ignore
         }
       }
 
-      // 3. Write updates in Firestore batches of 200
-      const batchSize = 200;
-      for (let i = 0; i < promotionPlan.length; i += batchSize) {
-        const chunk = promotionPlan.slice(i, i + batchSize);
+      // Batch update in chunks of 200
+      for (let i = 0; i < plan.length; i += 200) {
+        const chunk = plan.slice(i, i + 200);
         const batch = writeBatch(firestoreDb);
         chunk.forEach(({ student, nextLevel }) => {
           const ref = doc(firestoreDb, "students", student.id);
@@ -235,21 +191,24 @@ export function StudentPromotionModal({
       }
 
       toast.success(
-        `✓ Promotion complete: ${promotionPlan.length} students promoted. ${repeatCount} student(s) retained to repeat.`,
+        `Promotion complete: ${plan.length} students promoted. ${repeatCount} repeating.`,
         { id: toastId },
       );
 
       if (mode === "cascade") {
+        const rem = eligibleStudents.filter(
+          (s) => String(s.level) === firstLevel && repeatIds.has(s.id),
+        ).length;
         toast.info(
-          `Level ${firstLevel} now has ${firstLevelRepeaters} repeater(s) and is ready for fresh student imports!`,
+          `Level ${firstLevel} now has ${rem} repeater(s) and is ready for fresh student imports!`,
         );
       }
 
       onSuccess();
       onOpenChange(false);
       setRepeatIds(new Set());
+      setSearch("");
     } catch (err: any) {
-      console.error("Promotion failed:", err);
       toast.error(err?.message || "Failed to execute promotions", { id: toastId });
     } finally {
       setExecuting(false);
@@ -258,109 +217,102 @@ export function StudentPromotionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-6 gap-4">
-        <DialogHeader>
+      <DialogContent className="w-[96vw] max-w-lg p-3 sm:p-4 max-h-[92dvh] sm:max-h-[86vh] flex flex-col gap-2 rounded-xl overflow-hidden shadow-2xl">
+        {/* COMPACT MOBILE-FRIENDLY HEADER */}
+        <DialogHeader className="pb-1.5 border-b text-left">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <GraduationCap className="size-5" />
+            <div className="p-1 rounded-md bg-primary/10 text-primary shrink-0">
+              <GraduationCap className="size-4 sm:size-5" />
             </div>
-            <div>
-              <DialogTitle className="text-xl font-bold">Students Class Promotion</DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                Bulk promote classes to their next academic level and easily select any students who
-                need to repeat.
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-sm sm:text-base font-bold truncate">
+                Promote Students
+              </DialogTitle>
+              <DialogDescription className="text-[11px] sm:text-xs text-muted-foreground truncate">
+                Advance classes. Tap any student to toggle Repeat status.
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        {/* MODE TABS */}
-        <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-lg text-sm">
+        {/* ULTRA-COMPACT SEGMENT MODE SELECTOR */}
+        <div className="grid grid-cols-2 gap-1 p-0.5 bg-muted/80 rounded-lg text-xs">
           <button
             type="button"
-            className={`py-2 px-3 rounded-md font-medium text-xs transition-all flex items-center justify-center gap-2 ${
+            className={`py-1 px-2 rounded font-medium transition-all flex items-center justify-center gap-1 text-[11px] sm:text-xs ${
               mode === "cascade"
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-background text-foreground shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground"
             }`}
             onClick={() => setMode("cascade")}
           >
-            <Sparkles className="size-3.5" />
-            Academic Year Cascade (All Classes Roll-Over)
+            <Sparkles className="size-3 text-primary" />
+            All Classes (Roll-Over)
           </button>
           <button
             type="button"
-            className={`py-2 px-3 rounded-md font-medium text-xs transition-all flex items-center justify-center gap-2 ${
+            className={`py-1 px-2 rounded font-medium transition-all flex items-center justify-center gap-1 text-[11px] sm:text-xs ${
               mode === "single"
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-background text-foreground shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground"
             }`}
             onClick={() => setMode("single")}
           >
-            <ArrowRight className="size-3.5" />
-            Promote Single Class
+            <ArrowRight className="size-3" />
+            Single Class
           </button>
         </div>
 
-        {/* PROGRESSION OVERVIEW */}
+        {/* COMPACT PROGRESSION PATHWAY */}
         {mode === "cascade" ? (
-          <div className="rounded-lg border bg-primary/5 border-primary/20 p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-primary uppercase tracking-wider">
-                Full Academic Roll-over Pathway
-              </span>
-              <span className="text-xs text-muted-foreground">
-                First class (Level {firstLevel}) clears for fresh student imports
+          <div className="rounded-md border bg-muted/20 px-2.5 py-1.5 text-[11px]">
+            <div className="flex items-center justify-between gap-1 text-muted-foreground mb-1">
+              <span className="font-medium text-foreground">Progression</span>
+              <span className="text-primary font-semibold truncate">
+                L{firstLevel} clears for new admissions
               </span>
             </div>
-            <div className="flex items-center gap-2 flex-wrap py-1">
-              {sortedLevels.map((lvl, i) => {
-                const count = (students ?? []).filter((s) => String(s.level) === lvl).length;
-                const next = getNextLevelCascade(lvl);
-                return (
-                  <div key={lvl} className="flex items-center gap-2 text-xs">
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-background border shadow-xs">
-                      <span className="font-bold text-foreground">Level {lvl}</span>
-                      <span className="text-muted-foreground">({count})</span>
-                      <ArrowRight className="size-3 text-muted-foreground" />
-                      <span className="font-semibold text-primary">{next}</span>
-                    </div>
-                    {i < sortedLevels.length - 1 && <span className="text-muted-foreground">·</span>}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1 border-t border-primary/10">
-              <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />
-              <span>
-                <b>Level {firstLevel} Fresh Intake:</b> All students in Level {firstLevel} move to{" "}
-                {sortedLevels[1] || "Level 200"}, leaving Level {firstLevel} ready for incoming
-                freshmen imports (except students marked to repeat).
-              </span>
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5 font-medium">
+              {sortedLevels.map((lvl, i) => (
+                <span key={lvl} className="flex items-center gap-1 shrink-0">
+                  <span className="px-1.5 py-0.5 rounded bg-background border text-foreground text-[10px]">
+                    L{lvl}
+                  </span>
+                  <ArrowRight className="size-2.5 text-muted-foreground shrink-0" />
+                  {i === sortedLevels.length - 1 && (
+                    <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold text-[10px]">
+                      Graduated
+                    </span>
+                  )}
+                </span>
+              ))}
             </div>
           </div>
         ) : (
-          <div className="rounded-lg border bg-muted/40 p-3 grid sm:grid-cols-2 gap-3">
+          <div className="rounded-md border bg-muted/20 p-2 grid grid-cols-2 gap-2 text-xs">
             <div>
-              <Label className="text-xs text-muted-foreground">Source Class (moving from)</Label>
+              <span className="text-[10px] text-muted-foreground block mb-0.5 font-medium">
+                From Class
+              </span>
               <Select value={sourceLevel} onValueChange={setSourceLevel}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger className="h-7 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {sortedLevels.map((l) => (
                     <SelectItem key={l} value={l}>
-                      Level {l} ({(students ?? []).filter((s) => String(s.level) === l).length}{" "}
-                      students)
+                      Level {l} ({(students ?? []).filter((s) => String(s.level) === l).length})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Target Class (moving to)</Label>
+              <span className="text-[10px] text-muted-foreground block mb-0.5 font-medium">
+                To Class
+              </span>
               <Select value={targetLevel} onValueChange={setTargetLevel}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger className="h-7 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -376,205 +328,185 @@ export function StudentPromotionModal({
           </div>
         )}
 
-        {/* STATS BAR & QUICK ACTIONS */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-muted font-medium">
-              Total: <b>{totalEligible}</b> students
-            </span>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-medium">
-              Promoting: <b>{promoteCount}</b>
-            </span>
-            <span
-              className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                repeatCount > 0 ? "bg-amber-100 text-amber-900 font-bold" : "bg-muted text-muted-foreground"
-              }`}
-            >
-              Repeating: <b>{repeatCount}</b>
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs"
-              onClick={markFilteredToRepeat}
-              disabled={displayStudents.length === 0}
-            >
-              <RotateCcw className="size-3 mr-1 text-amber-600" />
-              Mark Filtered as Repeat
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs"
-              onClick={markFilteredToPromote}
-              disabled={displayStudents.length === 0}
-            >
-              <CheckCircle2 className="size-3 mr-1 text-emerald-600" />
-              Mark Filtered as Promote
-            </Button>
-            {repeatCount > 0 && (
-              <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={clearAllRepeaters}>
-                Reset All
-              </Button>
+        {/* SEARCH & FILTER CONTROLS */}
+        <div className="space-y-1.5">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2 size-3 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, index number..."
+              className="h-7 pl-7 pr-7 text-xs"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-3.5" />
+              </button>
             )}
           </div>
+
+          <div className="flex items-center justify-between gap-1 text-[11px]">
+            {mode === "cascade" ? (
+              <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
+                <button
+                  type="button"
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium shrink-0 transition-colors ${
+                    levelFilter === "all"
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                  onClick={() => setLevelFilter("all")}
+                >
+                  All ({eligibleStudents.length})
+                </button>
+                {sortedLevels.map((l) => {
+                  const count = eligibleStudents.filter((s) => String(s.level) === l).length;
+                  return (
+                    <button
+                      key={l}
+                      type="button"
+                      className={`px-1.5 py-0.5 rounded text-[11px] font-medium shrink-0 transition-colors ${
+                        levelFilter === l
+                          ? "bg-primary text-primary-foreground font-semibold"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                      onClick={() => setLevelFilter(l)}
+                    >
+                      L{l} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-[11px] text-muted-foreground">
+                Showing {eligibleStudents.length} student{eligibleStudents.length === 1 ? "" : "s"}
+              </div>
+            )}
+
+            <button
+              type="button"
+              className={`px-2 py-0.5 rounded text-[11px] font-medium shrink-0 ml-auto transition-colors flex items-center gap-1 ${
+                showOnlyRepeaters
+                  ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 font-semibold"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+              onClick={() => setShowOnlyRepeaters(!showOnlyRepeaters)}
+            >
+              <RotateCcw className="size-2.5" />
+              Repeaters ({repeatCount})
+            </button>
+          </div>
         </div>
 
-        {/* SEARCH & FILTERS */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by student name or index number..."
-              className="pl-9 h-9 text-xs"
-            />
-          </div>
-          {mode === "cascade" && (
-            <Select value={filterLevel} onValueChange={setFilterLevel}>
-              <SelectTrigger className="w-[140px] h-9 text-xs">
-                <SelectValue placeholder="Filter by class" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Classes</SelectItem>
-                {sortedLevels.map((l) => (
-                  <SelectItem key={l} value={l}>
-                    Level {l}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* MOBILE-SLIM STUDENT LIST */}
+        <div className="flex-1 overflow-y-auto divide-y rounded-md border min-h-[170px] max-h-[44dvh] sm:max-h-[300px] bg-card">
+          {filteredStudents.map((s) => {
+            const isRepeating = repeatIds.has(s.id);
+            const target = getTargetForStudent(s);
+            const targetLabel = target === "Graduated" ? "Grad" : `L${target}`;
+
+            return (
+              <div
+                key={s.id}
+                onClick={() => toggleRepeat(s.id)}
+                className={`px-2.5 py-2 flex items-center justify-between gap-2 text-xs cursor-pointer transition-colors active:bg-muted/60 hover:bg-muted/30 ${
+                  isRepeating ? "bg-amber-500/10 dark:bg-amber-500/15" : ""
+                }`}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-foreground truncate text-xs">
+                    {s.full_name}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 truncate">
+                    <span className="font-mono text-[10px]">{s.index_number}</span>
+                    <span className="text-muted-foreground/50">·</span>
+                    <span className="font-medium text-foreground/80">L{s.level}</span>
+                    {s.program && (
+                      <>
+                        <span className="text-muted-foreground/50">·</span>
+                        <span className="truncate max-w-[120px]">{s.program}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* SLIM BADGE (FIT ON 320PX-360PX MOBILE) */}
+                <div className="shrink-0">
+                  {isRepeating ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-900 border border-amber-300 dark:text-amber-200">
+                      <RotateCcw className="size-2.5 text-amber-600 dark:text-amber-400" />
+                      Repeat
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-800 border border-emerald-300/80 dark:text-emerald-300">
+                      <Check className="size-2.5 text-emerald-600 dark:text-emerald-400" />
+                      → {targetLabel}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {filteredStudents.length === 0 && (
+            <div className="p-6 text-center text-xs text-muted-foreground flex flex-col items-center justify-center gap-1">
+              <Users className="size-5 text-muted-foreground/40 mb-1" />
+              <span>
+                {showOnlyRepeaters
+                  ? "No students marked to repeat yet."
+                  : "No matching students found."}
+              </span>
+              <span className="text-[10px]">
+                {showOnlyRepeaters
+                  ? "Tap any student in the list to flag them as repeating."
+                  : "Try clearing your search query."}
+              </span>
+            </div>
           )}
-          <Select
-            value={decisionFilter}
-            onValueChange={(v) => setDecisionFilter(v as "all" | "promoting" | "repeating")}
-          >
-            <SelectTrigger className="w-[150px] h-9 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Decisions ({eligibleStudents.length})</SelectItem>
-              <SelectItem value="promoting">Promoting ({promoteCount})</SelectItem>
-              <SelectItem value="repeating">Repeating ({repeatCount})</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
-        {/* STUDENT SELECTION TABLE */}
-        <div className="flex-1 overflow-y-auto border rounded-lg min-h-[220px] max-h-[340px]">
-          <table className="w-full text-xs">
-            <thead className="bg-muted/60 sticky top-0 z-10 text-left border-b">
-              <tr>
-                <th className="p-2.5">Student</th>
-                <th className="p-2.5">Index Number</th>
-                <th className="p-2.5">Current Class</th>
-                <th className="p-2.5">Destination Class</th>
-                <th className="p-2.5 text-right">Promotion Decision</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayStudents.map((s) => {
-                const isRepeating = repeatIds.has(s.id);
-                const destination = isRepeating
-                  ? `Level ${s.level} (Repeat)`
-                  : getStudentTargetLevel(s);
-
-                return (
-                  <tr
-                    key={s.id}
-                    className={`border-b transition-colors hover:bg-muted/40 cursor-pointer ${
-                      isRepeating ? "bg-amber-50/70 dark:bg-amber-950/20" : ""
-                    }`}
-                    onClick={() => toggleRepeat(s.id)}
-                  >
-                    <td className="p-2.5 font-medium">
-                      <div className="font-semibold text-foreground">{s.full_name}</div>
-                      {s.program && (
-                        <div className="text-[11px] text-muted-foreground">{s.program}</div>
-                      )}
-                    </td>
-                    <td className="p-2.5 font-mono">{s.index_number}</td>
-                    <td className="p-2.5">
-                      <span className="font-medium">Level {s.level}</span>
-                    </td>
-                    <td className="p-2.5">
-                      <span
-                        className={`font-semibold ${
-                          isRepeating ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"
-                        }`}
-                      >
-                        {destination}
-                      </span>
-                    </td>
-                    <td className="p-2.5 text-right">
-                      {isRepeating ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs border-amber-300 bg-amber-100 text-amber-900 hover:bg-amber-200"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleRepeat(s.id);
-                          }}
-                        >
-                          <RotateCcw className="size-3 mr-1" />
-                          Repeating Level {s.level}
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleRepeat(s.id);
-                          }}
-                        >
-                          <ArrowRight className="size-3 mr-1" />
-                          Promote to {getStudentTargetLevel(s)}
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-              {displayStudents.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                    No students match the current filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* BOTTOM ACTION */}
-        <div className="flex items-center justify-between pt-2 border-t flex-wrap gap-2">
-          <div className="text-xs text-muted-foreground">
-            Click any row or button to toggle between <b>Promote</b> and <b>Repeat</b>.
+        {/* SLIM STICKY FOOTER */}
+        <div className="pt-2 border-t flex flex-col gap-1.5">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground px-0.5">
+            <span>
+              <b className="text-foreground font-semibold">{promoteCount}</b> to promote ·{" "}
+              <b className="text-amber-700 dark:text-amber-400 font-semibold">{repeatCount}</b> repeating
+            </span>
+            {repeatCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setRepeatIds(new Set())}
+                className="text-[11px] text-muted-foreground hover:text-foreground underline"
+              >
+                Reset repeaters
+              </button>
+            )}
           </div>
+
           <div className="flex items-center gap-2">
             <Button
+              type="button"
               variant="outline"
+              size="sm"
+              className="w-1/3 text-xs h-8"
               onClick={() => onOpenChange(false)}
               disabled={executing}
-              className="text-xs"
             >
               Cancel
             </Button>
             <Button
+              type="button"
+              size="sm"
+              className="w-2/3 text-xs h-8 font-semibold"
               onClick={handlePromote}
               disabled={executing || promoteCount === 0}
-              className="text-xs font-semibold"
             >
-              <GraduationCap className="size-4 mr-1.5" />
-              {executing
-                ? "Promoting..."
-                : `Execute Promotion (${promoteCount} Promoted, ${repeatCount} Repeating)`}
+              <GraduationCap className="size-3.5 mr-1" />
+              {executing ? "Promoting..." : `Promote (${promoteCount})`}
             </Button>
           </div>
         </div>

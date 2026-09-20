@@ -202,12 +202,19 @@ export function listenToDeviceStatus(
 ): () => void {
   const docId = `${userId}_${deviceId}`;
   const ref = doc(firestoreDb, "user_devices", docId);
-  return onSnapshot(ref, (snap) => {
-    if (snap.exists()) {
-      const data = snap.data();
-      if (data?.status === "revoked") {
-        onRevoked();
+  return onSnapshot(
+    ref,
+    (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data?.status === "revoked") {
+          onRevoked();
+        }
       }
-    }
-  });
+    },
+    (err) => {
+      // Gracefully handle listener errors (network glitches or transitions)
+      console.warn("Device status listener notice:", err.message);
+    },
+  );
 }

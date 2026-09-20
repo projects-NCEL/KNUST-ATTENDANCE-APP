@@ -31,9 +31,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Users, Trash2, Pencil, GraduationCap } from "lucide-react";
+import { Plus, Users, Trash2, Pencil, GraduationCap, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { isStudentInCourse } from "@/lib/class-matching";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/courses")({
   head: () => ({ meta: [{ title: "Courses — KNUST ATTENDANCE APP" }] }),
@@ -56,7 +57,8 @@ function CoursesPage() {
   });
   const [editing, setEditing] = useState<any | null>(null);
 
-  const currentUid = firebaseAuth.currentUser?.uid;
+  const { user, loading: authLoading } = useAuth();
+  const currentUid = user?.id || firebaseAuth.currentUser?.uid;
 
   const { data: depts } = useQuery({
     queryKey: ["departments", currentUid],
@@ -103,7 +105,7 @@ function CoursesPage() {
     enabled: !!currentUid,
   });
 
-  const { data: courses } = useQuery({
+  const { data: courses, isLoading: coursesLoading } = useQuery({
     queryKey: ["courses", currentUid, depts, years],
     queryFn: async () => {
       if (!currentUid) return [];
@@ -376,89 +378,96 @@ function CoursesPage() {
         </Dialog>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {(courses ?? []).map((c: any) => (
-          <Card key={c.id}>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="text-xs text-muted-foreground">{c.code}</div>
-                  <CardTitle className="text-base">{c.title}</CardTitle>
-                </div>
-                <span className="text-xs bg-gold text-gold-foreground px-2 py-0.5 rounded">
-                  L{c.level}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground space-y-1">
-              <div>
-                {c.departments?.name ?? "No department"} · {c.semester} Sem
-              </div>
-              <div>
-                {c.academic_years?.name ?? "—"} · {c.credit_hours} credits
-              </div>
-              <div className="text-xs text-foreground font-medium flex items-center gap-1.5 pt-1">
-                <Users className="size-3.5 text-primary" />
-                <span>
-                  {c.populationCount ?? 0} {(c.populationCount ?? 0) === 1 ? "student" : "students"}{" "}
-                  in class
-                </span>
-                {c.registeredCount > 0 && c.registeredCount !== c.populationCount && (
-                  <span className="text-muted-foreground font-normal">
-                    ({c.registeredCount} enrolled)
+      {authLoading || (coursesLoading && !courses) ? (
+        <div className="p-12 text-center flex flex-col items-center justify-center gap-3">
+          <Loader2 className="size-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading courses...</p>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {(courses ?? []).map((c: any) => (
+            <Card key={c.id}>
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="text-xs text-muted-foreground">{c.code}</div>
+                    <CardTitle className="text-base">{c.title}</CardTitle>
+                  </div>
+                  <span className="text-xs bg-gold text-gold-foreground px-2 py-0.5 rounded">
+                    L{c.level}
                   </span>
-                )}
-              </div>
-              <div className="flex gap-2 pt-3">
-                <Link
-                  to={"/courses/$courseId" as string}
-                  params={{ courseId: c.id } as any}
-                  className="flex-1"
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    title="Manage students enrolled in this course"
+                </div>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground space-y-1">
+                <div>
+                  {c.departments?.name ?? "No department"} · {c.semester} Sem
+                </div>
+                <div>
+                  {c.academic_years?.name ?? "—"} · {c.credit_hours} credits
+                </div>
+                <div className="text-xs text-foreground font-medium flex items-center gap-1.5 pt-1">
+                  <Users className="size-3.5 text-primary" />
+                  <span>
+                    {c.populationCount ?? 0} {(c.populationCount ?? 0) === 1 ? "student" : "students"}{" "}
+                    in class
+                  </span>
+                  {c.registeredCount > 0 && c.registeredCount !== c.populationCount && (
+                    <span className="text-muted-foreground font-normal">
+                      ({c.registeredCount} enrolled)
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-2 pt-3">
+                  <Link
+                    to={"/courses/$courseId" as string}
+                    params={{ courseId: c.id } as any}
+                    className="flex-1"
                   >
-                    <Users className="size-3 mr-1" />
-                    Roster ({c.populationCount ?? 0})
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      title="Manage students enrolled in this course"
+                    >
+                      <Users className="size-3 mr-1" />
+                      Roster ({c.populationCount ?? 0})
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      setEditing({
+                        ...c,
+                        department_id: c.department_id ?? "",
+                        academic_year_id: c.academic_year_id ?? "",
+                      })
+                    }
+                    title="Edit course"
+                  >
+                    <Pencil className="size-4" />
                   </Button>
-                </Link>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() =>
-                    setEditing({
-                      ...c,
-                      department_id: c.department_id ?? "",
-                      academic_year_id: c.academic_year_id ?? "",
-                    })
-                  }
-                  title="Edit course"
-                >
-                  <Pencil className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => remove(c.id)}
-                  title="Delete course"
-                >
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {!courses?.length && (
-          <Card>
-            <CardContent className="p-8 text-center text-muted-foreground">
-              No courses yet
-            </CardContent>
-          </Card>
-        )}
-      </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => remove(c.id)}
+                    title="Delete course"
+                  >
+                    <Trash2 className="size-4 text-destructive" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {!courses?.length && (
+            <Card className="col-span-full">
+              <CardContent className="p-8 text-center text-muted-foreground">
+                No courses yet. Click "+ New course" above to add your first course.
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
         <DialogContent>

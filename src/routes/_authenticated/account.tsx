@@ -97,14 +97,26 @@ const ACCOUNT_SECTIONS = [
     ],
   },
   {
-    category: "Students Directory",
-    description: "Student rosters, biometric identification, and student QR ID cards.",
+    category: "Students Directory & Enrollment",
+    description: "Student rosters, promotion roll-overs, and student portal access links.",
     items: [
       {
         to: "/students",
         label: "Students Directory",
         desc: "Enrolled student rosters, index numbers, and printable scannable QR cards.",
         icon: Users,
+      },
+      {
+        to: "/promotion",
+        label: "Student Promotion",
+        desc: "Batch advance classes to next levels with student repeater retention.",
+        icon: GraduationCap,
+      },
+      {
+        to: "/portal-links",
+        label: "Student Portal & Links",
+        desc: "Shareable portal URLs and QR codes for student attendance cards and lecture check-ins.",
+        icon: Link2,
       },
     ],
   },

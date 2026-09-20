@@ -864,30 +864,6 @@ function StudentPortalPage() {
 
               {/* Right Column / Auth Form Area */}
               <div className="md:col-span-7 flex flex-col justify-center bg-card">
-                {/* Mobile Hero Image Banner */}
-                <div className="relative md:hidden h-28 overflow-hidden bg-[#001f0f]">
-                  <img
-                    src={knustStudentsHero}
-                    alt="KNUST university students"
-                    className="absolute inset-0 h-full w-full object-cover object-center brightness-[0.78]"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-[#00381c]/60 to-black/30" />
-                  <div className="relative z-10 h-full flex items-center gap-3 px-4 text-white">
-                    <div className="size-9 rounded-full bg-white/10 backdrop-blur-xs flex items-center justify-center p-0.5 border border-white/25">
-                      <KnustEmblem size={30} />
-                    </div>
-                    <div>
-                      <h2 className="font-bold text-sm tracking-tight text-white">
-                        KNUST Student Portal
-                      </h2>
-                      <p className="text-[10px] text-white/80">
-                        Attendance, Coursework & Alerts
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="h-1.5 bg-gradient-to-r from-[#00381c] via-[#00552b] to-[#007a3d]" />
 
                 {/* Mode Selector Tabs */}

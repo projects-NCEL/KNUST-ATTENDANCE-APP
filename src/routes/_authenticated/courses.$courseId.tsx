@@ -19,8 +19,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Trash2, Users, UserCheck } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Users, UserCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/courses/$courseId")({
   component: CourseDetail,
@@ -31,7 +32,8 @@ function CourseDetail() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
 
-  const currentUid = firebaseAuth.currentUser?.uid;
+  const { user, loading: authLoading } = useAuth();
+  const currentUid = user?.id || firebaseAuth.currentUser?.uid;
 
   const { data: course, isLoading: courseLoading } = useQuery({
     queryKey: ["course", courseId, currentUid],
@@ -223,7 +225,18 @@ function CourseDetail() {
     }
   };
 
-  if (!courseLoading && !course) {
+  if (authLoading || (courseLoading && !course)) {
+    return (
+      <AppShell>
+        <div className="p-12 text-center flex flex-col items-center justify-center gap-3">
+          <Loader2 className="size-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading course details...</p>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!course) {
     return (
       <AppShell>
         <div className="p-8 text-center">

@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { clearQueue, isOnline, listQueued, queueScan, removeQueued } from "@/lib/offline-queue";
+import { useAuth } from "@/lib/auth";
 
 type Search = { session?: string };
 
@@ -90,7 +91,8 @@ function ScanPage() {
   const [pending, setPending] = useState(0);
   const [syncing, setSyncing] = useState(false);
 
-  const currentUid = firebaseAuth.currentUser?.uid;
+  const { user, loading: authLoading } = useAuth();
+  const currentUid = user?.id || firebaseAuth.currentUser?.uid;
 
   const { data: openSessions } = useQuery({
     queryKey: ["open-sessions", currentUid],

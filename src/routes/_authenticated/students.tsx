@@ -46,8 +46,10 @@ import {
   AlertTriangle,
   Pencil,
   GraduationCap,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
 import { StudentPromotionModal } from "@/components/StudentPromotionModal";
 import {
   AlertDialog,
@@ -92,7 +94,8 @@ function StudentsPage() {
   });
   const [editing, setEditing] = useState<any | null>(null);
 
-  const currentUid = firebaseAuth.currentUser?.uid;
+  const { user, loading: authLoading } = useAuth();
+  const currentUid = user?.id || firebaseAuth.currentUser?.uid;
 
   const { data: depts } = useQuery({
     queryKey: ["departments", currentUid],
@@ -107,7 +110,7 @@ function StudentsPage() {
     enabled: !!currentUid,
   });
 
-  const { data: students } = useQuery({
+  const { data: students, isLoading: loadingStudents } = useQuery({
     queryKey: ["students", currentUid, depts],
     queryFn: async () => {
       if (!currentUid) return [];
@@ -1020,7 +1023,12 @@ function StudentsPage() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {tab === "all" ? (
+          {authLoading || (loadingStudents && !students) ? (
+            <div className="p-12 text-center flex flex-col items-center justify-center gap-3">
+              <Loader2 className="size-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading students directory...</p>
+            </div>
+          ) : tab === "all" ? (
             <div className="divide-y">
               {levels.map((l: string) => (
                 <div key={l}>
