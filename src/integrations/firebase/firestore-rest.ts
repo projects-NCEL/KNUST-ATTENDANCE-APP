@@ -61,17 +61,73 @@ export function fromFirestoreDoc(doc: any): any {
   return result;
 }
 
+/** Cache store to minimize read units and gracefully survive quota limits */
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+const queryCache = new Map<string, CacheEntry<any[]>>();
+const docCache = new Map<string, CacheEntry<any>>();
+
+export function extractFirestoreErrorMessage(errPayload: any, fallback: string): string {
+  if (!errPayload) return fallback;
+  const item = Array.isArray(errPayload) ? errPayload[0] : errPayload;
+  const msg = item?.error?.message || item?.message;
+  if (typeof msg === "string" && msg.trim()) return msg;
+  return fallback;
+}
+
+export function isFirestoreQuotaError(status: number, message: string): boolean {
+  if (status === 429) return true;
+  const lower = (message || "").toLowerCase();
+  return (
+    lower.includes("quota limit exceeded") ||
+    lower.includes("quota exceeded") ||
+    lower.includes("resource_exhausted") ||
+    lower.includes("free daily read units") ||
+    lower.includes("read units per project")
+  );
+}
+
+/** Invalidate cached queries for a given collection */
+export function invalidateCache(collection: string) {
+  for (const key of queryCache.keys()) {
+    if (key.startsWith(`${collection}:`)) {
+      queryCache.delete(key);
+    }
+  }
+}
+
 /** Get a single document by collection and ID */
 export async function getDocRest(collection: string, docId: string): Promise<any | null> {
+  const cacheKey = `${collection}/${docId}`;
+  const now = Date.now();
+  const cached = docCache.get(cacheKey);
+  if (cached && now < cached.expiresAt) {
+    return cached.data;
+  }
+
   const url = `${BASE_URL}/${collection}/${encodeURIComponent(docId)}?key=${API_KEY}`;
   const res = await fetch(url);
   if (res.status === 404) return null;
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Failed to fetch doc ${collection}/${docId}`);
+    const rawMsg = extractFirestoreErrorMessage(err, `Failed to fetch doc ${collection}/${docId}`);
+    if (isFirestoreQuotaError(res.status, rawMsg)) {
+      if (cached) {
+        console.warn(`[Firestore REST] Serving cached doc ${cacheKey} due to quota limit.`);
+        return cached.data;
+      }
+      throw new Error(`Firestore quota exceeded: Free daily read units limit reached.`);
+    }
+    throw new Error(rawMsg);
   }
   const data = await res.json();
-  return fromFirestoreDoc(data);
+  const doc = fromFirestoreDoc(data);
+  if (doc) {
+    docCache.set(cacheKey, { data: doc, expiresAt: now + 45000 });
+  }
+  return doc;
 }
 
 /** Set or update a single document */
@@ -103,16 +159,32 @@ export async function setDocRest(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Failed to save doc ${collection}/${docId}`);
+    const rawMsg = extractFirestoreErrorMessage(err, `Failed to save doc ${collection}/${docId}`);
+    if (isFirestoreQuotaError(res.status, rawMsg)) {
+      throw new Error(`Firestore quota exceeded: Write failed due to project quota limit.`);
+    }
+    throw new Error(rawMsg);
   }
   const saved = await res.json();
-  return fromFirestoreDoc(saved);
+  const doc = fromFirestoreDoc(saved);
+
+  // Invalidate caches
+  invalidateCache(collection);
+  if (doc) {
+    docCache.set(`${collection}/${docId}`, { data: doc, expiresAt: Date.now() + 45000 });
+  }
+
+  return doc;
 }
 
 /** Delete a document */
 export async function deleteDocRest(collection: string, docId: string): Promise<boolean> {
   const url = `${BASE_URL}/${collection}/${encodeURIComponent(docId)}?key=${API_KEY}`;
   const res = await fetch(url, { method: "DELETE" });
+  if (res.ok) {
+    invalidateCache(collection);
+    docCache.delete(`${collection}/${docId}`);
+  }
   return res.ok;
 }
 
@@ -124,6 +196,13 @@ export async function queryCollectionRest(
     limit?: number;
   },
 ): Promise<any[]> {
+  const queryKey = `${collectionId}:${JSON.stringify(options || {})}`;
+  const now = Date.now();
+  const cached = queryCache.get(queryKey);
+  if (cached && now < cached.expiresAt) {
+    return cached.data;
+  }
+
   const structuredQuery: any = {
     from: [{ collectionId }],
   };
@@ -167,7 +246,17 @@ export async function queryCollectionRest(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Query on ${collectionId} failed`);
+    const rawMsg = extractFirestoreErrorMessage(err, `Query on ${collectionId} failed`);
+    if (isFirestoreQuotaError(res.status, rawMsg)) {
+      if (cached) {
+        console.warn(`[Firestore REST] Serving cached query for ${collectionId} due to quota limit.`);
+        return cached.data;
+      }
+      throw new Error(
+        `Firestore quota exceeded: Quota exceeded for quota metric 'Free daily read units per project (free tier database)'. Limits reset daily at 00:00 UTC.`,
+      );
+    }
+    throw new Error(rawMsg);
   }
 
   const list = await res.json();
@@ -175,8 +264,17 @@ export async function queryCollectionRest(
   for (const item of list) {
     if (item.document) {
       const doc = fromFirestoreDoc(item.document);
-      if (doc) results.push(doc);
+      if (doc) {
+        results.push(doc);
+        // Also prime single doc cache
+        docCache.set(`${collectionId}/${doc.id}`, { data: doc, expiresAt: now + 45000 });
+      }
     }
   }
+
+  // TTL: 10 minutes for departments (almost static), 60 seconds for others
+  const ttl = collectionId === "departments" ? 600000 : 60000;
+  queryCache.set(queryKey, { data: results, expiresAt: now + ttl });
+
   return results;
 }

@@ -39,7 +39,6 @@ import {
   BookCheck,
   Printer,
   UserPlus,
-  Navigation,
 } from "lucide-react";
 import knustStudentsHero from "@/assets/knust-students-hero.jpg";
 import QRCode from "qrcode";
@@ -382,18 +381,51 @@ function StudentPortalPage() {
     return data;
   };
 
+  const CACHE_PROFILE_KEY = (idx: string) => `qroll_student_profile_${idx.toUpperCase()}`;
+  const CACHE_DATA_KEY = (idx: string) => `qroll_student_data_${idx.toUpperCase()}`;
+
   const fetchStudentData = async (indexNum: string, pass: string) => {
     touchStudentActivity();
     try {
       const data = await callApi({ action: "data", index: indexNum, password: pass });
-      if (data.student) setMe(data.student);
+      if (data.student) {
+        setMe(data.student);
+        localStorage.setItem(CACHE_PROFILE_KEY(indexNum), JSON.stringify(data.student));
+      }
       setCourses(data.courses || []);
       setHistory(data.history || []);
       setAnnouncements(data.announcements || []);
       setAssignments(data.assignments || []);
+      localStorage.setItem(
+        CACHE_DATA_KEY(indexNum),
+        JSON.stringify({
+          courses: data.courses || [],
+          history: data.history || [],
+          announcements: data.announcements || [],
+          assignments: data.assignments || [],
+        }),
+      );
     } catch (err: any) {
-      console.error("Failed to load student data:", err);
-      toast.error(err?.message || "Failed to load portal data");
+      console.warn("Could not load live student data, checking offline cache:", err);
+      const rawCached = localStorage.getItem(CACHE_DATA_KEY(indexNum));
+      if (rawCached) {
+        try {
+          const parsed = JSON.parse(rawCached);
+          if (parsed.courses) setCourses(parsed.courses);
+          if (parsed.history) setHistory(parsed.history);
+          if (parsed.announcements) setAnnouncements(parsed.announcements);
+          if (parsed.assignments) setAssignments(parsed.assignments);
+          return;
+        } catch {
+          // Ignore corrupt cache
+        }
+      }
+      const isQuota = (err?.message || "").toLowerCase().includes("quota");
+      if (isQuota) {
+        toast.error("Database daily read quota reached. Limits reset daily at 00:00 UTC.");
+      } else {
+        toast.error(err?.message || "Failed to load portal data");
+      }
     }
   };
 
@@ -418,15 +450,53 @@ function StudentPortalPage() {
       setIndex(indexNum);
       setPassword(pass);
       setMe(data.student);
+      localStorage.setItem(CACHE_PROFILE_KEY(indexNum), JSON.stringify(data.student));
       await fetchStudentData(indexNum, pass);
       setBusy(false);
       return true;
     } catch (err: any) {
       setBusy(false);
       const msg = err?.message || "";
+      const isQuota =
+        msg.toLowerCase().includes("quota") ||
+        msg.toLowerCase().includes("resource_exhausted") ||
+        msg.toLowerCase().includes("read units");
+
+      // Check if we have offline cached profile for this student
+      const rawCachedProfile = localStorage.getItem(CACHE_PROFILE_KEY(indexNum));
+      if (rawCachedProfile) {
+        try {
+          const cachedProfile = JSON.parse(rawCachedProfile);
+          setIndex(indexNum);
+          setPassword(pass);
+          setMe(cachedProfile);
+          // Also load cached portal records
+          const rawCachedData = localStorage.getItem(CACHE_DATA_KEY(indexNum));
+          if (rawCachedData) {
+            const parsedData = JSON.parse(rawCachedData);
+            if (parsedData.courses) setCourses(parsedData.courses);
+            if (parsedData.history) setHistory(parsedData.history);
+            if (parsedData.announcements) setAnnouncements(parsedData.announcements);
+            if (parsedData.assignments) setAssignments(parsedData.assignments);
+          }
+          if (isQuota) {
+            toast.info("Database free daily quota reached for today. Loaded your saved offline pass.");
+          } else {
+            toast.info("Loaded saved student pass from local cache.");
+          }
+          return true;
+        } catch {
+          // Ignore corrupt profile cache
+        }
+      }
+
       if (msg.includes("No password") || msg.includes("not set yet")) {
         toast.info("No password set yet. Please set your password first.");
         setStep("create");
+      } else if (isQuota) {
+        toast.error(
+          "Database free daily read quota reached for today. Resets daily at 00:00 UTC (or upgrade tier in Firebase Console).",
+        );
       } else if (!silent) {
         toast.error(msg || "Invalid index number or password");
       }
@@ -1683,22 +1753,6 @@ function StudentPortalPage() {
                   </span>
                 </div>
               </button>
-
-              <div className="w-full">
-                <Link to="/check-in" className="block w-full min-w-0">
-                  <div className="p-2.5 sm:p-3 rounded-xl border bg-card hover:bg-muted/50 border-border text-foreground flex items-center gap-2.5 transition cursor-pointer w-full min-w-0">
-                    <div className="size-7 sm:size-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                      <Navigation className="size-3.5 sm:size-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <span className="text-xs font-bold block truncate">Projector Check-In</span>
-                      <span className="text-[10px] text-muted-foreground block truncate">
-                        Classroom GPS Portal
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              </div>
             </div>
 
             {/* Attendance Risk Banner (If applicable) */}
@@ -2669,21 +2723,6 @@ function StudentPortalPage() {
                         <Printer className="size-3.5 mr-1 shrink-0" />
                         <span>Print Pass</span>
                       </Button>
-                    </div>
-
-                    {/* Shortened Link Container for Portrait Mobile Compatibility */}
-                    <div className="pt-2 border-t flex justify-center w-full">
-                      <div className="w-full max-w-[240px]">
-                        <Link
-                          to="/check-in"
-                          className="flex items-center justify-center gap-1.5 text-xs font-semibold text-primary hover:underline bg-primary/5 hover:bg-primary/10 py-2 px-2.5 rounded-lg border border-primary/20 transition text-center w-full"
-                        >
-                          <Navigation className="size-3.5 shrink-0" />
-                          <span className="leading-tight text-[11px] truncate">
-                            Projector Check-In
-                          </span>
-                        </Link>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>

@@ -170,7 +170,7 @@ function PortalPage() {
 
     doc.setFontSize(10);
     doc.setTextColor(100, 116, 139);
-    doc.text("Show this QR to your lecturer/T.A. or scan the classroom projector QR to check in.", 105, 182, {
+    doc.text("Show this QR to your lecturer or T.A. to check in.", 105, 182, {
       align: "center",
     });
     doc.text("This official QR works for every course and session — past, present and future.", 105, 190, {

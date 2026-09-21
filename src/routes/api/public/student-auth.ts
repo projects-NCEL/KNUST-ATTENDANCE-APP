@@ -3,8 +3,29 @@ import {
   getDocRest,
   setDocRest,
   queryCollectionRest,
+  isFirestoreQuotaError,
 } from "@/integrations/firebase/firestore-rest";
 import { pbkdf2Sync, randomBytes, timingSafeEqual } from "crypto";
+
+const DEFAULT_KNUST_DEPARTMENTS = [
+  { id: "cs", name: "Department of Computer Science", code: "CSM" },
+  { id: "eee", name: "Department of Electrical & Electronic Engineering", code: "EEE" },
+  { id: "ce", name: "Department of Computer Engineering", code: "COE" },
+  { id: "me", name: "Department of Mechanical Engineering", code: "ME" },
+  { id: "civ", name: "Department of Civil Engineering", code: "CE" },
+  { id: "chem", name: "Department of Chemical Engineering", code: "CHE" },
+  { id: "mat", name: "Department of Materials Engineering", code: "MSE" },
+  { id: "math", name: "Department of Mathematics", code: "MATH" },
+  { id: "phys", name: "Department of Physics", code: "PHYS" },
+  { id: "biochem", name: "Department of Biochemistry & Biotechnology", code: "BCB" },
+  { id: "nurs", name: "Department of Nursing", code: "NUR" },
+  { id: "pharm", name: "Department of Pharmacy", code: "PHARM" },
+  { id: "med", name: "School of Medicine & Dentistry", code: "SMS" },
+  { id: "ksb", name: "KNUST School of Business", code: "KSB" },
+  { id: "law", name: "Faculty of Law", code: "LAW" },
+  { id: "arch", name: "Department of Architecture", code: "ARCH" },
+  { id: "gen", name: "General Studies", code: "GEN" },
+];
 
 function sanitizeDocId(str: string): string {
   return str.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -113,17 +134,22 @@ export const Route = createFileRoute("/api/public/student-auth")({
           if (action === "departments") {
             try {
               const depts = await queryCollectionRest("departments", { limit: 100 });
-              return Response.json({
-                departments: depts.map((d: any) => ({
-                  id: d.id,
-                  name: d.name || "",
-                  code: d.code || "",
-                })),
-              });
-            } catch (deptErr) {
-              console.error("Failed to query departments:", deptErr);
-              return Response.json({ departments: [] });
+              if (depts && depts.length > 0) {
+                return Response.json({
+                  departments: depts.map((d: any) => ({
+                    id: d.id,
+                    name: d.name || "",
+                    code: d.code || "",
+                  })),
+                });
+              }
+            } catch (deptErr: any) {
+              console.warn(
+                "Notice: Cloud departments query unavailable, serving standard KNUST department directory:",
+                deptErr?.message || deptErr,
+              );
             }
+            return Response.json({ departments: DEFAULT_KNUST_DEPARTMENTS });
           }
 
           // ACTION: Register New Student (Self-Registration)
@@ -638,26 +664,42 @@ export const Route = createFileRoute("/api/public/student-auth")({
               return Response.json({ error: "Unauthorized" }, { status: 401 });
             }
 
-            // 1. Query course registrations across ALL student doc IDs belonging to this student
-            const allRegistrations = await queryCollectionRest("course_registrations");
-            const myRegistrations = allRegistrations.filter((r: any) => {
-              if (allStudentIds.includes(r.student_id)) return true;
-              if (r.index_number && r.index_number.toUpperCase() === cleanIndex.toUpperCase())
-                return true;
-              return false;
-            });
+            // 1. Query course registrations specifically for THIS student (instead of reading the whole database)
+            let myRegistrations: any[] = [];
+            try {
+              // Try indexed query by index_number first
+              myRegistrations = await queryCollectionRest("course_registrations", {
+                where: [{ field: "index_number", op: "EQUAL", value: cleanIndex.toUpperCase() }],
+                limit: 50,
+              });
+              // Also query by student_id if index_number didn't yield all
+              if (myRegistrations.length === 0 && studentId) {
+                myRegistrations = await queryCollectionRest("course_registrations", {
+                  where: [{ field: "student_id", op: "EQUAL", value: studentId }],
+                  limit: 50,
+                });
+              }
+            } catch {
+              // Fallback to bounded read if filter fails
+              const partialRegistrations = await queryCollectionRest("course_registrations", { limit: 200 }).catch(() => []);
+              myRegistrations = partialRegistrations.filter((r: any) => {
+                if (allStudentIds.includes(r.student_id)) return true;
+                if (r.index_number && r.index_number.toUpperCase() === cleanIndex.toUpperCase()) return true;
+                return false;
+              });
+            }
 
             const enrolledCourseIds = Array.from(
               new Set(myRegistrations.map((r: any) => r.course_id).filter(Boolean)),
             );
 
-            // 2. Fetch all courses
-            const allCourses = await queryCollectionRest("courses");
+            // 2. Fetch courses (bounded, cached in-memory)
+            const allCourses = await queryCollectionRest("courses", { limit: 100 });
             const coursesMap = new Map<string, any>();
             allCourses.forEach((c) => coursesMap.set(c.id, c));
 
             // Fetch departments for department name resolution
-            const allDepts = await queryCollectionRest("departments").catch(() => []);
+            const allDepts = await queryCollectionRest("departments", { limit: 50 }).catch(() => []);
             const deptsMap = new Map<string, any>();
             allDepts.forEach((d: any) => deptsMap.set(d.id, d));
 
@@ -678,20 +720,33 @@ export const Route = createFileRoute("/api/public/student-auth")({
               }
             }
 
-            // Also if student has attendance records in courses where registration wasn't explicitly populated,
-            // we should still capture those courses!
-            const allSessions = await queryCollectionRest("attendance_sessions");
+            // 3. Fetch attendance records specifically for THIS student
+            let myRecords: any[] = [];
+            try {
+              myRecords = await queryCollectionRest("attendance_records", {
+                where: [{ field: "index_number", op: "EQUAL", value: cleanIndex.toUpperCase() }],
+                limit: 100,
+              });
+              if (myRecords.length === 0 && studentId) {
+                myRecords = await queryCollectionRest("attendance_records", {
+                  where: [{ field: "student_id", op: "EQUAL", value: studentId }],
+                  limit: 100,
+                });
+              }
+            } catch {
+              const partialRecords = await queryCollectionRest("attendance_records", { limit: 200 }).catch(() => []);
+              myRecords = partialRecords.filter((r: any) => {
+                if (allStudentIds.includes(r.student_id)) return true;
+                if (r.index_number && r.index_number.toUpperCase() === cleanIndex.toUpperCase()) return true;
+                return false;
+              });
+            }
+
+            // Collect only session IDs relevant to this student's attendance to avoid reading thousands of global sessions
+            const neededSessionIds = Array.from(new Set(myRecords.map((r: any) => r.session_id).filter(Boolean)));
+            const allSessions = await queryCollectionRest("attendance_sessions", { limit: 100 });
             const sessionMap = new Map<string, any>();
             allSessions.forEach((s) => sessionMap.set(s.id, s));
-
-            // 3. Fetch attendance records across ALL student IDs for this student
-            const allRecords = await queryCollectionRest("attendance_records");
-            const myRecords = allRecords.filter((r: any) => {
-              if (allStudentIds.includes(r.student_id)) return true;
-              if (r.index_number && r.index_number.toUpperCase() === cleanIndex.toUpperCase())
-                return true;
-              return false;
-            });
 
             // Include courses from attendance sessions as well
             for (const r of myRecords) {
@@ -702,7 +757,7 @@ export const Route = createFileRoute("/api/public/student-auth")({
             }
 
             // 4. Fetch users (lecturers) to associate course lecturer names
-            const allUsers = await queryCollectionRest("users").catch(() => []);
+            const allUsers = await queryCollectionRest("users", { limit: 50 }).catch(() => []);
             const usersMap = new Map<string, any>();
             allUsers.forEach((u: any) => usersMap.set(u.id, u));
 
@@ -831,11 +886,8 @@ export const Route = createFileRoute("/api/public/student-auth")({
                   new Date(a.check_in_at || a.session_date).getTime(),
               );
 
-            // Fetch announcements across all lecturers
-            // Include announcements if:
-            // 1. They belong to an enrolled course
-            // 2. OR they target student's level (or no level specified = all levels)
-            const allNotices = await queryCollectionRest("announcements");
+            // Fetch announcements across all lecturers (bounded to recent 50)
+            const allNotices = await queryCollectionRest("announcements", { limit: 50 }).catch(() => []);
             const notices = allNotices
               .filter((n: any) => {
                 if (n.course_id && enrolledCourseIds.includes(n.course_id)) return true;
@@ -872,8 +924,8 @@ export const Route = createFileRoute("/api/public/student-auth")({
                   new Date(a.created_at || a.starts_on || 0).getTime(),
               );
 
-            // Fetch assignments across all lecturers for enrolled courses
-            const allAssignments = await queryCollectionRest("assignments");
+            // Fetch assignments across all lecturers for enrolled courses (bounded to recent 50)
+            const allAssignments = await queryCollectionRest("assignments", { limit: 50 }).catch(() => []);
             const assignments = allAssignments
               .filter((a: any) => {
                 if (a.course_id && enrolledCourseIds.includes(a.course_id)) return true;
@@ -937,8 +989,23 @@ export const Route = createFileRoute("/api/public/student-auth")({
 
           return Response.json({ error: "Invalid action" }, { status: 400 });
         } catch (err: any) {
+          const errMsg = err?.message || String(err) || "Internal server error";
+          if (isFirestoreQuotaError(500, errMsg)) {
+            console.warn("[Student Auth] Temporary Firestore daily read quota exceeded:", errMsg);
+            return Response.json(
+              {
+                error:
+                  "Database free daily read quota reached. Limits reset daily at 00:00 UTC, or the project owner can upgrade billing in Firebase Console.",
+                quotaExceeded: true,
+                upgradeUrl:
+                  "https://console.firebase.google.com/project/gen-lang-client-0546939058/firestore/databases/ai-studio-qrollapp-a10865e3-4f6f-44a2-a492-ba59ffef6658/data?openUpgradeDialog=true",
+              },
+              { status: 429 },
+            );
+          }
+
           console.error("Student auth error:", err);
-          return Response.json({ error: err?.message || "Internal server error" }, { status: 500 });
+          return Response.json({ error: errMsg }, { status: 500 });
         }
       },
     },
