@@ -96,15 +96,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "apple-mobile-web-app-title", content: "KNUST Attend" },
       { property: "og:type", content: "website" },
-      { property: "og:image", content: "/pwa-512x512.png" },
-      { name: "twitter:card", content: "summary" },
+      { property: "og:image", content: "/og-image.jpg" },
+      { property: "og:image:secure_url", content: "/og-image.jpg" },
+      { property: "og:image:type", content: "image/jpeg" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      {
+        property: "og:image:alt",
+        content: "KNUST ATTENDANCE APP — Official Student Attendance System Landing Page Preview",
+      },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "KNUST ATTENDANCE APP — Official Student Attendance System" },
       {
         name: "twitter:description",
         content:
           "KNUST ATTENDANCE APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
       },
-      { name: "twitter:image", content: "/pwa-512x512.png" },
+      { name: "twitter:image", content: "/og-image.jpg" },
+      {
+        name: "twitter:image:alt",
+        content: "KNUST ATTENDANCE APP — Official Student Attendance System Landing Page Preview",
+      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
