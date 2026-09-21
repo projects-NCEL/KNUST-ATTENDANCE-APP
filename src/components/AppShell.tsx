@@ -50,7 +50,7 @@ function TutorFloatingNav() {
       className="fixed bottom-3.5 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[96vw] pointer-events-auto select-none"
       aria-label="Tutor Quick Access Navigation"
     >
-      <div className="relative flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full backdrop-blur-2xl sm:backdrop-blur-3xl bg-white/45 dark:bg-slate-950/45 border border-white/60 dark:border-white/15 shadow-[0_16px_45px_-8px_rgba(0,0,0,0.18),inset_0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.15)] ring-1 ring-black/5 dark:ring-white/10">
+      <div className="relative flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full backdrop-blur-2xl sm:backdrop-blur-3xl bg-neutral-500/15 dark:bg-neutral-800/25 border border-neutral-400/25 dark:border-neutral-700/30 shadow-[0_16px_45px_-8px_rgba(0,0,0,0.18),inset_0_1px_1px_rgba(255,255,255,0.25)] dark:shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.1)] ring-1 ring-neutral-900/5 dark:ring-white/10">
         {/* Left items: Scanner, Sessions */}
         {leftItems.map((item) => {
           const isActive = pathname.startsWith(item.to);

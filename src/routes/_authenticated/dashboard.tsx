@@ -239,8 +239,64 @@ function Dashboard() {
         />
       </div>
 
-      {/* Quick Access: My Account Hub (Tools & Settings are accessed inside My Account) */}
-      <div className="mt-6">
+      {/* Quick Access: Students, Courses & My Account Hub */}
+      <div className="mt-6 space-y-3">
+        {/* Quick Access: Students & Courses Primary Buttons */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Link
+            to={"/students" as string}
+            className="group relative flex items-center justify-between p-4 rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00552b] dark:hover:border-emerald-500 hover:shadow-md animate-in fade-in slide-in-from-bottom-2"
+            style={{ animationDelay: "280ms", animationFillMode: "backwards" }}
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#00552b]/10 text-[#00552b] dark:text-emerald-400 transition-colors group-hover:bg-[#00552b] group-hover:text-white">
+                <Users className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm sm:text-base text-foreground">Students</span>
+                  <span className="text-[10px] font-semibold text-[#00552b] dark:text-emerald-400 px-2 py-0.5 rounded-full bg-[#00552b]/10">
+                    Directory
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                  Manage roster, search index numbers & QR attendance passes
+                </p>
+              </div>
+            </div>
+            <div className="inline-flex items-center gap-1 text-xs font-bold text-[#00552b] dark:text-emerald-400 shrink-0 ml-2">
+              Open <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
+            </div>
+          </Link>
+
+          <Link
+            to={"/courses" as string}
+            className="group relative flex items-center justify-between p-4 rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00552b] dark:hover:border-emerald-500 hover:shadow-md animate-in fade-in slide-in-from-bottom-2"
+            style={{ animationDelay: "300ms", animationFillMode: "backwards" }}
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-600/15 text-emerald-800 dark:text-emerald-300 transition-colors group-hover:bg-[#00552b] group-hover:text-white">
+                <BookOpen className="size-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm sm:text-base text-foreground">Courses</span>
+                  <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full bg-emerald-500/10">
+                    Classes
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                  Manage course codes, class enrollments & lecture schedules
+                </p>
+              </div>
+            </div>
+            <div className="inline-flex items-center gap-1 text-xs font-bold text-[#00552b] dark:text-emerald-400 shrink-0 ml-2">
+              Open <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
+            </div>
+          </Link>
+        </div>
+
+        {/* Quick Access: My Account Hub */}
         <Link
           to={"/account" as string}
           className="group block rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00552b] dark:hover:border-emerald-500 hover:shadow-lg animate-in fade-in slide-in-from-bottom-3"

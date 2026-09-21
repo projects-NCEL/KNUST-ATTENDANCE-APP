@@ -52,7 +52,7 @@
         "email": { "type": "string", "format": "email" },
         "qr_uuid": { "type": "string" }
       },
-      "required": ["owner_id", "full_name", "index_number"]
+      "required": ["full_name", "index_number"]
     },
     "Course": {
       "title": "Course",

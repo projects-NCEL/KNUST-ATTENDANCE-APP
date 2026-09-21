@@ -25,6 +25,7 @@ import {
   School,
   ArrowRight,
   ShieldCheck,
+  ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PublicFooter } from "@/components/PublicFooter";
@@ -517,8 +518,40 @@ function CheckInPage() {
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col justify-between">
       <div className="flex-1 flex flex-col items-center px-2.5 sm:px-6 py-3 sm:py-6 max-w-sm sm:max-w-md mx-auto w-full min-w-0">
+        {/* Navigation Bar / Back button */}
+        <div className="w-full flex items-center justify-between mb-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                window.location.href = "/dashboard";
+              }
+            }}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground bg-background/80 hover:bg-background border border-border/80 px-2.5 py-1.5 rounded-lg shadow-2xs transition cursor-pointer"
+          >
+            <ArrowLeft className="size-3.5" /> Back
+          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/dashboard"
+              className="text-[11px] font-medium text-muted-foreground hover:text-foreground transition"
+            >
+              Dashboard
+            </Link>
+            <span className="text-muted-foreground/40">•</span>
+            <Link
+              to="/student"
+              className="text-[11px] font-medium text-primary hover:underline"
+            >
+              Student Portal
+            </Link>
+          </div>
+        </div>
+
         {/* Header Branding */}
-        <div className="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6 mt-2">
+        <div className="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6 mt-1">
           <KnustEmblem size={34} />
           <div>
             <h1 className="text-base sm:text-xl font-bold tracking-tight text-foreground">

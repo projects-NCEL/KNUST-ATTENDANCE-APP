@@ -202,6 +202,7 @@ export const Route = createFileRoute("/api/public/student-auth")({
               program: cleanProg,
               email: cleanEmail,
               qr_uuid: newQrUuid,
+              owner_id: "universal",
               created_at: new Date().toISOString(),
               self_registered: true,
             };
