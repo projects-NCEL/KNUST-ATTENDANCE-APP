@@ -1,5 +1,5 @@
 /**
- * KNUST ATTENDANCE APP is 100% free and open for university faculty and students.
+ * Qmark is 100% free and open for university faculty and students.
  * Billing has been completely removed.
  */
 export const PAYMENTS_LIVE = false;

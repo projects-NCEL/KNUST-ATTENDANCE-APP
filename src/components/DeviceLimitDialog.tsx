@@ -88,7 +88,7 @@ export function DeviceLimitDialog({
             Device Limit Reached (Max {MAX_DEVICES_PER_ACCOUNT})
           </DialogTitle>
           <DialogDescription className="text-center text-xs text-muted-foreground">
-            Your KNUST Attendance account is currently signed in on {deviceList.length}{" "}
+            Your Qmark account is currently signed in on {deviceList.length}{" "}
             devices (the maximum allowed). Please remove an old device below to
             continue on this device.
           </DialogDescription>

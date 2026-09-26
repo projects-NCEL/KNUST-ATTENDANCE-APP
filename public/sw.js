@@ -1,7 +1,7 @@
-// QRoll Official Web Push & PWA Service Worker
-// Kwame Nkrumah University of Science and Technology (KNUST)
+// Qmark Official Web Push & PWA Service Worker
+// Qmark Attendance Platform
 
-const CACHE_NAME = "qroll-pwa-v2";
+const CACHE_NAME = "qmark-pwa-v3";
 const STATIC_ASSETS = [
   "/",
   "/manifest.webmanifest",
@@ -12,7 +12,7 @@ const STATIC_ASSETS = [
   "/pwa-192x192.png",
   "/pwa-512x512.png",
   "/pwa-maskable-512x512.png",
-  "/knust-logo.svg",
+  "/qmark_icon_standalone.png",
 ];
 
 // Install: Cache essential shell assets & skip waiting
@@ -52,16 +52,16 @@ self.addEventListener("push", (event) => {
     try {
       payload = event.data.json();
     } catch {
-      payload = { title: "KNUST Attendance", body: event.data.text() };
+      payload = { title: "Qmark Attendance", body: event.data.text() };
     }
   }
 
-  const title = payload.title || "KNUST-ATTENDANCE-APP";
-  const body = payload.body || "New academic update from QRoll";
-  const icon = payload.icon || "/favicon.png";
-  const badge = payload.badge || "/favicon.png";
+  const title = payload.title || "Qmark";
+  const body = payload.body || "New academic update from Qmark";
+  const icon = payload.icon || "/qmark_icon_standalone.png";
+  const badge = payload.badge || "/qmark_icon_standalone.png";
   const url = payload.url || "/";
-  const tag = payload.tag || (payload.entityId ? `${payload.type || "qroll"}_${payload.entityId}` : `qroll_${Date.now()}`);
+  const tag = payload.tag || (payload.entityId ? `${payload.type || "qmark"}_${payload.entityId}` : `qmark_${Date.now()}`);
 
   const options = {
     body,
@@ -97,7 +97,7 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
-      // Look for already open QRoll window
+      // Look for already open Qmark window
       for (const client of windowClients) {
         if (client.url.startsWith(origin) && "focus" in client) {
           if ("navigate" in client) {

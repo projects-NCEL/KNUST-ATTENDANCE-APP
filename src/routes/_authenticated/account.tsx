@@ -29,7 +29,6 @@ import {
   ArrowRight,
   ShieldCheck,
   GraduationCap,
-  Sparkles,
   Link2,
   CheckCircle2,
   Laptop,
@@ -52,7 +51,7 @@ import {
 export const Route = createFileRoute("/_authenticated/account")({
   head: () => ({
     meta: [
-      { title: "My Account & Academic Directory — KNUST ATTENDANCE APP" },
+      { title: "My Account & Academic Directory — Qmark" },
       {
         name: "description",
         content: "Access academic tools, semesters, departments, courses, student records, and embedded account settings.",
@@ -324,62 +323,65 @@ function AccountPage() {
   return (
     <AppShell>
       <div className="space-y-8 animate-in fade-in duration-400">
-        {/* Profile & Account Banner - Strictly Green, White, and Black, Optimized for Mobile & Desktop */}
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#00381c] via-[#00552b] to-[#007a3d] text-white p-5 sm:p-8 shadow-md border border-[#00381c]">
-          <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-white/10 blur-2xl" />
-          <div className="pointer-events-none absolute -left-10 -bottom-10 size-40 rounded-full bg-white/5 blur-2xl" />
+        {/* Profile & Account Banner - Navy, Gold, and Crisp Contrast */}
+        <section
+          className="relative overflow-hidden rounded-3xl bg-[#0A1F44] text-white p-5 sm:p-8 shadow-xl border-2 border-[#D4AF37]/50"
+          style={{ background: "linear-gradient(135deg, #0A1F44 0%, #0E2858 50%, #0A1F44 100%)" }}
+        >
+          <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-[#D4AF37]/15 blur-3xl" />
+          <div className="pointer-events-none absolute -left-10 -bottom-10 size-40 rounded-full bg-[#D4AF37]/10 blur-2xl" />
 
           <div className="relative flex flex-col gap-5">
             {/* Top row: Avatar, Verified Badge, Account Title & User Email */}
             <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-              <div className="size-14 sm:size-20 rounded-2xl bg-white/10 border-2 border-white/20 p-1 flex items-center justify-center shrink-0 shadow-lg text-white">
-                <UserCheck className="size-7 sm:size-10 text-emerald-200" />
+              <div className="size-14 sm:size-20 rounded-2xl bg-[#061226] border-2 border-[#D4AF37]/60 p-1 flex items-center justify-center shrink-0 shadow-lg text-white">
+                <UserCheck className="size-7 sm:size-10 text-[#D4AF37]" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 sm:px-3 py-0.5 text-[10px] sm:text-[11px] font-semibold tracking-wider uppercase text-emerald-100 border border-white/20">
-                  <ShieldCheck className="size-3 sm:size-3.5 shrink-0" />
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-[#061226]/80 px-2.5 sm:px-3 py-0.5 text-[10px] sm:text-[11px] font-bold tracking-wider uppercase text-[#D4AF37] border border-[#D4AF37]/50 shadow-2xs">
+                  <ShieldCheck className="size-3 sm:size-3.5 shrink-0 text-[#D4AF37]" />
                   <span className="truncate">Verified Academic Account</span>
                 </div>
-                <h1 className="mt-1 sm:mt-2 text-xl sm:text-3xl font-bold tracking-tight text-white truncate">
+                <h1 className="mt-1 sm:mt-2 text-xl sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-xs truncate">
                   My Account
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm text-emerald-100/90 font-mono truncate">
+                <p className="mt-0.5 text-xs sm:text-sm text-[#F5E5A3] font-mono font-medium truncate">
                   {user?.email || "Academic User"}
                 </p>
               </div>
             </div>
 
-            {/* Bottom/Secondary row: Role, Access Level & Settings button nicely arranged for mobile & desktop */}
-            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/15 sm:border-t-0 sm:pt-0">
-              <div className="flex-1 min-w-[130px] px-3 py-2 rounded-xl bg-black/25 border border-white/15 backdrop-blur-xs text-left">
-                <div className="text-[10px] uppercase font-semibold text-emerald-200 tracking-wider">
+            {/* Bottom/Secondary row: Role, Access Level & Settings button */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/20 sm:border-t-0 sm:pt-0">
+              <div className="flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl bg-[#061226]/85 border border-[#D4AF37]/40 shadow-xs text-left">
+                <div className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-wider">
                   Assigned Role
                 </div>
-                <div className="text-xs sm:text-sm font-bold text-white capitalize truncate">
+                <div className="text-xs sm:text-sm font-bold text-white capitalize truncate mt-0.5">
                   {primaryRole}
                 </div>
               </div>
-              <div className="flex-1 min-w-[130px] px-3 py-2 rounded-xl bg-black/25 border border-white/15 backdrop-blur-xs text-left">
-                <div className="text-[10px] uppercase font-semibold text-emerald-200 tracking-wider">
+              <div className="flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl bg-[#061226]/85 border border-[#D4AF37]/40 shadow-xs text-left">
+                <div className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-wider">
                   Access Level
                 </div>
-                <div className="text-xs sm:text-sm font-bold text-white truncate">
+                <div className="text-xs sm:text-sm font-bold text-white truncate mt-0.5">
                   {isAdmin ? "Full Admin" : "Faculty Tutor"}
                 </div>
               </div>
               <Button
                 variant="secondary"
                 onClick={scrollToSettings}
-                className="w-full sm:w-auto bg-white text-[#00381c] hover:bg-emerald-50 border-0 font-semibold shadow-xs cursor-pointer h-9 px-3.5 text-xs sm:text-sm"
+                className="w-full sm:w-auto bg-[#D4AF37] text-[#0A1F44] hover:bg-[#D4AF37]/90 border-0 font-bold shadow-xs cursor-pointer h-9 px-3.5 text-xs sm:text-sm"
               >
-                <Settings className="size-4 mr-1.5 text-[#00552b] shrink-0" /> Account Settings
+                <Settings className="size-4 mr-1.5 text-[#0A1F44] shrink-0" /> Account Settings
               </Button>
             </div>
           </div>
         </section>
 
         {/* View Selection Filter Tabs — Horizontally Scrollable & Movable */}
-        <div className="overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 border-b border-black/10 dark:border-white/10 pb-2">
+        <div className="overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 border-b border-[#D4AF37]/20 pb-2">
           <div className="flex items-center gap-2 min-w-max">
             <Button
               variant="ghost"
@@ -387,8 +389,8 @@ function AccountPage() {
               onClick={() => setActiveTab("all")}
               className={`rounded-lg text-xs font-semibold px-3 py-1.5 shrink-0 whitespace-nowrap cursor-pointer transition-colors ${
                 activeTab === "all"
-                  ? "bg-[#00552b] text-white hover:bg-[#00381c]"
-                  : "text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5"
+                  ? "bg-[#D4AF37] text-[#0A1F44] font-bold shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
               All Tools & Settings
@@ -399,8 +401,8 @@ function AccountPage() {
               onClick={() => setActiveTab("directory")}
               className={`rounded-lg text-xs font-semibold px-3 py-1.5 shrink-0 whitespace-nowrap cursor-pointer transition-colors ${
                 activeTab === "directory"
-                  ? "bg-[#00552b] text-white hover:bg-[#00381c]"
-                  : "text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5"
+                  ? "bg-[#D4AF37] text-[#0A1F44] font-bold shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
               Academic Directory
@@ -411,8 +413,8 @@ function AccountPage() {
               onClick={() => setActiveTab("settings")}
               className={`rounded-lg text-xs font-semibold px-3 py-1.5 shrink-0 whitespace-nowrap cursor-pointer transition-colors ${
                 activeTab === "settings"
-                  ? "bg-[#00552b] text-white hover:bg-[#00381c]"
-                  : "text-black/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5"
+                  ? "bg-[#D4AF37] text-[#0A1F44] font-bold shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
               Settings & Security
@@ -427,7 +429,7 @@ function AccountPage() {
               <div key={section.category} className="space-y-3.5">
                 <div className="border-b border-black/10 dark:border-white/10 pb-2">
                   <h2 className="text-lg font-bold tracking-tight text-black dark:text-white flex items-center gap-2">
-                    <span className="size-2 rounded-full bg-[#00552b] dark:bg-emerald-400" />
+                    <span className="size-2 rounded-full bg-[#D4AF37] dark:bg-[#D4AF37]" />
                     {section.category}
                   </h2>
                   <p className="text-xs text-black/65 dark:text-white/65 mt-0.5">
@@ -440,23 +442,23 @@ function AccountPage() {
                     <Link
                       key={item.to}
                       to={item.to as string}
-                      className="group rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-black p-4 transition-all duration-200 hover:-translate-y-1 hover:border-[#00552b] dark:hover:border-emerald-500 hover:shadow-lg hover:shadow-[#00552b]/5 relative overflow-hidden"
+                      className="group rounded-2xl border border-[#D4AF37]/25 glass-card p-4 transition-all duration-200 hover:-translate-y-1 hover:border-[#D4AF37] hover:shadow-gold relative overflow-hidden"
                       style={{
                         animationDelay: `${(sIndex * 4 + iIndex) * 30}ms`,
                       }}
                     >
                       <div className="flex items-start gap-3.5">
-                        <div className="size-11 shrink-0 rounded-xl bg-[#00552b]/10 dark:bg-emerald-950/50 text-[#00552b] dark:text-emerald-400 border border-[#00552b]/20 dark:border-emerald-800/40 grid place-items-center transition-all duration-300 group-hover:bg-[#00552b] group-hover:text-white group-hover:scale-105">
+                        <div className="size-11 shrink-0 rounded-xl bg-[#D4AF37]/10 dark:bg-[#0A1F44]/70 text-[#D4AF37] border border-[#D4AF37]/30 grid place-items-center transition-all duration-300 group-hover:bg-[#D4AF37] group-hover:text-[#0A1F44] group-hover:scale-105">
                           <item.icon className="size-5" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-1">
-                            <span className="font-bold text-sm text-black dark:text-white truncate group-hover:text-[#00552b] dark:group-hover:text-emerald-400 transition-colors">
+                            <span className="font-bold text-sm text-foreground truncate group-hover:text-[#D4AF37] transition-colors">
                               {item.label}
                             </span>
-                            <ArrowRight className="size-4 shrink-0 text-black/40 dark:text-white/40 transition-transform group-hover:translate-x-1 group-hover:text-[#00552b] dark:group-hover:text-emerald-400" />
+                            <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-[#D4AF37]" />
                           </div>
-                          <p className="text-xs text-black/60 dark:text-white/60 mt-1 line-clamp-2 leading-relaxed">
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
                             {item.desc}
                           </p>
                         </div>
@@ -474,7 +476,7 @@ function AccountPage() {
           <div ref={settingsSectionRef} id="settings" className="space-y-6 pt-4">
             <div className="border-b border-black/10 dark:border-white/10 pb-2">
               <h2 className="text-xl font-bold tracking-tight text-black dark:text-white flex items-center gap-2">
-                <Settings className="size-5 text-[#00552b] dark:text-emerald-400" />
+                <Settings className="size-5 text-[#D4AF37] dark:text-[#D4AF37]" />
                 Account Settings & Security
               </h2>
               <p className="text-xs text-black/65 dark:text-white/65 mt-0.5">
@@ -483,24 +485,24 @@ function AccountPage() {
             </div>
 
             {/* Connected Sign-In Methods */}
-            <Card className="border-black/10 dark:border-white/10 bg-white dark:bg-black shadow-xs">
+            <Card className="glass-card border border-[#D4AF37]/30 shadow-card">
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base font-bold text-black dark:text-white">
-                  <Link2 className="size-4.5 text-[#00552b] dark:text-emerald-400" /> Connected Sign-in Methods
+                <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+                  <Link2 className="size-4.5 text-[#D4AF37]" /> Connected Sign-in Methods
                 </CardTitle>
-                <CardDescription className="text-xs text-black/60 dark:text-white/60">
-                  Manage authentication methods linked to your KNUST ATTENDANCE APP academic account.
+                <CardDescription className="text-xs text-muted-foreground">
+                  Manage authentication methods linked to your Qmark academic account.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-black/10 dark:border-white/10 bg-[#00552b]/5 dark:bg-emerald-950/20 gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/5 dark:bg-[#0A1F44]/40 gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="size-9 rounded-lg bg-white dark:bg-black border border-black/15 dark:border-white/15 grid place-items-center shrink-0">
-                      <span className="font-bold text-sm text-[#00552b] dark:text-emerald-400">G</span>
+                    <div className="size-9 rounded-lg bg-card border border-[#D4AF37]/30 grid place-items-center shrink-0">
+                      <span className="font-bold text-sm text-[#D4AF37]">G</span>
                     </div>
                     <div>
-                      <div className="font-semibold text-sm text-black dark:text-white">Google Account</div>
-                      <div className="text-xs text-black/60 dark:text-white/60">
+                      <div className="font-semibold text-sm text-foreground">Google Account</div>
+                      <div className="text-xs text-muted-foreground">
                         {hasGoogle
                           ? "Connected to Google Sign-In"
                           : "Link your official Google account for fast authentication"}
@@ -510,7 +512,7 @@ function AccountPage() {
                   <div className="flex items-center gap-2 self-end sm:self-auto">
                     {hasGoogle ? (
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="gap-1 border-[#00552b]/30 bg-[#00552b]/10 text-[#00552b] dark:text-emerald-400">
+                        <Badge variant="outline" className="gap-1 border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#D4AF37]">
                           <CheckCircle2 className="size-3" /> Linked
                         </Badge>
                         {hasPassword && (
@@ -519,7 +521,7 @@ function AccountPage() {
                             size="sm"
                             onClick={unlinkGoogle}
                             disabled={busy}
-                            className="text-xs text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white"
+                            className="text-xs text-muted-foreground hover:text-foreground"
                           >
                             Unlink
                           </Button>
@@ -530,7 +532,7 @@ function AccountPage() {
                         size="sm"
                         onClick={linkGoogle}
                         disabled={busy}
-                        className="bg-[#00552b] text-white hover:bg-[#00381c] text-xs font-semibold"
+                        className="bg-[#D4AF37] text-[#0A1F44] hover:bg-[#D4AF37]/90 text-xs font-bold"
                       >
                         Link Google
                       </Button>
@@ -538,7 +540,7 @@ function AccountPage() {
                   </div>
                 </div>
 
-                <p className="text-xs text-black/60 dark:text-white/60 pt-1">
+                <p className="text-xs text-muted-foreground pt-1">
                   💡 <b>Security Note:</b> Linking requires active authentication with your university email to prevent unauthorized account takeover.
                 </p>
               </CardContent>
@@ -546,7 +548,7 @@ function AccountPage() {
 
             {/* Push Notifications Manager */}
             {user?.id && (
-              <div className="rounded-2xl border border-black/10 dark:border-white/10 overflow-hidden bg-white dark:bg-black p-1">
+              <div className="rounded-2xl border border-[#D4AF37]/30 overflow-hidden glass-card p-1">
                 <PushNotificationManager
                   userContext={{
                     userId: user.id,
@@ -557,27 +559,27 @@ function AccountPage() {
             )}
 
             {/* Logged-In Devices */}
-            <Card className="border-black/10 dark:border-white/10 bg-white dark:bg-black shadow-xs">
+            <Card className="glass-card border border-[#D4AF37]/30 shadow-card">
               <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3">
                 <div>
-                  <CardTitle className="flex items-center gap-2 text-base font-bold text-black dark:text-white">
-                    <Laptop className="size-4.5 text-[#00552b] dark:text-emerald-400" /> Active Logged-in Devices
+                  <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+                    <Laptop className="size-4.5 text-[#D4AF37]" /> Active Logged-in Devices
                   </CardTitle>
-                  <CardDescription className="text-xs text-black/60 dark:text-white/60">
+                  <CardDescription className="text-xs text-muted-foreground">
                     Maximum <b>{MAX_DEVICES_PER_ACCOUNT} simultaneous devices</b> permitted per account.
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge
                     variant="outline"
-                    className="border-[#00552b]/30 bg-[#00552b]/10 text-[#00552b] dark:text-emerald-400 text-xs font-semibold"
+                    className="border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#D4AF37] text-xs font-semibold"
                   >
                     {devices.length} of {MAX_DEVICES_PER_ACCOUNT} used
                   </Badge>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-8 text-[#00552b] dark:text-emerald-400 hover:bg-[#00552b]/10"
+                    className="size-8 text-[#D4AF37] hover:bg-[#D4AF37]/10"
                     onClick={fetchDevices}
                     disabled={loadingDevices}
                     aria-label="Refresh devices"
@@ -588,7 +590,7 @@ function AccountPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {devices.length === 0 ? (
-                  <p className="text-xs text-black/60 dark:text-white/60 py-2">
+                  <p className="text-xs text-muted-foreground py-2">
                     {loadingDevices ? "Loading devices..." : "No active devices recorded."}
                   </p>
                 ) : (
@@ -600,35 +602,35 @@ function AccountPage() {
                           key={d.id}
                           className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border text-sm gap-2 transition-all ${
                             isCurrent
-                              ? "bg-[#00552b]/5 dark:bg-emerald-950/20 border-[#00552b]/30 dark:border-emerald-700/40"
-                              : "bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10"
+                              ? "bg-[#D4AF37]/10 border-[#D4AF37]/40 shadow-xs"
+                              : "bg-muted/40 border-border/60"
                           }`}
                         >
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="size-9 rounded-lg bg-white dark:bg-black border border-black/10 dark:border-white/10 grid place-items-center shrink-0">
+                            <div className="size-9 rounded-lg bg-card border border-border/80 grid place-items-center shrink-0">
                               {d.device_type === "mobile" ? (
-                                <Smartphone className="size-4 text-[#00552b] dark:text-emerald-400" />
+                                <Smartphone className="size-4 text-[#D4AF37]" />
                               ) : d.device_type === "tablet" ? (
-                                <Tablet className="size-4 text-[#00552b] dark:text-emerald-400" />
+                                <Tablet className="size-4 text-[#D4AF37]" />
                               ) : (
-                                <Laptop className="size-4 text-[#00552b] dark:text-emerald-400" />
+                                <Laptop className="size-4 text-[#D4AF37]" />
                               )}
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="font-semibold text-xs sm:text-sm text-black dark:text-white truncate">
+                                <span className="font-semibold text-xs sm:text-sm text-foreground truncate">
                                   {d.device_name}
                                 </span>
                                 {isCurrent && (
                                   <Badge
                                     variant="outline"
-                                    className="text-[10px] px-1.5 py-0 bg-[#00552b]/15 text-[#00552b] dark:text-emerald-400 border-[#00552b]/30"
+                                    className="text-[10px] px-1.5 py-0 bg-[#D4AF37]/15 text-[#D4AF37] border-[#D4AF37]/30"
                                   >
                                     This device
                                   </Badge>
                                 )}
                               </div>
-                              <div className="text-[11px] text-black/60 dark:text-white/60 truncate">
+                              <div className="text-[11px] text-muted-foreground truncate">
                                 Last Active: {new Date(d.last_active).toLocaleString()}
                               </div>
                             </div>
@@ -637,11 +639,11 @@ function AccountPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-xs h-8 shrink-0 text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/10 dark:hover:bg-white/10"
+                            className="text-xs h-8 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted"
                             disabled={revokingId === d.id}
                             onClick={() => void handleRevokeDevice(d)}
                           >
-                            <Trash2 className="size-3.5 mr-1 text-[#00552b] dark:text-emerald-400" />
+                            <Trash2 className="size-3.5 mr-1 text-[#D4AF37]" />
                             {revokingId === d.id
                               ? "Revoking..."
                               : isCurrent
@@ -659,7 +661,7 @@ function AccountPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-xs border-black/20 dark:border-white/20 text-black dark:text-white hover:bg-[#00552b]/10 hover:text-[#00552b] dark:hover:text-emerald-400"
+                      className="text-xs border-[#D4AF37]/30 hover:border-[#D4AF37] hover:bg-[#D4AF37]/10"
                       onClick={handleRevokeOthers}
                       disabled={loadingDevices}
                     >
@@ -671,29 +673,29 @@ function AccountPage() {
             </Card>
 
             {/* About & System Compliance */}
-            <Card className="border-black/10 dark:border-white/10 bg-white dark:bg-black shadow-xs">
+            <Card className="glass-card border border-[#D4AF37]/30 shadow-card">
               <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base font-bold text-black dark:text-white">
-                  <Info className="size-4.5 text-[#00552b] dark:text-emerald-400" /> Institutional Information
+                <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+                  <Info className="size-4.5 text-[#D4AF37]" /> Institutional Information
                 </CardTitle>
-                <CardDescription className="text-xs text-black/60 dark:text-white/60">
+                <CardDescription className="text-xs text-muted-foreground">
                   Kwame Nkrumah University of Science and Technology Attendance Platform.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="text-xs text-black/60 dark:text-white/60 space-y-1">
+              <CardContent className="text-xs text-muted-foreground space-y-1">
                 <p>
-                  Official deployment by <b className="text-black dark:text-white">Bern Studio Labs</b>
+                  Official deployment by <b className="text-foreground">Bern Studio Labs</b>
                 </p>
                 <p className="text-xs pt-2 flex items-center gap-3">
-                  <Link to={"/manual" as string} className="underline hover:text-[#00552b] dark:hover:text-emerald-400">
+                  <Link to={"/manual" as string} className="underline hover:text-[#D4AF37] dark:hover:text-[#D4AF37]">
                     User Manual
                   </Link>
                   <span>·</span>
-                  <Link to={"/terms" as string} className="underline hover:text-[#00552b] dark:hover:text-emerald-400">
+                  <Link to={"/terms" as string} className="underline hover:text-[#D4AF37] dark:hover:text-[#D4AF37]">
                     Terms of Service
                   </Link>
                   <span>·</span>
-                  <Link to={"/privacy" as string} className="underline hover:text-[#00552b] dark:hover:text-emerald-400">
+                  <Link to={"/privacy" as string} className="underline hover:text-[#D4AF37] dark:hover:text-[#D4AF37]">
                     Biometric Privacy
                   </Link>
                 </p>

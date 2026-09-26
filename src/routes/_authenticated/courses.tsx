@@ -37,7 +37,7 @@ import { isStudentInCourse } from "@/lib/class-matching";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/courses")({
-  head: () => ({ meta: [{ title: "Courses — KNUST ATTENDANCE APP" }] }),
+  head: () => ({ meta: [{ title: "Courses — Qmark" }] }),
   component: CoursesPage,
 });
 

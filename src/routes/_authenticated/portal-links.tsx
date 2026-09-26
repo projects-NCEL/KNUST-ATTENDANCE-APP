@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/portal-links")({
-  head: () => ({ meta: [{ title: "Student Access Links — KNUST ATTENDANCE APP" }] }),
+  head: () => ({ meta: [{ title: "Student Access Links — Qmark" }] }),
   component: StudentPortalLinksPage,
 });
 
@@ -93,7 +93,7 @@ function StudentPortalLinksPage() {
                   onClick={() => copyToClipboard(studentPortalUrl, "portal")}
                 >
                   {copiedKey === "portal" ? (
-                    <Check className="size-3.5 text-emerald-600" />
+                    <Check className="size-3.5 text-[#D4AF37]" />
                   ) : (
                     <Copy className="size-3.5" />
                   )}
@@ -124,7 +124,7 @@ function StudentPortalLinksPage() {
           <Card className="border shadow-xs">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+                <div className="p-2 rounded-lg bg-[#D4AF37]/10 text-[#AA820A] dark:text-[#D4AF37]">
                   <QrCode className="size-5" />
                 </div>
                 <div>
@@ -153,7 +153,7 @@ function StudentPortalLinksPage() {
                   onClick={() => copyToClipboard(checkInUrl, "checkin")}
                 >
                   {copiedKey === "checkin" ? (
-                    <Check className="size-3.5 text-emerald-600" />
+                    <Check className="size-3.5 text-[#D4AF37]" />
                   ) : (
                     <Copy className="size-3.5" />
                   )}

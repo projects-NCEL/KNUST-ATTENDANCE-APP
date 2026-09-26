@@ -6,9 +6,9 @@ export function exportToExcel(rows: Record<string, unknown>[], filename: string,
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   wb.Props = {
-    Title: `KNUST Attendance Report - ${filename}`,
+    Title: `Qmark Attendance Report - ${filename}`,
     Subject: "Academic Attendance & Assessment Compilation",
-    Author: "Kwame Nkrumah University of Science and Technology",
+    Author: "Qmark Attendance Platform",
     CreatedDate: new Date(),
   };
   XLSX.utils.book_append_sheet(wb, ws, sheet);
@@ -18,7 +18,7 @@ export function exportToExcel(rows: Record<string, unknown>[], filename: string,
 export function exportToCSV(rows: Record<string, unknown>[], filename: string) {
   const ws = XLSX.utils.json_to_sheet(rows);
   const csv = XLSX.utils.sheet_to_csv(ws);
-  const header = `# KWAME NKRUMAH UNIVERSITY OF SCIENCE AND TECHNOLOGY (KNUST)\n# KNUST ATTENDANCE APP REPORT: ${filename}\n# Generated: ${new Date().toISOString()}\n`;
+  const header = `# QMARK ATTENDANCE PLATFORM\n# REPORT: ${filename}\n# Generated: ${new Date().toISOString()}\n`;
   const blob = new Blob([header + csv], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
@@ -34,14 +34,14 @@ export async function exportToPDF(
 ) {
   const doc = new jsPDF();
 
-  // Embed official KNUST crest logo in header
+  // Embed official Qmark standalone icon in header
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const el = new Image();
       el.crossOrigin = "anonymous";
       el.onload = () => resolve(el);
       el.onerror = reject;
-      el.src = "/favicon.png";
+      el.src = "/qmark_icon_standalone.png";
     });
     doc.addImage(img, "PNG", 14, 8, 18, 18);
   } catch {
@@ -50,13 +50,13 @@ export async function exportToPDF(
 
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(0, 85, 43); // Official KNUST Green
-  doc.text("KWAME NKRUMAH UNIVERSITY OF SCIENCE AND TECHNOLOGY", 36, 14);
+  doc.setTextColor(10, 31, 68); // Brand Deep Navy
+  doc.text("QMARK ATTENDANCE PLATFORM", 36, 14);
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(15, 23, 42);
-  doc.text("KNUST ATTENDANCE APP — " + title, 36, 20);
+  doc.text("Qmark — " + title, 36, 20);
 
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
@@ -67,14 +67,14 @@ export async function exportToPDF(
     body: rows,
     startY: 30,
     styles: { fontSize: 8 },
-    headStyles: { fillColor: [0, 85, 43], textColor: [255, 255, 255] },
-    alternateRowStyles: { fillColor: [240, 253, 244] },
+    headStyles: { fillColor: [10, 31, 68], textColor: [212, 175, 55] },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
     didDrawPage: (data) => {
       const pageCount = (doc as any).internal.getNumberOfPages();
       doc.setFontSize(7);
       doc.setTextColor(148, 163, 184);
       doc.text(
-        `KNUST ATTENDANCE APP · Kumasi, Ghana · Page ${data.pageNumber} of ${pageCount}`,
+        `Qmark Attendance Platform · Page ${data.pageNumber} of ${pageCount}`,
         14,
         doc.internal.pageSize.height - 8,
       );

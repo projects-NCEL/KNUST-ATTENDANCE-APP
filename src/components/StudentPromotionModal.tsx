@@ -20,7 +20,7 @@ import {
   RotateCcw,
   Search,
   GraduationCap,
-  Sparkles,
+  RotateCcw as AutoRoll,
   Check,
   X,
   Users,
@@ -246,7 +246,7 @@ export function StudentPromotionModal({
             }`}
             onClick={() => setMode("cascade")}
           >
-            <Sparkles className="size-3 text-primary" />
+            <AutoRoll className="size-3 text-primary" />
             All Classes (Roll-Over)
           </button>
           <button
@@ -442,8 +442,8 @@ export function StudentPromotionModal({
                       Repeat
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-800 border border-emerald-300/80 dark:text-emerald-300">
-                      <Check className="size-2.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#D4AF37]/10 text-[#0A1F44] border border-[#D4AF37]/80 dark:text-[#D4AF37]">
+                      <Check className="size-2.5 text-[#D4AF37] dark:text-[#D4AF37]" />
                       → {targetLabel}
                     </span>
                   )}

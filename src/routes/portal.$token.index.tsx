@@ -10,12 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Download, FileText, GraduationCap, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import { PublicFooter } from "@/components/PublicFooter";
-import { KnustEmblem } from "@/components/KnustEmblem";
+import { QmarkLogo } from "@/components/QmarkLogo";
+import { StudentQrPassCard } from "@/components/StudentQrPassCard";
 
 export const Route = createFileRoute("/portal/$token/")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Student QR Portal — KNUST ATTENDANCE APP" }] }),
+  head: () => ({ meta: [{ title: "Student Pass Portal — Qmark" }] }),
   component: PortalPage,
 });
 
@@ -108,7 +108,7 @@ function PortalPage() {
       const url = await QRCode.toDataURL(row.qr_uuid, {
         width: 360,
         margin: 2,
-        color: { dark: "#00552b", light: "#ffffff" },
+        color: { dark: "#D4AF37", light: "#ffffff" },
       });
       setQrDataUrl(url);
     } catch (err: any) {
@@ -128,14 +128,14 @@ function PortalPage() {
   const downloadPdf = async () => {
     const doc = new jsPDF();
 
-    // Embed KNUST Logo
+    // Embed Qmark standalone icon
     try {
       const img = await new Promise<HTMLImageElement>((resolve, reject) => {
         const el = new Image();
         el.crossOrigin = "anonymous";
         el.onload = () => resolve(el);
         el.onerror = reject;
-        el.src = "/favicon.png";
+        el.src = "/qmark_icon_standalone.png";
       });
       doc.addImage(img, "PNG", 92, 12, 26, 26);
     } catch {
@@ -144,13 +144,13 @@ function PortalPage() {
 
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 85, 43);
-    doc.text("KWAME NKRUMAH UNIVERSITY OF SCIENCE AND TECHNOLOGY", 105, 44, { align: "center" });
+    doc.setTextColor(10, 31, 68);
+    doc.text("QMARK ATTENDANCE PLATFORM", 105, 44, { align: "center" });
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(30, 41, 59);
-    doc.text("KNUST Attendance — Universal Student QR Pass", 105, 52, { align: "center" });
+    doc.text("Qmark Attendance — Universal Student QR Pass", 105, 52, { align: "center" });
 
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
@@ -158,7 +158,7 @@ function PortalPage() {
     doc.text(student!.full_name, 105, 66, { align: "center" });
 
     doc.setFontSize(12);
-    doc.setTextColor(0, 85, 43);
+    doc.setTextColor(212, 175, 55);
     doc.text(`Index: ${student!.index_number}`, 105, 74, { align: "center" });
 
     doc.setFontSize(11);
@@ -180,22 +180,16 @@ function PortalPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col justify-between">
+    <div className="min-h-screen bg-transparent flex flex-col justify-between">
       <div className="flex-1 flex flex-col items-center justify-center px-3 py-4 sm:py-6 w-full max-w-sm sm:max-w-md mx-auto min-w-0">
         <div className="flex flex-col items-center text-center gap-2 mb-4 mt-2">
-          <KnustEmblem size={38} />
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
-              KNUST Student QR Portal
-            </h1>
-            <p className="text-xs text-muted-foreground">Universal Academic Attendance Pass</p>
-          </div>
+          <QmarkLogo size="md" variant="full" subtitle="Digital Pass Portal" />
         </div>
 
         {!student ? (
-          <Card className="w-full max-w-sm sm:max-w-md border-primary/20 shadow-md">
+          <Card className="w-full max-w-sm sm:max-w-md glass-card rounded-2xl border border-[#D4AF37]/35 shadow-card">
             <CardHeader className="p-4 sm:p-5 text-center pb-2">
-              <CardTitle className="text-base sm:text-lg font-bold">Get your QR code</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-bold">Get your QR pass</CardTitle>
               <CardDescription className="text-xs leading-relaxed">
                 Enter your university index number and registered email. Your QR works for all enrolled courses.
               </CardDescription>
@@ -228,7 +222,7 @@ function PortalPage() {
                   className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs sm:text-sm mt-1 cursor-pointer"
                   disabled={loading}
                 >
-                  {loading ? "Looking up..." : "Show my QR Code"}
+                  {loading ? "Looking up..." : "Show my Digital Pass"}
                 </Button>
               </form>
 
@@ -244,59 +238,40 @@ function PortalPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="w-full max-w-sm sm:max-w-md border-primary/20 shadow-md">
-            <CardHeader className="p-4 sm:p-5 text-center pb-2">
-              <CardTitle className="text-base sm:text-lg font-bold text-foreground">
-                {student.full_name}
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Index: <span className="font-mono font-semibold">{student.index_number}</span> · Level {student.level}
-                <br />
-                <span className="text-muted-foreground">{student.department}</span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-5 pt-2 flex flex-col gap-3">
-              <div className="flex justify-center p-3 bg-white rounded-xl border shadow-inner max-w-[240px] mx-auto w-full">
-                <img
-                  src={qrDataUrl}
-                  alt="Student Attendance QR"
-                  className="w-full h-auto aspect-square max-w-[220px] object-contain"
-                />
-              </div>
+          <div className="w-full max-w-sm sm:max-w-md space-y-4">
+            <StudentQrPassCard
+              student={{
+                indexNumber: student.index_number,
+                fullName: student.full_name,
+                level: student.level,
+                department: student.department,
+                token: student.qr_uuid,
+              }}
+            />
 
-              {/* Stacked Vertically for Portrait Mobile */}
-              <div className="flex flex-col gap-2 w-full pt-1">
-                <Button
-                  variant="outline"
-                  onClick={downloadPng}
-                  className="w-full h-9 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Download className="size-3.5 text-primary" /> Download PNG
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={downloadPdf}
-                  className="w-full h-9 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <FileText className="size-3.5 text-primary" /> Download PDF Badge
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full h-8 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-                  onClick={() => {
-                    setStudent(null);
-                    setIndex("");
-                    setEmail("");
-                  }}
-                >
-                  Look up another student
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            <div className="flex flex-col gap-2 w-full pt-1">
+              <Button
+                variant="outline"
+                onClick={downloadPdf}
+                className="w-full h-9 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <FileText className="size-3.5 text-primary" /> Download PDF Badge
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full h-8 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                onClick={() => {
+                  setStudent(null);
+                  setIndex("");
+                  setEmail("");
+                }}
+              >
+                Look up another student
+              </Button>
+            </div>
+          </div>
         )}
       </div>
-      <PublicFooter />
     </div>
   );
 }

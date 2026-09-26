@@ -46,13 +46,15 @@ import {
   BookCheck,
   Printer,
   UserPlus,
+  Radio,
 } from "lucide-react";
-import knustStudentsHero from "@/assets/knust-students-hero.jpg";
 import QRCode from "qrcode";
 import { toast } from "sonner";
-import { PublicFooter } from "@/components/PublicFooter";
 import { calculateAttendanceGrade } from "@/lib/grading";
-import { KnustEmblem } from "@/components/KnustEmblem";
+import { QmarkLogo } from "@/components/QmarkLogo";
+import { StudentQrPassCard } from "@/components/StudentQrPassCard";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { QmarkTitleBar } from "@/components/QmarkTitleBar";
 import {
   PushNotificationManager,
   InAppNotificationCenter,
@@ -63,16 +65,16 @@ export const Route = createFileRoute("/student")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Student Portal — KNUST ATTENDANCE APP" },
+      { title: "Student Pass & Portal — Qmark" },
       {
         name: "description",
         content:
-          "Access your student attendance records, download your KNUST QR pass, view enrolled courses, announcements, and assignments.",
+          "Access your personal Qmark digital attendance pass, scan session codes, view enrolled courses, and track attendance streaks.",
       },
-      { property: "og:title", content: "Student Portal — KNUST ATTENDANCE APP" },
+      { property: "og:title", content: "Student Portal — Qmark" },
       {
         property: "og:description",
-        content: "Track your attendance percentage, QR code, enrolled courses, and announcements.",
+        content: "Track your attendance percentage, digital QR pass, and course records on Qmark.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -81,8 +83,9 @@ export const Route = createFileRoute("/student")({
   component: StudentPortalPage,
 });
 
-const STORE = "knust.student.session.v2";
-const BRAND_GREEN = "#00552b";
+const STORE = "qmark.student.session.v1";
+const BRAND_NAVY = "#0A1F44";
+const BRAND_GOLD = "#D4AF37";
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
 
 interface StoredStudentSession {
@@ -132,6 +135,7 @@ interface StudentMe {
   index_number: string;
   level: string;
   program?: string;
+  department?: string;
   email?: string;
   qr_uuid?: string;
   lecturers_count?: number;
@@ -226,6 +230,36 @@ function StudentPortalPage() {
   const [announcements, setAnnouncements] = useState<NoticeItem[]>([]);
   const [assignments, setAssignments] = useState<AssignmentItem[]>([]);
   const [activeTab, setActiveTab] = useState<string>("attendance");
+  const [activeLecturerSession, setActiveLecturerSession] = useState<{
+    id: string;
+    courseCode?: string;
+    title?: string;
+  } | null>(null);
+
+  // Poll / check for any active attendance sessions opened by lecturers
+  useEffect(() => {
+    if (!me) return;
+    const checkSessions = () => {
+      fetch("/api/public/student-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "get_active_sessions" }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d?.ok && Array.isArray(d.sessions) && d.sessions.length > 0) {
+            setActiveLecturerSession(d.sessions[0]);
+          } else {
+            setActiveLecturerSession(null);
+          }
+        })
+        .catch(() => {});
+    };
+
+    checkSessions();
+    const interval = setInterval(checkSessions, 15000);
+    return () => clearInterval(interval);
+  }, [me]);
 
   // Account Settings state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -233,7 +267,7 @@ function StudentPortalPage() {
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
 
-  // QR Code generator matching KNUST brand green
+  // QR Code generator matching Qmark brand Navy
   useEffect(() => {
     if (me) {
       const qrPayload = me.qr_uuid || me.index_number;
@@ -241,7 +275,7 @@ function StudentPortalPage() {
         width: 380,
         margin: 2,
         color: {
-          dark: BRAND_GREEN,
+          dark: BRAND_NAVY,
           light: "#ffffff",
         },
       })
@@ -260,7 +294,7 @@ function StudentPortalPage() {
     const w = window.open("", "_blank");
     if (!w) return;
     w.document.write(
-      `<html><head><title>${me.index_number} - KNUST Universal Student QR Pass</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;text-align:center;padding:40px;color:#0f172a}.badge{display:inline-block;border:2px solid #00552b;border-radius:16px;padding:24px 32px;max-width:360px;background:#ffffff;box-shadow:0 4px 12px rgba(0,0,0,0.08)}.crest{width:64px;height:64px;margin:0 auto 8px;display:block}h1{font-size:11px;letter-spacing:1px;color:#00552b;margin:0 0 6px;text-transform:uppercase}h2{margin:0 0 12px;color:#0f172a;font-size:18px}h3{margin:12px 0 4px;font-size:18px;color:#0f172a}p{margin:4px 0;color:#475569;font-size:13px}.tag{display:inline-block;background:#e6f4ea;color:#00552b;border:1px solid #00552b;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;margin-bottom:12px}.qr{width:220px;height:220px;margin:0 auto;display:block;border-radius:8px}</style></head><body><div class="badge"><img class="crest" src="/favicon.png" alt="KNUST Crest" /><h1>Kwame Nkrumah University of Science and Technology</h1><h2>Universal Student QR Pass</h2><img class="qr" src="${qrUrl}" /><h3>${me.full_name}</h3><p style="font-size:15px;font-weight:bold;color:#00552b">Index: ${me.index_number}</p><p>Level ${me.level || "100"} · ${me.program || "Undergraduate Degree"}</p><p style="font-size:11px;color:#64748b;margin-top:14px;border-top:1px dashed #cbd5e1;padding-top:10px">Official Academic Pass · Valid for all courses & faculty</p></div></body></html>`,
+      `<html><head><title>${me.index_number} - Qmark Universal Student QR Pass</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;text-align:center;padding:40px;color:#0A1F44;background:#f8fafc}.badge{display:inline-block;border:2px solid #D4AF37;border-radius:18px;padding:26px 34px;max-width:360px;background:#ffffff;box-shadow:0 8px 24px rgba(10,31,68,0.1)}.crest{width:56px;height:56px;margin:0 auto 10px;display:block}h1{font-size:11px;letter-spacing:1.5px;color:#D4AF37;margin:0 0 6px;text-transform:uppercase;font-weight:700}h2{margin:0 0 12px;color:#0A1F44;font-size:19px;font-weight:800}h3{margin:12px 0 4px;font-size:18px;color:#0A1F44}p{margin:4px 0;color:#64748b;font-size:13px}.tag{display:inline-block;background:#fef9c3;color:#854d0e;border:1px solid #D4AF37;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;margin-bottom:12px}.qr{width:220px;height:220px;margin:0 auto;display:block;border-radius:12px;border:1px solid #e2e8f0}</style></head><body><div class="badge"><img class="crest" src="/favicon.svg" alt="Qmark" /><h1>Qmark Attendance Network</h1><h2>Universal Student QR Pass</h2><div class="tag">VERIFIED PASS</div><img class="qr" src="${qrUrl}" /><h3>${me.full_name}</h3><p style="font-size:15px;font-weight:bold;color:#0A1F44">Index: ${me.index_number}</p><p>Level ${me.level || "100"} · ${me.program || "Undergraduate Degree"}</p><p style="font-size:11px;color:#94a3b8;margin-top:14px;border-top:1px dashed #cbd5e1;padding-top:10px">Official Academic Pass · Valid for all courses & faculty</p></div></body></html>`,
     );
     w.document.close();
     setTimeout(() => w.print(), 400);
@@ -820,54 +854,23 @@ function StudentPortalPage() {
   );
 
   return (
-    <div className="min-h-screen bg-muted/25 flex flex-col">
-      {/* Top Navbar */}
-      <header className="border-b bg-card/90 backdrop-blur-md sticky top-0 z-30 shadow-xs">
-        <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <Link to="/" className="flex items-center gap-2 sm:gap-2.5 hover:opacity-90 transition group">
-              <div className="size-9 sm:size-10 rounded-xl bg-muted/40 p-0.5 shadow-xs border flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                <KnustEmblem size={32} />
-              </div>
-              <div>
-                <span className="font-bold text-sm sm:text-lg tracking-tight text-foreground block leading-none">
-                  KNUST
-                </span>
-                <span className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
-                  Attendance App
-                </span>
-              </div>
-            </Link>
-            <span className="text-muted-foreground/40 hidden sm:inline">/</span>
-            <span className="text-xs font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded-md hidden sm:inline-block">
-              Student Portal
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {me && <InAppNotificationCenter userId={me.index_number} />}
-            {me ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSignOut}
-                className="text-xs gap-1.5 h-8 font-medium px-2.5 sm:px-3"
-              >
-                <LogOut className="size-3.5" />
-                <span className="hidden xs:inline">Sign Out</span>
-                <span className="xs:hidden">Exit</span>
-              </Button>
-            ) : (
-              <Link to="/">
-                <Button variant="ghost" size="sm" className="text-xs gap-1 h-8 px-2 sm:px-3">
-                  <ArrowLeft className="size-3.5" />
-                  Home
-                </Button>
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-transparent flex flex-col">
+      {/* Title Bar matching exact image design */}
+      <QmarkTitleBar
+        tag="GH"
+        user={
+          me
+            ? {
+                name: me.full_name,
+                role: me.index_number,
+              }
+            : null
+        }
+        notificationUserId={me?.index_number}
+        onSignOut={me ? handleSignOut : undefined}
+        showBack={true}
+        backTo="/"
+      />
 
       {/* Main Content Area */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-3.5 sm:py-6 md:py-8 min-w-0 overflow-x-hidden">
@@ -876,38 +879,19 @@ function StudentPortalPage() {
           /* AUTHENTICATION SCREENS (INDEX CHECK, FIRST-TIME PASSWORD, LOGIN, RESET)   */
           /* ========================================================================= */
           <div className="w-full max-w-sm sm:max-w-md md:max-w-4xl mx-auto py-1 sm:py-6 px-1 sm:px-2 min-w-0">
-            <div className="rounded-2xl border border-primary/15 bg-card shadow-xl overflow-hidden grid md:grid-cols-12 min-w-0">
-              {/* Left Column / University Students Presentation Image */}
-              <div className="relative md:col-span-5 hidden md:flex flex-col justify-between p-6 sm:p-8 text-white overflow-hidden bg-[#001f0f]">
-                <img
-                  src={knustStudentsHero}
-                  alt="KNUST university students"
-                  loading="lazy"
-                  decoding="async"
-                  width={800}
-                  height={900}
-                  className="absolute inset-0 h-full w-full object-cover object-center brightness-[0.82]"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-[#00381c]/65 to-black/40" />
+            <div className="rounded-2xl glass-card shadow-xl overflow-hidden grid md:grid-cols-12 min-w-0">
+              {/* Left Column / Qmark Student Presentation */}
+              <div className="relative md:col-span-5 hidden md:flex flex-col justify-between p-6 sm:p-8 text-white overflow-hidden bg-[#0A1F44] border-r border-[#D4AF37]/20">
+                {/* Ambient Glow */}
+                <div className="absolute top-0 left-0 w-full h-40 bg-[#D4AF37]/10 blur-2xl pointer-events-none" />
 
                 {/* Top Branding inside Image Panel */}
                 <div className="relative z-10 space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className="size-11 rounded-full bg-white/10 backdrop-blur-xs flex items-center justify-center p-0.5 border border-white/25 shadow-md">
-                      <KnustEmblem size={36} />
-                    </div>
-                    <div>
-                      <h2 className="font-extrabold text-base tracking-tight text-white drop-shadow-xs">
-                        KNUST ATTENDANCE APP
-                      </h2>
-                      <p className="text-[11px] font-semibold text-white/80 uppercase tracking-wider">
-                        Student Portal
-                      </p>
-                    </div>
+                    <QmarkLogo size="md" variant="full" theme="dark" subtitle="Student Pass" />
                   </div>
-                  <Badge className="bg-primary/80 hover:bg-primary/90 text-white border-white/20 text-[10px] px-2 py-0.5">
-                    Official Student Gateway
+                  <Badge className="bg-[#D4AF37]/20 text-[#D4AF37] border-[#D4AF37]/40 text-[10px] px-2 py-0.5 font-bold">
+                    Official Student Pass
                   </Badge>
                 </div>
 
@@ -915,33 +899,33 @@ function StudentPortalPage() {
                 <div className="relative z-10 space-y-4 pt-10">
                   <div className="space-y-1.5">
                     <h3 className="font-bold text-lg text-white leading-snug">
-                      Fast, Secure Attendance & Course Updates
+                      Your Personal Digital QR Pass
                     </h3>
-                    <p className="text-xs text-white/85 leading-relaxed">
-                      Instant classroom check-ins, personal rotating QR badges, assignments, and real-time push alerts on your phone.
+                    <p className="text-xs text-white/70 leading-relaxed">
+                      Instant classroom check-ins, Apple Wallet-style dynamic QR badges, assignments, and real-time push alerts on your phone.
                     </p>
                   </div>
 
-                  <div className="space-y-2 pt-2 border-t border-white/15 text-xs text-white/90">
+                  <div className="space-y-2 pt-2 border-t border-white/10 text-xs text-white/80">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" />
-                      <span>Live 10-second rolling QR tokens</span>
+                      <CheckCircle2 className="size-3.5 text-[#D4AF37] shrink-0" />
+                      <span>Apple Wallet style digital QR pass</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" />
-                      <span>Instant mobile push notifications</span>
+                      <CheckCircle2 className="size-3.5 text-[#D4AF37] shrink-0" />
+                      <span>Instant geofenced lecture check-in</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" />
-                      <span>Coursework submissions & exam eligibility</span>
+                      <CheckCircle2 className="size-3.5 text-[#D4AF37] shrink-0" />
+                      <span>Real-time attendance & 75% exam cutoff monitor</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Right Column / Auth Form Area */}
-              <div className="md:col-span-7 flex flex-col justify-center bg-card">
-                <div className="h-1.5 bg-gradient-to-r from-[#00381c] via-[#00552b] to-[#007a3d]" />
+              <div className="md:col-span-7 flex flex-col justify-center bg-transparent">
+                <div className="h-1.5 bg-gradient-to-r from-[#0A1F44] via-[#D4AF37] to-[#0A1F44]" />
 
                 {/* Mode Selector Tabs */}
                 <div className="p-1 sm:p-1.5 bg-muted/70 border-b grid grid-cols-2 sm:grid-cols-4 gap-1 text-[11px] sm:text-xs">
@@ -1013,13 +997,15 @@ function StudentPortalPage() {
                   <>
                     <CardHeader className="text-center pb-3 pt-5 px-4 sm:px-6">
                       <div className="flex justify-center mb-2 md:hidden">
-                        <KnustEmblem size={42} />
+                        <div className="size-10 rounded-xl bg-[#D4AF37] flex items-center justify-center shadow-xs">
+                          <QmarkLogo size="xs" variant="icon" />
+                        </div>
                       </div>
-                      <CardTitle className="text-lg sm:text-xl font-bold flex items-center justify-center gap-2 text-primary">
-                        <UserPlus className="size-5" /> New Student Registration
+                      <CardTitle className="text-lg sm:text-xl font-bold flex items-center justify-center gap-2 text-foreground">
+                        <UserPlus className="size-5 text-[#D4AF37]" /> New Student Registration
                       </CardTitle>
                       <CardDescription className="text-xs max-w-sm mx-auto">
-                        Kwame Nkrumah University of Science and Technology. Register once to create your student account and get your permanent QR attendance pass.
+                        Qmark Academic Network. Register once to create your student account and get your permanent QR attendance pass.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4 px-4 sm:px-6">
@@ -1194,7 +1180,9 @@ function StudentPortalPage() {
                   <>
                     <CardHeader className="text-center pb-3 pt-5 px-4 sm:px-6">
                       <div className="flex justify-center mb-2 md:hidden">
-                        <KnustEmblem size={42} />
+                        <div className="size-10 rounded-xl bg-[#D4AF37] flex items-center justify-center shadow-xs">
+                          <QmarkLogo size="xs" variant="icon" />
+                        </div>
                       </div>
                       <CardTitle className="text-lg sm:text-xl font-bold">Student Account Activation</CardTitle>
                       <CardDescription className="text-xs max-w-sm mx-auto">
@@ -1314,7 +1302,9 @@ function StudentPortalPage() {
                 <>
                   <CardHeader className="text-center pb-3">
                     <div className="flex justify-center mb-2">
-                      <KnustEmblem size={48} />
+                      <div className="size-12 rounded-xl bg-[#D4AF37] flex items-center justify-center shadow-xs">
+                        <QmarkLogo size="xs" variant="icon" />
+                      </div>
                     </div>
                     <CardTitle className="text-xl font-bold">Create Your Password</CardTitle>
                     <CardDescription className="text-xs">
@@ -1336,7 +1326,7 @@ function StudentPortalPage() {
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Verified Email:</span>
-                        <span className="font-medium text-emerald-600 flex items-center gap-1">
+                        <span className="font-medium text-[#D4AF37] flex items-center gap-1">
                           <CheckCircle2 className="size-3.5" /> {email}
                         </span>
                       </div>
@@ -1419,24 +1409,19 @@ function StudentPortalPage() {
 
               {step === "login" && (
                 <>
-                  <div className="relative h-28 sm:h-32 w-full overflow-hidden bg-[#001f0f] border-b">
-                    <img
-                      src={knustStudentsHero}
-                      alt="KNUST University Students"
-                      className="absolute inset-0 h-full w-full object-cover object-center brightness-[0.88]"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
-                    <div className="absolute bottom-2.5 left-3.5 right-3.5 flex items-center gap-2.5 text-white">
-                      <div className="size-9 rounded-full bg-white/15 backdrop-blur-xs flex items-center justify-center p-0.5 border border-white/30 shadow-xs shrink-0">
-                        <KnustEmblem size={28} />
+                  <div className="relative h-28 sm:h-32 w-full overflow-hidden bg-[#0A1F44] border-b border-[#D4AF37]/30">
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#0A1F44] via-[#0E2858] to-[#0A1F44]" />
+                    <div className="absolute -top-12 -right-12 w-44 h-44 rounded-full bg-[#D4AF37]/10 blur-xl pointer-events-none" />
+                    <div className="absolute bottom-3 left-4 right-4 flex items-center gap-3 text-white">
+                      <div className="size-11 rounded-xl bg-[#D4AF37] flex items-center justify-center shadow-md shrink-0">
+                        <QmarkLogo size="xs" variant="icon" />
                       </div>
                       <div className="min-w-0">
-                        <h2 className="font-bold text-sm sm:text-base text-white tracking-tight drop-shadow-xs truncate">
+                        <h2 className="font-bold text-base sm:text-lg text-white tracking-tight drop-shadow-xs truncate">
                           Student Portal Access
                         </h2>
-                        <p className="text-[10px] sm:text-[11px] text-white/85 truncate">
-                          KNUST Attendance & Coursework Management
+                        <p className="text-xs text-white/80 truncate">
+                          Qmark Attendance & Verification Pass
                         </p>
                       </div>
                     </div>
@@ -1565,7 +1550,9 @@ function StudentPortalPage() {
                 <>
                   <CardHeader className="text-center pb-4 pt-5 px-4 sm:px-6">
                     <div className="flex justify-center mb-2 md:hidden">
-                      <KnustEmblem size={42} />
+                      <div className="size-10 rounded-xl bg-[#D4AF37] flex items-center justify-center shadow-xs">
+                        <QmarkLogo size="xs" variant="icon" />
+                      </div>
                     </div>
                     <CardTitle className="text-lg sm:text-xl font-bold">Reset Student Password</CardTitle>
                     <CardDescription className="text-xs max-w-sm mx-auto">
@@ -1675,43 +1662,43 @@ function StudentPortalPage() {
           /* ========================================================================= */
           /* AUTHENTICATED STUDENT PORTAL DASHBOARD                                     */
           /* ========================================================================= */
-          <div className="space-y-3.5 sm:space-y-6 w-full min-w-0 max-w-full">
-            {/* Student Header Card */}
-            <Card className="border shadow-xs overflow-hidden w-full min-w-0">
-              <div className="bg-gradient-to-r from-[#00381c] via-[#00552b] to-[#007a3d] p-3.5 sm:p-5 text-white">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 min-w-0">
-                  <div className="space-y-1 min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                      <Badge className="bg-white/20 text-white border-none text-[10px] sm:text-[11px] font-mono">
+          <div className="space-y-4 sm:space-y-6 w-full min-w-0 max-w-full">
+            {/* Student Header Card - Glassmorphism & Gold Glow */}
+            <div className="rounded-3xl glass-card border border-[#D4AF37]/35 shadow-card overflow-hidden w-full min-w-0 relative">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#D4AF37]/15 rounded-full blur-3xl pointer-events-none" />
+              <div className="bg-gradient-to-br from-[#0A1F44] via-[#0D2554] to-[#0A1F44] p-4 sm:p-6 text-white relative z-10">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
+                  <div className="space-y-1.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-0.5 rounded-full bg-white/15 text-white text-[11px] font-mono border border-white/20">
                         {me.index_number}
-                      </Badge>
-                      <Badge className="bg-emerald-400/90 text-emerald-950 font-bold border-none text-[10px] sm:text-[11px]">
-                        Verified Student
-                      </Badge>
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-[#D4AF37]/20 text-[#D4AF37] text-[11px] font-bold border border-[#D4AF37]/40 tracking-wider">
+                        ACTIVE PASS
+                      </span>
                     </div>
-                    <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-white truncate">
+                    <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-white truncate">
                       {me.full_name}
                     </h1>
-                    <p className="text-[11px] sm:text-xs text-white/80 truncate">
+                    <p className="text-xs sm:text-sm text-white/80 truncate">
                       {me.program || "Undergraduate Program"} · Level {me.level || "200"}
                       {me.email && ` · ${me.email}`}
                     </p>
                   </div>
 
-                  {/* Attendance Grade Stat Box */}
-                  <div className="bg-white/10 backdrop-blur-xs rounded-xl p-2.5 sm:p-4 border border-white/15 w-full sm:w-auto text-left sm:text-right min-w-0">
-                    <div className="flex flex-col items-start sm:items-end gap-1.5 min-w-0">
-                      <div>
-                        <div className="text-[10px] sm:text-xs text-white/75 font-medium">Running Attendance</div>
-                        <div className="text-2xl sm:text-3xl font-extrabold text-white">
-                          {overallPercentage}%
-                        </div>
+                  {/* Attendance Grade Stat Box (Afterpay / Revolut KPI styling) */}
+                  <div className="rounded-2xl p-3.5 sm:p-4 bg-white/10 dark:bg-black/30 backdrop-blur-md border border-[#D4AF37]/30 w-full sm:w-auto text-left sm:text-right min-w-0">
+                    <div className="flex flex-col items-start sm:items-end gap-1 min-w-0">
+                      <div className="text-[10px] sm:text-xs text-[#D4AF37] font-bold tracking-wider uppercase">
+                        Running Attendance
                       </div>
-                      <div className="text-left sm:text-right">
-                        <span className="text-[11px] sm:text-xs text-white/85 block">
-                          {totalAttendedSessions} of {totalHeldSessions} attended
-                        </span>
-                        <span className="text-[10px] text-emerald-300 font-semibold block">
+                      <div className="text-3xl sm:text-4xl font-black text-white tracking-tight flex items-baseline gap-1">
+                        <span>{overallPercentage}</span>
+                        <span className="text-xl sm:text-2xl text-[#D4AF37]">%</span>
+                      </div>
+                      <div className="text-left sm:text-right text-[11px] text-white/85">
+                        <span>{totalAttendedSessions} of {totalHeldSessions} sessions attended</span>
+                        <span className="text-[#D4AF37] font-bold block">
                           {calculateAttendanceGrade(overallPercentage).label} Standing
                         </span>
                       </div>
@@ -1719,46 +1706,81 @@ function StudentPortalPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 pt-2.5 border-t border-white/15">
-                  <div className="flex justify-between items-center text-[10px] sm:text-xs text-white/80 mb-1">
+                <div className="mt-4 pt-3 border-t border-white/15">
+                  <div className="flex justify-between items-center text-[10px] sm:text-xs text-white/80 mb-1.5 font-medium">
                     <span>Overall Semester Attendance Standing</span>
-                    <span className="font-semibold">
+                    <span className="text-[#D4AF37] font-bold">
                       {calculateAttendanceGrade(overallPercentage).label} Grade
                     </span>
                   </div>
-                  <Progress value={overallPercentage} className="h-1.5 sm:h-2 bg-white/20" />
+                  <div className="h-2 w-full bg-white/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-[#D4AF37] via-[#F3E5AB] to-[#D4AF37] rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(overallPercentage, 100)}%` }}
+                    />
+                  </div>
                 </div>
               </div>
-            </Card>
+            </div>
 
-            {/* Quick Mobile Classroom Actions Bar - Stacked for Portrait Mobile Screens */}
-            <div className="flex flex-col gap-2 w-full max-w-xs sm:max-w-sm mx-auto min-w-0">
+            {/* Quick Actions Row (Inspired by Afterpay iOS 40 & Revolut iOS 56) */}
+            <div className="grid grid-cols-4 gap-2 sm:gap-3 max-w-lg mx-auto w-full">
               <button
                 type="button"
                 onClick={() => setActiveTab("qr")}
-                className={`p-2.5 sm:p-3 rounded-xl border flex items-center gap-2.5 transition text-left cursor-pointer w-full min-w-0 ${
+                className={`flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-2xl glass-card transition-all cursor-pointer ${
                   activeTab === "qr"
-                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                    : "bg-card hover:bg-muted/50 border-border text-foreground"
+                    ? "border-[#D4AF37] shadow-gold bg-[#D4AF37]/15"
+                    : "hover:border-[#D4AF37]/50"
                 }`}
               >
-                <div
-                  className={`size-7 sm:size-8 rounded-lg flex items-center justify-center shrink-0 ${
-                    activeTab === "qr" ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
-                  }`}
-                >
-                  <QrCode className="size-4" />
+                <div className="size-10 sm:size-12 rounded-full flex items-center justify-center bg-[#0A1F44] text-[#D4AF37] shadow-sm">
+                  <QrCode className="size-5 sm:size-6" />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <span className="text-xs font-bold block truncate">My QR Pass</span>
-                  <span
-                    className={`text-[10px] block truncate ${
-                      activeTab === "qr" ? "text-white/80" : "text-muted-foreground"
-                    }`}
-                  >
-                    Display for TA Scan
-                  </span>
+                <span className="text-[11px] sm:text-xs font-bold text-foreground truncate">My Pass</span>
+              </button>
+
+              <Link
+                to={activeLecturerSession ? (`/check-in?session=${activeLecturerSession.id}` as string) : ("/check-in" as string)}
+                className="relative flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-2xl glass-card transition-all cursor-pointer hover:border-[#D4AF37]/50"
+              >
+                {activeLecturerSession && (
+                  <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-[#D4AF37] ring-2 ring-background animate-pulse" />
+                )}
+                <div className="size-10 sm:size-12 rounded-full flex items-center justify-center bg-[#D4AF37] text-[#0A1F44] shadow-sm">
+                  <Radio className="size-5 sm:size-6" />
                 </div>
+                <span className="text-[11px] sm:text-xs font-bold text-foreground truncate">Check In</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("courses")}
+                className={`flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-2xl glass-card transition-all cursor-pointer ${
+                  activeTab === "courses"
+                    ? "border-[#D4AF37] shadow-gold bg-[#D4AF37]/15"
+                    : "hover:border-[#D4AF37]/50"
+                }`}
+              >
+                <div className="size-10 sm:size-12 rounded-full flex items-center justify-center bg-[#0A1F44] text-[#D4AF37] shadow-sm">
+                  <BookOpen className="size-5 sm:size-6" />
+                </div>
+                <span className="text-[11px] sm:text-xs font-bold text-foreground truncate">Courses</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("announcements")}
+                className={`flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-2xl glass-card transition-all cursor-pointer ${
+                  activeTab === "announcements"
+                    ? "border-[#D4AF37] shadow-gold bg-[#D4AF37]/15"
+                    : "hover:border-[#D4AF37]/50"
+                }`}
+              >
+                <div className="size-10 sm:size-12 rounded-full flex items-center justify-center bg-[#0A1F44] text-[#D4AF37] shadow-sm">
+                  <Megaphone className="size-5 sm:size-6" />
+                </div>
+                <span className="text-[11px] sm:text-xs font-bold text-foreground truncate">Notices</span>
               </button>
             </div>
 
@@ -1845,6 +1867,44 @@ function StudentPortalPage() {
                   )}
                 </div>
               </div>
+            )}
+
+            {/* Live Lecturer Active Session Announcement Banner */}
+            {activeLecturerSession && (
+              <Link
+                to={`/check-in?session=${activeLecturerSession.id}` as string}
+                className="block p-3.5 sm:p-4 rounded-2xl glass-card border-2 border-[#D4AF37] bg-[#D4AF37]/15 hover:bg-[#D4AF37]/25 transition shadow-sm group"
+              >
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="size-10 rounded-xl bg-[#0A1F44] text-[#D4AF37] flex items-center justify-center shrink-0 border border-[#D4AF37]/30 shadow-xs">
+                      <Radio className="size-5 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-[#D4AF37] text-[#0A1F44] border-none text-[10px] px-1.5 py-0 font-bold uppercase">
+                          Live Lecture Session
+                        </Badge>
+                        {activeLecturerSession.courseCode && (
+                          <span className="font-mono text-xs font-bold text-foreground">
+                            · {activeLecturerSession.courseCode}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs font-bold text-foreground mt-0.5">
+                        {activeLecturerSession.title || "Your lecturer has opened attendance check-in"}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-[#0A1F44] font-bold text-xs h-9 px-4 shrink-0 w-full sm:w-auto gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <span>Check In Now</span>
+                    <ArrowRight className="size-3.5" />
+                  </Button>
+                </div>
+              </Link>
             )}
 
             {/* Mobile Push Notification Activation Banner (Compact & Dismissable) */}
@@ -2002,7 +2062,7 @@ function StudentPortalPage() {
                               <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-1 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0">
                                 <div
                                   className={`text-xl sm:text-2xl font-black ${
-                                    isPassing ? "text-emerald-600" : "text-destructive"
+                                    isPassing ? "text-[#D4AF37]" : "text-destructive"
                                   }`}
                                 >
                                   {course.percentage}%
@@ -2025,9 +2085,9 @@ function StudentPortalPage() {
 
                             {/* Attended, Missed, Late metrics */}
                             <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1 text-center">
-                              <div className="p-1.5 sm:p-2 rounded-lg bg-emerald-50 border border-emerald-100">
-                                <div className="text-[10px] sm:text-xs text-emerald-800 font-medium">Attended</div>
-                                <div className="text-base sm:text-lg font-bold text-emerald-700">
+                              <div className="p-1.5 sm:p-2 rounded-lg bg-[#D4AF37]/10 border border-[#D4AF37]/20">
+                                <div className="text-[10px] sm:text-xs text-[#0A1F44] font-medium">Attended</div>
+                                <div className="text-base sm:text-lg font-bold text-[#AA820A]">
                                   {course.attended}
                                 </div>
                               </div>
@@ -2114,7 +2174,7 @@ function StudentPortalPage() {
                                 variant={isPresent ? "default" : isLate ? "secondary" : "outline"}
                                 className={`text-[10px] sm:text-[11px] font-mono shrink-0 ${
                                   isPresent
-                                    ? "bg-emerald-600 text-white"
+                                    ? "bg-[#D4AF37] text-white"
                                     : isLate
                                       ? "bg-amber-100 text-amber-800"
                                       : ""
@@ -2172,7 +2232,7 @@ function StudentPortalPage() {
                     <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">
                       Overall Attendance
                     </span>
-                    <div className="text-base sm:text-lg font-bold text-emerald-600">
+                    <div className="text-base sm:text-lg font-bold text-[#D4AF37]">
                       {overallPercentage}%
                     </div>
                     <span className="text-[10px] sm:text-[11px] text-muted-foreground block truncate">
@@ -2225,7 +2285,7 @@ function StudentPortalPage() {
                                     <h4 className="font-semibold text-xs text-foreground truncate mt-0.5">{c.title}</h4>
                                   </div>
                                   <div className="text-right shrink-0">
-                                    <div className={`font-black text-sm ${isPassing ? "text-emerald-600" : "text-destructive"}`}>
+                                    <div className={`font-black text-sm ${isPassing ? "text-[#D4AF37]" : "text-destructive"}`}>
                                       {c.percentage}%
                                     </div>
                                     <Badge
@@ -2307,7 +2367,7 @@ function StudentPortalPage() {
                                     <td className="px-4 py-3 text-center">
                                       <div
                                         className={`font-extrabold text-sm ${
-                                          isPassing ? "text-emerald-600" : "text-destructive"
+                                          isPassing ? "text-[#D4AF37]" : "text-destructive"
                                         }`}
                                       >
                                         {c.percentage}%
@@ -2653,86 +2713,34 @@ function StudentPortalPage() {
               </TabsContent>
 
               {/* ------------------------------------------------------------- */}
-              {/* TAB 6: UNIVERSAL QR PASS (ONE CODE FOR ALL COURSES)           */}
+              {/* TAB: DIGITAL QR PASS (APPLE WALLET STYLE)                     */}
               {/* ------------------------------------------------------------- */}
               <TabsContent value="qr" className="space-y-4">
-                <Card className="border shadow-xs overflow-hidden max-w-md mx-auto">
-                  <CardHeader className="p-3.5 sm:p-5 pb-3 border-b text-center bg-muted/20">
-                    <div className="flex items-center justify-center gap-1.5 mb-1 flex-wrap">
-                      <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] sm:text-xs font-semibold">
-                        Universal Student Pass
-                      </Badge>
-                      <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 text-[10px] sm:text-xs font-semibold">
-                        One Code for All Courses
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-lg sm:text-xl font-bold flex items-center justify-center gap-2">
-                      <QrCode className="size-5 text-primary shrink-0" />
-                      My Universal QR Pass
-                    </CardTitle>
-                    <CardDescription className="text-xs max-w-sm mx-auto">
-                      Present this unique QR code to your lecturer or TA to record your attendance.
-                    </CardDescription>
-                  </CardHeader>
-
-                  <CardContent className="p-3.5 sm:p-6 text-center space-y-3.5">
-                    {qrUrl ? (
-                      <div className="p-3 bg-white rounded-2xl shadow-sm border inline-block mx-auto">
-                        <img
-                          src={qrUrl}
-                          alt={`Universal QR Pass for ${me.full_name}`}
-                          className="mx-auto size-40 xs:size-48 sm:size-56 object-contain"
-                        />
-                      </div>
-                    ) : (
-                      <div className="size-40 xs:size-48 sm:size-56 bg-muted animate-pulse rounded-2xl mx-auto" />
-                    )}
-
-                    <div className="space-y-1">
-                      <div className="flex justify-center mb-1">
-                        <KnustEmblem size={32} />
-                      </div>
-                      <h3 className="text-base sm:text-lg font-bold text-foreground truncate px-2">
-                        {me.full_name}
-                      </h3>
-                      <div className="font-mono text-xs sm:text-sm font-bold bg-primary/10 text-primary px-3 py-1 rounded inline-block">
-                        {me.index_number}
-                      </div>
-                      <p className="text-[11px] sm:text-xs text-muted-foreground truncate px-2">
-                        Level {me.level || "100"} · {me.program || "Undergraduate Degree"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground text-left space-y-1 border">
-                      <div className="font-semibold text-foreground flex items-center gap-1.5">
-                        <ShieldCheck className="size-3.5 text-emerald-600 shrink-0" />
-                        Universal QR Pass Guarantee
-                      </div>
-                      <p className="text-[11px] leading-relaxed">
-                        You do not need separate QR codes for each course or lecturer. This single code
-                        is permanently tied to your index number and automatically identifies you in any registered class.
-                      </p>
-                    </div>
-
-                    {/* Actions Stacked Vertically for Portrait Mobile */}
-                    <div className="flex flex-col gap-2 pt-1 w-full max-w-[240px] mx-auto min-w-0">
-                      {qrUrl && (
-                        <a
-                          href={qrUrl}
-                          download={`KNUST-${me.index_number}-Pass.png`}
-                          className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-secondary-foreground py-2 px-3 rounded-lg border transition shadow-xs w-full min-w-0"
-                        >
-                          <Download className="size-3.5 shrink-0" />
-                          <span>Save PNG</span>
-                        </a>
-                      )}
-                      <Button onClick={printPass} className="w-full text-xs py-2 min-w-0">
-                        <Printer className="size-3.5 mr-1 shrink-0" />
-                        <span>Print Pass</span>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="max-w-md mx-auto">
+                  <StudentQrPassCard
+                    student={{
+                      indexNumber: me.index_number,
+                      fullName: me.full_name,
+                      level: me.level,
+                      department: me.program || me.department,
+                      attendanceRate: overallPercentage,
+                      token: me.qr_uuid || me.index_number,
+                      qrPayload: me.qr_uuid || me.index_number,
+                      qrDataUrl: qrUrl || undefined,
+                    }}
+                  />
+                  <div className="flex justify-center pt-3">
+                    <Button
+                      onClick={printPass}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-8 px-4 text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <Printer className="size-3.5 mr-1.5 shrink-0" />
+                      <span>Print Physical Pass Card</span>
+                    </Button>
+                  </div>
+                </div>
               </TabsContent>
 
               {/* ------------------------------------------------------------- */}
@@ -2859,7 +2867,7 @@ function StudentPortalPage() {
                       </div>
 
                       <div className="pt-3 border-t text-xs text-muted-foreground flex items-center gap-2">
-                        <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
+                        <ShieldCheck className="size-4 text-[#D4AF37] shrink-0" />
                         <span>
                           Protected by student-only authenticated access and PBKDF2 encryption.
                         </span>
@@ -2872,8 +2880,6 @@ function StudentPortalPage() {
           </div>
         )}
       </main>
-
-      <PublicFooter />
     </div>
   );
 }

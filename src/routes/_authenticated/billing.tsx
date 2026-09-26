@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Gift,
   Home as HomeIcon,
-  Sparkles,
   Check,
   GraduationCap,
   ScanLine,
@@ -19,13 +18,13 @@ import { useAuth } from "@/lib/auth";
 export const Route = createFileRoute("/_authenticated/billing")({
   head: () => ({
     meta: [
-      { title: "Free Academic Access — KNUST ATTENDANCE APP" },
+      { title: "Free Academic Access — Qmark" },
       {
         name: "description",
         content:
-          "KNUST ATTENDANCE APP is completely free for all lecturers, faculty, and students with no subscriptions or fees.",
+          "Qmark is completely free for all lecturers, faculty, and students with no subscriptions or fees.",
       },
-      { property: "og:title", content: "Free Academic Access — KNUST ATTENDANCE APP" },
+      { property: "og:title", content: "Free Academic Access — Qmark" },
       {
         property: "og:description",
         content: "100% free university attendance system with unlimited courses, sessions, and exports.",
@@ -75,7 +74,7 @@ function FreeAccessPage() {
             </div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">University Access & Plan</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              KNUST ATTENDANCE APP is completely free for all university faculty, lecturers, and students.
+              Qmark is completely free for all university faculty, lecturers, and students.
             </p>
           </div>
           <Link to={"/dashboard" as string} className="w-full sm:w-auto">
@@ -88,25 +87,25 @@ function FreeAccessPage() {
 
         {/* Free Plan Status Card */}
         <Card className="border-primary/30 bg-card shadow-sm overflow-hidden">
-          <div className="h-2 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-500" />
+          <div className="h-2 bg-gradient-to-r from-[#0A1F44] via-[#D4AF37] to-[#0A1F44]" />
           <CardHeader className="p-5 sm:p-6 pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1">
                 <CardTitle className="text-xl font-bold flex items-center gap-2">
-                  <CheckCircle2 className="size-5 text-emerald-600 shrink-0" />
+                  <CheckCircle2 className="size-5 text-[#D4AF37] shrink-0" />
                   All Features Fully Unlocked
                 </CardTitle>
                 <CardDescription className="text-xs sm:text-sm">
                   Account: <span className="font-semibold text-foreground">{user?.email || "Lecturer"}</span>
                 </CardDescription>
               </div>
-              <Badge className="bg-emerald-600 text-white hover:bg-emerald-700 px-3 py-1 text-xs self-start sm:self-auto">
-                <Sparkles className="size-3 mr-1" /> Completely Free Forever
+              <Badge className="bg-[#D4AF37] text-white hover:bg-[#AA820A] px-3 py-1 text-xs self-start sm:self-auto">
+                <Check className="size-3 mr-1" /> Completely Free Forever
               </Badge>
             </div>
           </CardHeader>
           <CardContent className="p-5 sm:p-6 pt-0 space-y-6">
-            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-950 dark:text-emerald-200 text-xs sm:text-sm leading-relaxed">
+            <div className="p-4 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 text-[#0A1F44] dark:text-[#D4AF37]/30 text-xs sm:text-sm leading-relaxed">
               <strong>Zero Subscriptions, Zero Fees:</strong> There are no paywalls, recurring charges,
               or trial expiration dates. You have unrestricted access to all current and future attendance
               features for teaching and continuous assessment.

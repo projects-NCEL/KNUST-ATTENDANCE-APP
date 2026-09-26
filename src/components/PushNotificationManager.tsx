@@ -16,7 +16,6 @@ import {
   Megaphone,
   FileText,
   Inbox,
-  Sparkles,
   MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -203,7 +202,7 @@ export function PushNotificationManager({
         toast.success(result.message || "Push notifications enabled!");
       } else {
         if (result.status === "ios_pwa_required") {
-          toast.error("Add KNUST ATTENDANCE APP to Home Screen first on iPhone/iPad to enable push notifications.");
+          toast.error("Add Qmark to Home Screen first on iPhone/iPad to enable push notifications.");
         } else {
           toast.error(result.message || "Failed to enable notifications");
         }
@@ -266,11 +265,11 @@ export function PushNotificationManager({
           userId: userContext.userId,
           payload: {
             type: "TEST",
-            title: "KNUST Attendance Push Verified",
+            title: "Qmark Attendance Push Verified",
             body: "Real OS/browser push notifications are active and functioning correctly on this device!",
             url: "/student",
-            icon: "/favicon.png",
-            badge: "/favicon.png",
+            icon: "/qmark_icon_standalone.png",
+            badge: "/qmark_icon_standalone.png",
           },
         }),
       });
@@ -307,7 +306,7 @@ export function PushNotificationManager({
           <ol className="list-decimal pl-4 space-y-1.5 font-medium">
             <li>In Safari, tap the <strong>Share</strong> button at the bottom of the screen.</li>
             <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
-            <li>Launch the new <strong>KNUST Attendance</strong> app icon from your Home Screen.</li>
+            <li>Launch the new <strong>Qmark</strong> app icon from your Home Screen.</li>
             <li>Return to this page inside the installed app and tap <strong>Enable Notifications</strong>.</li>
           </ol>
           <div className="pt-2">
@@ -346,7 +345,7 @@ export function PushNotificationManager({
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2.5">
-            <div className={`p-2 rounded-lg ${isSubscribed ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground"}`}>
+            <div className={`p-2 rounded-lg ${isSubscribed ? "bg-[#D4AF37]/15 text-[#0A1F44]" : "bg-muted text-muted-foreground"}`}>
               {isSubscribed ? <Bell className="size-5" /> : <BellOff className="size-5" />}
             </div>
             <div>
@@ -362,7 +361,7 @@ export function PushNotificationManager({
                 Blocked in Browser
               </Badge>
             ) : isSubscribed ? (
-              <Badge className="bg-emerald-600 hover:bg-emerald-700 text-xs">
+              <Badge className="bg-[#D4AF37] hover:bg-[#AA820A] text-xs">
                 <CheckCircle2 className="size-3 mr-1" /> Active on this Device
               </Badge>
             ) : (
@@ -418,7 +417,7 @@ export function PushNotificationManager({
                 onClick={handleSubscribe}
                 disabled={loading || status === "denied"}
                 size="sm"
-                className="bg-[#00552b] hover:bg-[#00381c] text-white text-xs font-semibold shadow-xs cursor-pointer"
+                className="bg-[#D4AF37] hover:bg-[#0A1F44] text-white text-xs font-semibold shadow-xs cursor-pointer"
               >
                 {loading ? (
                   <>
@@ -591,7 +590,7 @@ export function PushNotificationManager({
                             : isAssignment
                             ? "bg-amber-100 text-amber-700"
                             : isAttendance
-                            ? "bg-emerald-100 text-emerald-700"
+                            ? "bg-[#D4AF37]/15 text-[#AA820A]"
                             : "bg-muted text-muted-foreground"
                         }`}
                       >
@@ -674,6 +673,7 @@ export function InAppNotificationCenter({ userId }: { userId: string }) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedAlert, setSelectedAlert] = useState<any | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const fetchNotifications = useCallback(async () => {
     if (!userId) return;
@@ -694,6 +694,22 @@ export function InAppNotificationCenter({ userId }: { userId: string }) {
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!open) return;
+    const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, [open]);
 
   const markAllRead = async () => {
     try {
@@ -730,7 +746,7 @@ export function InAppNotificationCenter({ userId }: { userId: string }) {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <div className="relative">
+    <div ref={dropdownRef} className="relative">
       <Button
         variant="ghost"
         size="icon"
@@ -744,8 +760,8 @@ export function InAppNotificationCenter({ userId }: { userId: string }) {
         <Bell className="size-5" />
         {unreadCount > 0 && (
           <span className="absolute top-1 right-1 flex size-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full size-2.5 bg-emerald-600"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#D4AF37] opacity-75"></span>
+            <span className="relative inline-flex rounded-full size-2.5 bg-[#D4AF37]"></span>
           </span>
         )}
       </Button>
@@ -908,28 +924,80 @@ export function StudentPushBanner({
   onOpenNotificationsTab?: () => void;
 }) {
   const [status, setStatus] = useState<PushPermissionStatus>("prompt");
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return (
+        localStorage.getItem("qmark_student_push_accepted") === "true" ||
+        (typeof Notification !== "undefined" && Notification.permission === "granted")
+      );
+    }
+    return false;
+  });
   const [loading, setLoading] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return (
+        localStorage.getItem("qmark_student_push_accepted") === "true" ||
+        localStorage.getItem("qmark_student_push_later") === "true" ||
+        (typeof Notification !== "undefined" && Notification.permission === "granted")
+      );
+    }
+    return false;
+  });
 
   useEffect(() => {
     const s = getPushPermissionStatus();
     setStatus(s);
     if (s === "granted") {
-      getExistingPushSubscription().then((sub) => {
-        setIsSubscribed(Boolean(sub));
-      });
+      setIsSubscribed(true);
+      setDismissed(true);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("qmark_student_push_accepted", "true");
+      }
+      return;
     }
+    getExistingPushSubscription().then((sub) => {
+      if (sub) {
+        setIsSubscribed(true);
+        setDismissed(true);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("qmark_student_push_accepted", "true");
+        }
+      }
+    });
   }, []);
 
   const handleEnable = async () => {
     setLoading(true);
     try {
+      // 1. Check system notification permission
+      if (typeof Notification !== "undefined") {
+        const perm = await Notification.requestPermission();
+        if (perm === "granted") {
+          // Immediately disappear from the student portal as soon as accepted
+          setIsSubscribed(true);
+          setStatus("granted");
+          setDismissed(true);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("qmark_student_push_accepted", "true");
+          }
+          toast.success("Phone notifications activated! Test alert dispatched.");
+        } else if (perm === "denied") {
+          setStatus("denied");
+          toast.error("Notifications blocked in device settings. You can re-enable anytime in Settings.");
+          setLoading(false);
+          return;
+        }
+      }
+
       const res = await subscribeDeviceToPush(userContext);
-      if (res.success) {
+      if (res.success || (typeof Notification !== "undefined" && Notification.permission === "granted")) {
         setIsSubscribed(true);
         setStatus("granted");
-        toast.success("Phone notifications activated! Test alert dispatched.");
+        setDismissed(true);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("qmark_student_push_accepted", "true");
+        }
         // Trigger a test alert to phone
         fetch("/api/push/send", {
           method: "POST",
@@ -950,45 +1018,47 @@ export function StudentPushBanner({
           { duration: 7000 },
         );
       } else {
-        toast.error(res.error || "Failed to activate phone notifications");
+        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          setIsSubscribed(true);
+          setDismissed(true);
+        } else {
+          toast.error(res.error || "Failed to activate phone notifications");
+        }
       }
     } catch {
-      toast.error("An error occurred while enabling notifications");
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        setIsSubscribed(true);
+        setDismissed(true);
+      } else {
+        toast.error("An error occurred while enabling notifications");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  if (dismissed) return null;
+  const handleLater = () => {
+    setDismissed(true);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("qmark_student_push_later", "true");
+    }
+  };
 
-  if (isSubscribed) {
-    return (
-      <div className="rounded-xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 px-3.5 py-2 flex items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
-          <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-          <span className="font-medium">
-            Phone notifications are active — you will receive lecturer updates directly to this device.
-          </span>
-        </div>
-        {onOpenNotificationsTab && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onOpenNotificationsTab}
-            className="text-[11px] h-6 px-2 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/40"
-          >
-            Preferences
-          </Button>
-        )}
-      </div>
-    );
+  // As requested: Once granted, subscribed, or dismissed, immediately disappear completely from the portal
+  if (
+    dismissed ||
+    isSubscribed ||
+    status === "granted" ||
+    (typeof Notification !== "undefined" && Notification.permission === "granted")
+  ) {
+    return null;
   }
 
   return (
-    <div className="rounded-2xl border-2 border-primary/20 bg-linear-to-r from-primary/10 via-background to-primary/5 p-4 sm:p-5 shadow-xs transition-all">
+    <div className="rounded-2xl glass-card border-2 border-[#D4AF37]/30 bg-[#0A1F44]/10 dark:bg-[#0A1F44]/40 p-4 sm:p-5 shadow-sm transition-all">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5">
-          <div className="p-2.5 rounded-xl bg-primary text-primary-foreground shrink-0 shadow-xs">
+          <div className="p-2.5 rounded-xl bg-[#0A1F44] text-[#D4AF37] border border-[#D4AF37]/30 shrink-0 shadow-xs">
             <Bell className="size-5 animate-pulse" />
           </div>
           <div className="space-y-1">
@@ -996,7 +1066,7 @@ export function StudentPushBanner({
               <h3 className="text-sm font-bold text-foreground">
                 Get Lecturer Announcements & Assignments on your Phone
               </h3>
-              <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px] px-1.5 py-0 font-semibold">
+              <Badge className="bg-[#D4AF37]/20 text-[#0A1F44] dark:text-[#D4AF37] border-[#D4AF37]/40 text-[10px] px-1.5 py-0 font-semibold">
                 Recommended
               </Badge>
             </div>
@@ -1011,7 +1081,7 @@ export function StudentPushBanner({
             onClick={handleEnable}
             disabled={loading || status === "denied"}
             size="sm"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold w-full sm:w-auto h-9 gap-1.5 shadow-xs"
+            className="bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-[#0A1F44] text-xs font-bold w-full sm:w-auto h-9 gap-1.5 shadow-sm cursor-pointer"
           >
             {loading ? (
               <>
@@ -1028,8 +1098,8 @@ export function StudentPushBanner({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setDismissed(true)}
-            className="text-xs text-muted-foreground hover:text-foreground h-9 px-2.5"
+            onClick={handleLater}
+            className="text-xs text-muted-foreground hover:text-foreground h-9 px-2.5 cursor-pointer"
           >
             Later
           </Button>

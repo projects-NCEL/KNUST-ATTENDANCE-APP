@@ -1,14 +1,20 @@
 {
-  "name": "KNUST-ATTENDANCE-APP",
-  "short_name": "KNUST Attend",
+  "name": "Qmark — Next-Gen Attendance & Roll-Call",
+  "short_name": "Qmark",
   "start_url": "/",
   "id": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#00552b",
-  "theme_color": "#00552b",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
   "icons": [
+    {
+      "src": "/qmark_icon_standalone.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/pwa-192x192.png",
       "sizes": "192x192",

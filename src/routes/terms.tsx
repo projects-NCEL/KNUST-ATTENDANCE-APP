@@ -1,12 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { KnustEmblem } from "@/components/KnustEmblem";
-import { PublicFooter } from "@/components/PublicFooter";
+import { QmarkLogo } from "@/components/QmarkLogo";
 
 export const Route = createFileRoute("/terms")({
   head: () => ({
     meta: [
-      { title: "Terms of Service — KNUST ATTENDANCE APP" },
-      { name: "description", content: "Terms of Service for KNUST ATTENDANCE APP." },
+      { title: "Terms of Service — Qmark" },
+      { name: "description", content: "Terms of Service for Qmark Attendance Platform." },
     ],
   }),
   component: TermsPage,
@@ -14,30 +13,30 @@ export const Route = createFileRoute("/terms")({
 
 function TermsPage() {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b bg-background/95 backdrop-blur sticky top-0 z-10">
+    <div className="min-h-screen bg-transparent flex flex-col justify-between">
+      <header className="border-b border-border/70 bg-background/80 dark:bg-[#0A1F44]/80 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-3.5 flex justify-between items-center">
-          <Link to={"/" as string} className="flex items-center gap-2.5 font-bold text-primary">
-            <KnustEmblem size={32} />
-            <span className="tracking-tight">KNUST ATTENDANCE APP</span>
+          <Link to={"/" as string} className="flex items-center gap-2.5 font-bold">
+            <QmarkLogo size="sm" variant="full" />
           </Link>
-          <div className="flex gap-4 text-sm">
-            <Link to={"/privacy" as string} className="hover:text-primary transition-colors">
+          <div className="flex gap-4 text-sm font-medium">
+            <Link to={"/privacy" as string} className="hover:text-[#D4AF37] transition-colors">
               Privacy
             </Link>
-            <Link to={"/manual" as string} className="hover:text-primary transition-colors">
+            <Link to={"/manual" as string} className="hover:text-[#D4AF37] transition-colors">
               Manual
             </Link>
           </div>
         </div>
       </header>
-      <main className="flex-1 max-w-3xl w-full mx-auto px-6 py-10 prose prose-sm md:prose-base">
-        <div className="flex items-center gap-4 pb-4 border-b not-prose mb-6">
-          <KnustEmblem size={52} />
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <div className="glass-card rounded-3xl p-6 sm:p-10 border border-[#D4AF37]/35 shadow-card prose prose-sm md:prose-base dark:prose-invert max-w-none">
+          <div className="flex items-center gap-4 pb-4 border-b border-border/60 not-prose mb-6">
+          <QmarkLogo size="lg" variant="icon" />
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold m-0 text-foreground">Terms of Service</h1>
             <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
-              Kwame Nkrumah University of Science and Technology · Academic Attendance Platform
+              Qmark · Next-Gen Academic Attendance & Verification Platform
             </p>
           </div>
         </div>
@@ -45,7 +44,7 @@ function TermsPage() {
 
         <h2 className="text-xl font-semibold mt-8">1. Acceptance</h2>
         <p>
-          By creating an account or using the KNUST ATTENDANCE APP application ("the Service"), you agree to be
+          By creating an account or using the Qmark application ("the Service"), you agree to be
           bound by these Terms of Service. If you do not agree, do not use the Service.
         </p>
 
@@ -110,16 +109,16 @@ function TermsPage() {
         <h2 className="text-xl font-semibold mt-8">9. Contact</h2>
         <p>
           Questions about these Terms should be directed to your Master Admin or to the maintainers
-          via the KNUST Attendance executive.
+          via the Qmark Attendance executive.
         </p>
 
         <p className="mt-10 text-sm">
-          <Link to={"/" as string} className="text-primary hover:underline">
+          <Link to={"/" as string} className="text-[#D4AF37] font-semibold hover:underline">
             ← Back to home
           </Link>
         </p>
+        </div>
       </main>
-      <PublicFooter />
     </div>
   );
 }

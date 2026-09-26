@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { registerPushServiceWorker } from "@/lib/push-client";
+import { GoldMeshBackground } from "@/components/GoldMeshBackground";
 
 function NotFoundComponent() {
   return (
@@ -78,64 +79,47 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "theme-color", content: "#00552b" },
-      { title: "KNUST ATTENDANCE APP — Official Student Attendance System" },
+      { name: "theme-color", content: "#ffffff" },
+      { title: "Qmark — Next-Gen Attendance & Roll-Call Platform" },
       {
         name: "description",
         content:
-          "KNUST ATTENDANCE APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
+          "Qmark is a high-speed QR attendance verification platform for institutions, lecturers, and students. Instant check-in, Apple Wallet-style digital passes, and automated grade compliance.",
       },
-      { property: "og:title", content: "KNUST ATTENDANCE APP — Official Student Attendance System" },
+      { property: "og:title", content: "Qmark — Next-Gen Attendance & Roll-Call Platform" },
       {
         property: "og:description",
         content:
-          "KNUST ATTENDANCE APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
+          "Instant QR attendance verification, digital pass cards, and real-time roll-call for students and lecturers.",
       },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
-      { name: "apple-mobile-web-app-title", content: "KNUST Attend" },
+      { name: "apple-mobile-web-app-title", content: "Qmark" },
       { property: "og:type", content: "website" },
-      { property: "og:image", content: "/og-image.jpg" },
-      { property: "og:image:secure_url", content: "/og-image.jpg" },
-      { property: "og:image:type", content: "image/jpeg" },
-      { property: "og:image:width", content: "1200" },
-      { property: "og:image:height", content: "630" },
-      {
-        property: "og:image:alt",
-        content: "KNUST ATTENDANCE APP — Official Student Attendance System Landing Page Preview",
-      },
+      { property: "og:image", content: "/qmark_icon_standalone.png" },
+      { property: "og:image:secure_url", content: "/qmark_icon_standalone.png" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "KNUST ATTENDANCE APP — Official Student Attendance System" },
+      { name: "twitter:title", content: "Qmark — Next-Gen Attendance & Roll-Call Platform" },
       {
         name: "twitter:description",
         content:
-          "KNUST ATTENDANCE APP is a secure QR attendance system for KNUST. Scan. Verify. Attend. Instant reports, geofenced self check-in, exportable records.",
+          "Instant QR attendance verification, digital pass cards, and real-time roll-call for students and lecturers.",
       },
-      { name: "twitter:image", content: "/og-image.jpg" },
-      {
-        name: "twitter:image:alt",
-        content: "KNUST ATTENDANCE APP — Official Student Attendance System Landing Page Preview",
-      },
+      { name: "twitter:image", content: "/qmark_icon_standalone.png" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap",
       },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
-      { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon-180x180.png" },
-      { rel: "apple-touch-icon-precomposed", href: "/apple-touch-icon-precomposed.png" },
-      { rel: "icon", href: "/favicon.png", type: "image/png", sizes: "512x512" },
-      { rel: "icon", href: "/pwa-192x192.png", type: "image/png", sizes: "192x192" },
-      { rel: "icon", href: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
-      { rel: "icon", href: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
-      { rel: "icon", href: "/knust-logo.svg", type: "image/svg+xml" },
-      { rel: "shortcut icon", href: "/favicon.png" },
+      { rel: "apple-touch-icon", href: "/qmark_icon_standalone.png" },
+      { rel: "icon", href: "/qmark_icon_standalone.png", type: "image/png" },
+      { rel: "shortcut icon", href: "/qmark_icon_standalone.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -146,11 +130,25 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (localStorage.getItem('qmark-theme') === 'dark') {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
         <HeadContent />
       </head>
-      <body>
+      <body className="bg-background text-foreground antialiased selection:bg-[#D4AF37]/30 min-h-screen relative">
+        <GoldMeshBackground />
         {children}
         <Scripts />
       </body>

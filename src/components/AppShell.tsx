@@ -10,12 +10,15 @@ import {
   ArrowLeft,
   Home,
   UserCheck,
+  ArrowLeftRight,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { firebaseAuth } from "@/integrations/firebase/config";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { KnustEmblem } from "@/components/KnustEmblem";
+import { QmarkLogo } from "@/components/QmarkLogo";
+import { QmarkTitleBar } from "@/components/QmarkTitleBar";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   registerOrVerifyDevice,
   getDeviceId,
@@ -92,7 +95,7 @@ function TutorFloatingNav() {
             <div
               className={`size-[48px] sm:size-[56px] rounded-full flex flex-col items-center justify-center shadow-lg transition-all duration-300 ${
                 isHomeActive
-                  ? "bg-gradient-to-tr from-[#00381c] via-[#00552b] to-[#007a3d] text-white ring-4 ring-primary/30 shadow-primary/35 scale-105"
+                  ? "bg-[#0A1F44] text-[#D4AF37] ring-4 ring-[#D4AF37]/40 shadow-xl scale-105"
                   : "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-primary/25"
               }`}
             >
@@ -192,103 +195,46 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
       )}
 
-      <main className="flex-1 min-w-0 bg-background flex flex-col relative">
-        {/* Header navigation */}
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-6 py-2.5 border-b bg-background/95 backdrop-blur shadow-xs">
-          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
-            <Link
-              to={"/dashboard" as string}
-              className="flex items-center gap-2 sm:gap-2.5 min-w-0 group"
-            >
-              <div className="size-8 sm:size-10 rounded-xl bg-primary/10 p-1 shadow-sm ring-1 ring-primary/20 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                <KnustEmblem size={28} />
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs sm:text-base font-bold tracking-tight leading-none text-foreground truncate">
-                  KNUST ATTENDANCE APP
-                </div>
-                <div className="text-[10px] text-muted-foreground hidden sm:block tracking-wide uppercase font-semibold">
-                  Attendance System
-                </div>
-              </div>
-            </Link>
-
-            {/* Back Button & Home Button (Hidden on Dashboard page) */}
-            {!isDashboard && (
-              <div className="flex items-center gap-1 sm:gap-1.5 ml-1 sm:ml-2 pl-1.5 sm:pl-2.5 border-l border-border/70 shrink-0">
+      <main className="flex-1 min-w-0 bg-transparent flex flex-col relative">
+        {/* Title bar matching exact screenshot design */}
+        <QmarkTitleBar
+          tag="GH"
+          user={
+            user
+              ? {
+                  name: user.user_metadata?.full_name || user.email?.split("@")[0] || "Kwabena",
+                  avatarUrl: user.user_metadata?.avatar_url,
+                  email: user.email,
+                  role: roles[0] || "Faculty",
+                }
+              : null
+          }
+          notificationUserId={user?.id}
+          onSignOut={signOut}
+          showBack={true}
+          onBack={() => {
+            if (typeof window !== "undefined" && window.history.length > 1) {
+              window.history.back();
+            } else {
+              navigate({ to: "/dashboard" });
+            }
+          }}
+          extraActions={
+            !isDashboard ? (
+              <Link to={"/dashboard" as string}>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    if (typeof window !== "undefined" && window.history.length > 1) {
-                      window.history.back();
-                    } else {
-                      navigate({ to: "/dashboard" });
-                    }
-                  }}
-                  aria-label="Go Back"
                   className="h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg"
-                  title="Go back to previous page"
+                  title="Dashboard Home"
                 >
-                  <ArrowLeft className="size-4 shrink-0" />
-                  <span className="hidden xs:inline">Back</span>
-                </Button>
-                <Link to={"/dashboard" as string}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Home Dashboard"
-                    className="h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg"
-                    title="Dashboard Home"
-                  >
-                    <Home className="size-4 shrink-0" />
-                    <span className="hidden xs:inline">Home</span>
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Link to={"/account" as string}>
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label="My Account"
-                className="h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg"
-                title="My Account"
-              >
-                <UserCheck className="size-4 shrink-0 text-[#00552b] dark:text-emerald-400" />
-                <span className="hidden sm:inline">My Account</span>
-              </Button>
-            </Link>
-            {!isDashboard && (
-              <Link to={"/account#settings" as string}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label="Settings"
-                  className="h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg"
-                  title="Settings"
-                >
-                  <Settings className="size-4 shrink-0 text-[#00552b] dark:text-emerald-400" />
-                  <span className="hidden sm:inline">Settings</span>
+                  <Home className="size-4 shrink-0" />
+                  <span className="hidden xs:inline">Home</span>
                 </Button>
               </Link>
-            )}
-            {user?.id && <InAppNotificationCenter userId={user.id} />}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={signOut}
-              aria-label="Sign out"
-              className="text-xs h-8 px-2 sm:px-2.5 font-medium"
-            >
-              <LogOut className="size-3.5 sm:mr-1" />
-              <span className="hidden sm:inline">Sign out</span>
-            </Button>
-          </div>
-        </header>
+            ) : null
+          }
+        />
 
         {/* Content area: well-proportioned responsive container with generous bottom clearance on desktop/laptop for floating nav */}
         <div className="flex-1 w-full max-w-[1400px] mx-auto p-3.5 sm:p-6 lg:p-8 pb-32 sm:pb-36 md:pb-52 lg:pb-60 xl:pb-64 min-w-0">

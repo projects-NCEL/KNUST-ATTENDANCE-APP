@@ -30,22 +30,21 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
-import { KnustEmblem } from "@/components/KnustEmblem";
-import { PublicFooter } from "@/components/PublicFooter";
+import { QmarkLogo } from "@/components/QmarkLogo";
 
 export const Route = createFileRoute("/manual")({
   head: () => ({
     meta: [
-      { title: "User Manual & System Guide — KNUST ATTENDANCE APP" },
+      { title: "User Manual & System Guide — Qmark" },
       {
         name: "description",
         content:
-          "Comprehensive step-by-step user manual for lecturers, administrators, and students using KNUST ATTENDANCE APP.",
+          "Comprehensive step-by-step user manual for lecturers, administrators, and students using Qmark.",
       },
-      { property: "og:title", content: "User Manual & System Guide — KNUST ATTENDANCE APP" },
+      { property: "og:title", content: "User Manual & System Guide — Qmark" },
       {
         property: "og:description",
-        content: "Step-by-step guide for QR code attendance, grading, scanning, and reports.",
+        content: "Step-by-step guide for QR code attendance, digital passes, scanning, and reports.",
       },
       { property: "og:type", content: "article" },
     ],
@@ -207,7 +206,7 @@ const SECTIONS: GuideSection[] = [
       },
       {
         title: "10-Mark Attendance Grading Formula",
-        desc: "KNUST ATTENDANCE APP automatically computes the standard university 10-mark continuous assessment score based on attended sessions over total sessions.",
+        desc: "Qmark automatically computes the standard university 10-mark continuous assessment score based on attended sessions over total sessions.",
       },
       {
         title: "Identify At-Risk Students",
@@ -256,7 +255,7 @@ const SECTIONS: GuideSection[] = [
     steps: [
       {
         title: "100% Free Forever",
-        desc: "KNUST ATTENDANCE APP is completely free for all university faculty, lecturers, teaching assistants, and students.",
+        desc: "Qmark is completely free for all university faculty, lecturers, teaching assistants, and students.",
       },
       {
         title: "Unlimited Usage",
@@ -330,24 +329,18 @@ function ManualPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="min-h-screen flex flex-col bg-transparent text-foreground">
       {/* Sticky Top Header */}
-      <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur px-4 py-3 sm:px-6">
+      <header className="sticky top-0 z-20 border-b border-border/70 bg-background/80 dark:bg-[#0A1F44]/80 backdrop-blur-md px-4 py-3 sm:px-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <KnustEmblem size={36} />
-            <div>
-              <h1 className="text-base sm:text-lg font-bold leading-tight">
-                KNUST ATTENDANCE APP System Manual
-              </h1>
-              <p className="text-xs text-muted-foreground hidden sm:block">
-                Complete walkthrough for lecturers, administrators & students
-              </p>
-            </div>
+            <Link to="/">
+              <QmarkLogo size="sm" variant="full" subtitle="User Manual & Documentation" />
+            </Link>
           </div>
 
           <div className="flex items-center gap-2">
-            <a href="/app-manual.pdf" download="KNUST-Attendance-User-Manual.pdf">
+            <a href="/app-manual.pdf" download="Qmark-User-Manual.pdf">
               <Button variant="outline" size="sm" className="text-xs">
                 <Download className="size-3.5 mr-1" />
                 <span className="hidden sm:inline">Download PDF</span>
@@ -361,10 +354,10 @@ function ManualPage() {
                 </Button>
               </Link>
             ) : (
-              <Link to="/login">
+              <Link to="/auth">
                 <Button variant="outline" size="sm" className="text-xs">
                   <LogIn className="size-3.5 mr-1" />
-                  <span className="hidden sm:inline">Tutor Sign In</span>
+                  <span className="hidden sm:inline">Faculty Sign In</span>
                 </Button>
               </Link>
             )}
@@ -385,7 +378,7 @@ function ManualPage() {
                 Official Documentation
               </Badge>
               <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                Welcome to the KNUST ATTENDANCE APP Knowledge Base
+                Welcome to the Qmark Knowledge Base
               </h2>
               <p className="text-sm sm:text-base text-primary-foreground/85 leading-relaxed">
                 Find detailed explanations for every tool in the suite: session creation, QR
@@ -393,7 +386,7 @@ function ManualPage() {
               </p>
             </div>
             <div className="shrink-0 bg-white/10 backdrop-blur p-3 rounded-2xl border border-white/20 hidden md:block">
-              <KnustEmblem size={72} />
+              <QmarkLogo size="lg" variant="icon" />
             </div>
           </div>
 
@@ -536,7 +529,7 @@ function ManualPage() {
           </div>
           <a
             href="/app-manual.pdf"
-            download="KNUST-Attendance-User-Manual.pdf"
+            download="Qmark-User-Manual.pdf"
             className="w-full sm:w-auto shrink-0"
           >
             <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-sm">
@@ -545,7 +538,6 @@ function ManualPage() {
           </a>
         </div>
       </main>
-      <PublicFooter />
     </div>
   );
 }

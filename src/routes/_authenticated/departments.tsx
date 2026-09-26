@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/departments")({
-  head: () => ({ meta: [{ title: "Departments & Academic Years — KNUST ATTENDANCE APP" }] }),
+  head: () => ({ meta: [{ title: "Departments & Academic Years — Qmark" }] }),
   component: DeptPage,
 });
 
@@ -334,7 +334,7 @@ function DeptPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="size-8 text-emerald-600 hover:text-emerald-700"
+                            className="size-8 text-[#D4AF37] hover:text-[#AA820A]"
                             onClick={saveEdit}
                           >
                             <Check className="size-4" />
@@ -446,7 +446,7 @@ function DeptPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="size-8 text-emerald-600 hover:text-emerald-700"
+                            className="size-8 text-[#D4AF37] hover:text-[#AA820A]"
                             onClick={saveYear}
                           >
                             <Check className="size-4" />

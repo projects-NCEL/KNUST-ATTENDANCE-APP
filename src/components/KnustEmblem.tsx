@@ -6,12 +6,12 @@ interface KnustEmblemProps {
 export function KnustEmblem({ className = "", size = 36 }: KnustEmblemProps) {
   return (
     <img
-      src="/knust-logo.svg"
-      alt="KNUST Official Crest"
+      src="/qmark_icon_standalone.png"
+      alt="Qmark Official Emblem"
       width={size}
       height={size}
       decoding="async"
-      className={`shrink-0 object-contain rounded-full bg-white p-0.5 shadow-xs ${className}`}
+      className={`shrink-0 object-contain rounded-xl p-0.5 shadow-xs ${className}`}
       style={{ width: size, height: size }}
       referrerPolicy="no-referrer"
     />

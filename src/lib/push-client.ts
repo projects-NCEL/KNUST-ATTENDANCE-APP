@@ -5,6 +5,7 @@ export interface PushUserContext {
   userId: string;
   userRole: "student" | "lecturer" | "admin";
   token?: string; // Session token or Firebase Auth ID Token
+  studentId?: string;
 }
 
 export type PushPermissionStatus =
@@ -122,7 +123,7 @@ export async function getVapidPublicKey(): Promise<string> {
     console.warn("Failed to fetch VAPID key from server:", err);
   }
 
-  // Production fallback VAPID key generated for KNUST Attendance
+  // Production fallback VAPID key generated for Qmark Attendance
   return "BIJP2aHS8Vo_Ad4oZe17o13KZzLldZMjd8IuAchiMHtcpoinWpJTy813NUn-H3vyibfA7r1AyPsBikL0LZKJp1s";
 }
 
@@ -161,6 +162,7 @@ export async function subscribeDeviceToPush(userContext: PushUserContext): Promi
   success: boolean;
   status: PushPermissionStatus;
   message?: string;
+  error?: string;
   subscription?: PushSubscription;
 }> {
   const currentStatus = getPushPermissionStatus();
@@ -169,7 +171,8 @@ export async function subscribeDeviceToPush(userContext: PushUserContext): Promi
     return {
       success: false,
       status: "ios_pwa_required",
-      message: "On iPhone/iPad, please add KNUST ATTENDANCE APP to your Home Screen first to enable push notifications.",
+      error: "ios_pwa_required",
+      message: "On iPhone/iPad, please add Qmark to your Home Screen first to enable push notifications.",
     };
   }
 
@@ -177,6 +180,7 @@ export async function subscribeDeviceToPush(userContext: PushUserContext): Promi
     return {
       success: false,
       status: "unsupported",
+      error: "unsupported",
       message: "Push notifications are not supported in this browser.",
     };
   }
@@ -242,6 +246,7 @@ export async function subscribeDeviceToPush(userContext: PushUserContext): Promi
     return {
       success: false,
       status: "granted",
+      error: err.error || "Failed to register subscription with server.",
       message: err.error || "Failed to register subscription with server.",
     };
   }

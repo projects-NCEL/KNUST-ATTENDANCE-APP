@@ -42,7 +42,7 @@ import { useAuth } from "@/lib/auth";
 type Search = { session?: string };
 
 export const Route = createFileRoute("/_authenticated/scan")({
-  head: () => ({ meta: [{ title: "Scanner — KNUST ATTENDANCE APP" }] }),
+  head: () => ({ meta: [{ title: "Scanner — Qmark" }] }),
   validateSearch: (s: Record<string, unknown>): Search => ({
     session: typeof s.session === "string" ? s.session : undefined,
   }),

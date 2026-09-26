@@ -26,17 +26,21 @@ import {
   ArrowRight,
   ShieldCheck,
   ArrowLeft,
+  RefreshCw,
+  Radio,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
-import { PublicFooter } from "@/components/PublicFooter";
-import { KnustEmblem } from "@/components/KnustEmblem";
+import { QmarkLogo } from "@/components/QmarkLogo";
+import { QmarkTitleBar } from "@/components/QmarkTitleBar";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const search = z.object({ session: z.string().optional() });
 
 export const Route = createFileRoute("/check-in")({
   ssr: false,
   validateSearch: search,
-  head: () => ({ meta: [{ title: "Classroom Check In — KNUST ATTENDANCE APP" }] }),
+  head: () => ({ meta: [{ title: "Classroom Check-In — Qmark" }] }),
   component: CheckInPage,
 });
 
@@ -71,9 +75,13 @@ interface SessionInfo {
 
 function CheckInPage() {
   const { session } = Route.useSearch();
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(session || null);
+  const [openSessions, setOpenSessions] = useState<SessionInfo[]>([]);
+  const [openSessionsLoading, setOpenSessionsLoading] = useState(false);
+
   const [index, setIndex] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sessionLoading, setSessionLoading] = useState(true);
+  const [sessionLoading, setSessionLoading] = useState(false);
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [locPermissionState, setLocPermissionState] = useState<"prompt" | "granted" | "denied" | "unknown">("prompt");
@@ -86,6 +94,13 @@ function CheckInPage() {
     alreadyMarked: boolean;
     time?: string;
   } | null>(null);
+
+  // Sync activeSessionId if route search param changes
+  useEffect(() => {
+    if (session) {
+      setActiveSessionId(session);
+    }
+  }, [session]);
 
   // Auto-detect saved student index number from previous login on this phone
   useEffect(() => {
@@ -115,10 +130,81 @@ function CheckInPage() {
     }
   }, []);
 
-  // Fetch session details from Firestore
+  const loadOpenSessions = async () => {
+    setOpenSessionsLoading(true);
+    try {
+      // 1. Query server API endpoint
+      const res = await fetch("/api/public/student-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "get_active_sessions" }),
+      });
+      const data = await res.json();
+      if (data?.ok && Array.isArray(data.sessions)) {
+        setOpenSessions(data.sessions);
+        if (data.sessions.length === 1 && !session) {
+          setActiveSessionId(data.sessions[0].id);
+        }
+        return;
+      }
+    } catch {
+      // Fall through to Firestore
+    }
+
+    try {
+      const sessSnap = await getDocs(collection(firestoreDb, "attendance_sessions"));
+      const openDocs = sessSnap.docs.filter((d) => {
+        const dData = d.data() as any;
+        const status = (dData.status || "").toUpperCase();
+        return status === "OPEN" || status === "ACTIVE" || (dData.is_active === true && status !== "CLOSED");
+      });
+
+      const coursesSnap = await getDocs(collection(firestoreDb, "courses")).catch(() => ({ docs: [] }));
+      const coursesMap = new Map<string, any>();
+      coursesSnap.docs.forEach((cd) => coursesMap.set(cd.id, cd.data()));
+
+      const formatted: SessionInfo[] = openDocs.map((d) => {
+        const dData = d.data() as any;
+        const c = dData.course_id ? coursesMap.get(dData.course_id) : null;
+        return {
+          id: d.id,
+          title: dData.title || c?.title || "Class Attendance",
+          courseCode: c?.code || dData.course_code || "",
+          courseTitle: c?.title || dData.course_title || "",
+          latitude: typeof dData.latitude === "number" ? dData.latitude : null,
+          longitude: typeof dData.longitude === "number" ? dData.longitude : null,
+          radius_m: dData.radius_m || 100,
+          status: "OPEN",
+          is_active: true,
+          owner_id: dData.owner_id,
+          course_id: dData.course_id,
+        };
+      });
+
+      setOpenSessions(formatted);
+      if (formatted.length === 1 && !session) {
+        setActiveSessionId(formatted[0].id);
+      }
+    } catch (err) {
+      console.error("Error fetching open sessions:", err);
+    } finally {
+      setOpenSessionsLoading(false);
+    }
+  };
+
+  // If no session ID provided, automatically find any open sessions
   useEffect(() => {
-    if (!session) {
+    if (!activeSessionId) {
+      loadOpenSessions();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSessionId]);
+
+  // Fetch session details from Firestore when activeSessionId is set
+  useEffect(() => {
+    if (!activeSessionId) {
       setSessionLoading(false);
+      setSessionInfo(null);
       return;
     }
 
@@ -127,7 +213,7 @@ function CheckInPage() {
       setSessionLoading(true);
       setSessionError(null);
       try {
-        const sessDoc = await getDoc(doc(firestoreDb, "attendance_sessions", session));
+        const sessDoc = await getDoc(doc(firestoreDb, "attendance_sessions", activeSessionId));
         if (!sessDoc.exists()) {
           if (isMounted) setSessionError("Attendance session not found or has been deleted.");
           return;
@@ -178,7 +264,7 @@ function CheckInPage() {
     return () => {
       isMounted = false;
     };
-  }, [session]);
+  }, [activeSessionId]);
 
   const requestPosition = (): Promise<GeolocationPosition> => {
     return new Promise<GeolocationPosition>((resolve, reject) => {
@@ -255,13 +341,13 @@ function CheckInPage() {
     e.preventDefault();
     const cleanIndex = index.trim().toUpperCase();
     if (!cleanIndex) return toast.error("Please enter your student index number");
-    if (!session) return toast.error("Missing session identifier");
+    if (!activeSessionId) return toast.error("Missing session identifier");
 
     setLoading(true);
 
     try {
       // 1. Verify session state in Firestore
-      const sessionDocRef = doc(firestoreDb, "attendance_sessions", session);
+      const sessionDocRef = doc(firestoreDb, "attendance_sessions", activeSessionId);
       const sessSnap = await getDoc(sessionDocRef);
       if (!sessSnap.exists()) {
         throw new Error("Attendance session not found or has expired.");
@@ -333,7 +419,7 @@ function CheckInPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "projector_check_in",
-            session_id: session,
+            session_id: activeSessionId,
             index: cleanIndex,
             user_lat: userLat,
             user_lng: userLng,
@@ -412,7 +498,7 @@ function CheckInPage() {
         const recQuery = await getDocs(
           query(
             collection(firestoreDb, "attendance_records"),
-            where("session_id", "==", session),
+            where("session_id", "==", activeSessionId),
             where("student_id", "==", studentId),
           ),
         );
@@ -424,7 +510,7 @@ function CheckInPage() {
           const indexRecQuery = await getDocs(
             query(
               collection(firestoreDb, "attendance_records"),
-              where("session_id", "==", session),
+              where("session_id", "==", activeSessionId),
               where("index_number", "==", cleanIndex),
             ),
           );
@@ -454,7 +540,7 @@ function CheckInPage() {
       // Record new attendance record in Firestore client
       const now = new Date();
       await addDoc(collection(firestoreDb, "attendance_records"), {
-        session_id: session,
+        session_id: activeSessionId,
         student_id: studentId,
         index_number: cleanIndex,
         student_name: studentFullName,
@@ -487,320 +573,390 @@ function CheckInPage() {
     }
   };
 
-  if (!session) {
-    return (
-      <div className="min-h-screen bg-muted/30 flex flex-col justify-between">
-        <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
-          <Card className="max-w-md w-full shadow-lg border-primary/20">
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-3 size-12 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center">
-                <AlertCircle className="size-6" />
-              </div>
-              <CardTitle className="text-xl">Invalid Check-In Link</CardTitle>
-              <CardDescription className="text-xs sm:text-sm pt-1">
-                This check-in link is missing a session code. Please scan the dynamic QR code projected onto the lecture hall screen.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-2 text-center">
-              <Link to="/student">
-                <Button className="w-full bg-primary text-primary-foreground font-semibold">
-                  Open Student Portal
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-        <PublicFooter />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col justify-between">
-      <div className="flex-1 flex flex-col items-center px-2.5 sm:px-6 py-3 sm:py-6 max-w-sm sm:max-w-md mx-auto w-full min-w-0">
-        {/* Navigation Bar / Back button */}
-        <div className="w-full flex items-center justify-between mb-3">
-          <button
-            type="button"
-            onClick={() => {
-              if (window.history.length > 1) {
-                window.history.back();
-              } else {
-                window.location.href = "/dashboard";
-              }
-            }}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground bg-background/80 hover:bg-background border border-border/80 px-2.5 py-1.5 rounded-lg shadow-2xs transition cursor-pointer"
+    <div className="min-h-screen bg-transparent flex flex-col justify-between">
+      {/* Title bar matching exact screenshot design */}
+      <QmarkTitleBar
+        tag="GH"
+        showBack={true}
+        backTo="/student"
+        extraActions={
+          <Link
+            to="/student"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#D4AF37]/15 hover:bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/30 transition-all cursor-pointer"
           >
-            <ArrowLeft className="size-3.5" /> Back
-          </button>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/dashboard"
-              className="text-[11px] font-medium text-muted-foreground hover:text-foreground transition"
-            >
-              Dashboard
-            </Link>
-            <span className="text-muted-foreground/40">•</span>
-            <Link
-              to="/student"
-              className="text-[11px] font-medium text-primary hover:underline"
-            >
-              Student Portal
-            </Link>
-          </div>
-        </div>
-
-        {/* Header Branding */}
-        <div className="flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6 mt-1">
-          <KnustEmblem size={34} />
-          <div>
-            <h1 className="text-base sm:text-xl font-bold tracking-tight text-foreground">
-              KNUST Student Check-In
-            </h1>
-            <p className="text-[10px] sm:text-[11px] text-muted-foreground">
-              Classroom Projector Attendance Gateway
-            </p>
-          </div>
-        </div>
-
-        {sessionLoading ? (
-          <Card className="w-full p-8 text-center space-y-3">
-            <Loader2 className="size-8 animate-spin mx-auto text-primary" />
-            <p className="text-xs text-muted-foreground">Connecting to lecture hall session...</p>
+            <ArrowLeft className="size-3.5" />
+            <span className="hidden xs:inline">Student Portal</span>
+          </Link>
+        }
+      />
+      <div className="flex-1 flex flex-col items-center px-2.5 sm:px-6 py-4 sm:py-8 max-w-sm sm:max-w-md mx-auto w-full min-w-0">
+        {!activeSessionId ? (
+          openSessionsLoading ? (
+            <Card className="w-full p-8 text-center space-y-3 glass-card rounded-2xl">
+              <Loader2 className="size-8 animate-spin mx-auto text-[#D4AF37]" />
+              <p className="text-xs text-neutral-500">
+                Checking for attendance sessions opened by your lecturer...
+              </p>
+            </Card>
+          ) : openSessions.length === 0 ? (
+            <Card className="max-w-md w-full glass-card border-[#D4AF37]/30 p-6 text-center space-y-4 rounded-2xl">
+              <div className="mx-auto size-14 rounded-2xl bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30 flex items-center justify-center shadow-xs">
+                <Radio className="size-7" />
+              </div>
+              <div className="space-y-1.5">
+                <CardTitle className="text-xl font-bold text-foreground">
+                  No Active Session Found
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm pt-1 leading-relaxed text-muted-foreground">
+                  There are currently no attendance sessions opened by your lecturer. Please wait for your lecturer to open the session or scan the QR code projected in class.
+                </CardDescription>
+              </div>
+              <div className="pt-2 space-y-2.5">
+                <Button
+                  onClick={loadOpenSessions}
+                  disabled={openSessionsLoading}
+                  className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-[#0A1F44] font-bold shadow-md h-10 gap-2 cursor-pointer"
+                >
+                  <RefreshCw className={`size-4 ${openSessionsLoading ? "animate-spin" : ""}`} />
+                  <span>Check Again / Refresh</span>
+                </Button>
+                <Link to="/student" className="block w-full">
+                  <Button variant="outline" className="w-full text-xs h-9 cursor-pointer">
+                    Return to Student Portal
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+          ) : (
+            <div className="w-full max-w-md space-y-3">
+              <div className="text-center mb-3">
+                <Badge className="bg-[#D4AF37]/20 text-[#D4AF37] border-[#D4AF37]/40 text-xs px-2.5 py-0.5 font-bold mb-1">
+                  ● Live Classrooms ({openSessions.length})
+                </Badge>
+                <h2 className="text-lg font-bold text-foreground">Lecturer Sessions Open Now</h2>
+                <p className="text-xs text-muted-foreground">
+                  Tap your course session below to complete check-in:
+                </p>
+              </div>
+              {openSessions.map((s) => (
+                <Card
+                  key={s.id}
+                  className="glass-card border-[#D4AF37]/30 hover:border-[#D4AF37] transition-all p-4 space-y-3 rounded-2xl"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        {s.courseCode && (
+                          <span className="font-mono font-bold text-xs bg-[#D4AF37]/20 text-[#D4AF37] px-2 py-0.5 rounded-md">
+                            {s.courseCode}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                          Active Session
+                        </span>
+                      </div>
+                      <h3 className="font-bold text-sm text-foreground mt-1">
+                        {s.courseTitle || s.title}
+                      </h3>
+                      {s.courseTitle && s.courseTitle !== s.title && (
+                        <p className="text-xs text-muted-foreground">{s.title}</p>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => setActiveSessionId(s.id)}
+                    className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-[#0A1F44] font-bold text-xs h-9 gap-1.5 cursor-pointer"
+                  >
+                    <span>Check In to this Session</span>
+                    <ArrowRight className="size-3.5" />
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          )
+        ) : sessionLoading ? (
+          <Card className="w-full p-8 text-center space-y-3 glass-card rounded-2xl">
+            <Loader2 className="size-8 animate-spin mx-auto text-[#0A1F44] dark:text-[#D4AF37]" />
+            <p className="text-xs text-neutral-500">Connecting to classroom session...</p>
           </Card>
         ) : sessionError ? (
-          <Card className="w-full shadow-md border-destructive/30">
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-2 size-10 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
-                <AlertCircle className="size-5" />
+          <Card className="w-full shadow-sm border border-red-300 dark:border-red-900 glass-card rounded-2xl">
+            <CardHeader className="text-center p-6">
+              <div className="mx-auto mb-2 size-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+                <AlertCircle className="size-6" />
               </div>
-              <CardTitle className="text-base text-destructive">Session Error</CardTitle>
-              <CardDescription className="text-xs">{sessionError}</CardDescription>
+              <CardTitle className="text-base font-bold text-red-600">Session Error</CardTitle>
+              <CardDescription className="text-xs text-neutral-500 mt-1">{sessionError}</CardDescription>
             </CardHeader>
-            <CardContent className="text-center">
-              <Link to="/student">
-                <Button variant="outline" size="sm" className="text-xs">
+            <CardContent className="text-center pb-6 space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setActiveSessionId(null);
+                  loadOpenSessions();
+                }}
+                className="text-xs rounded-full w-full cursor-pointer"
+              >
+                Look for Other Active Sessions
+              </Button>
+              <Link to="/student" className="block w-full">
+                <Button variant="ghost" size="sm" className="text-xs rounded-full w-full cursor-pointer">
                   Return to Student Portal
                 </Button>
               </Link>
             </CardContent>
           </Card>
         ) : !done ? (
-          <Card className="w-full shadow-md border border-primary/20 overflow-hidden">
-            {/* Session Info Banner */}
-            <div className="bg-gradient-to-r from-[#00381c] via-[#00552b] to-[#007a3d] p-4 text-white">
-              <div className="flex items-start justify-between gap-2">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {sessionInfo?.courseCode && (
-                      <Badge className="bg-white/20 text-white border-none text-[10px] font-mono">
-                        {sessionInfo.courseCode}
-                      </Badge>
-                    )}
-                    <Badge className="bg-emerald-400/90 text-emerald-950 font-bold border-none text-[10px]">
-                      {sessionInfo?.status === "CLOSED" ? "Closed" : "Active Session"}
-                    </Badge>
-                  </div>
-                  <h2 className="text-base sm:text-lg font-bold text-white leading-tight">
-                    {sessionInfo?.title}
-                  </h2>
-                  {sessionInfo?.courseTitle && sessionInfo.courseTitle !== sessionInfo.title && (
-                    <p className="text-xs text-white/80">{sessionInfo.courseTitle}</p>
-                  )}
-                </div>
-                <div className="size-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                  <School className="size-4 text-white" />
-                </div>
-              </div>
-            </div>
-
-            <CardHeader className="p-4 sm:p-5 pb-2">
-              <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
-                <Navigation className="size-4 text-primary" />
-                Confirm Classroom Attendance
-              </CardTitle>
-              <CardDescription className="text-xs leading-relaxed">
-                Enter your university index number. To prevent proxy attendance, your device GPS coordinates verify you are physically inside the lecture hall.
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="p-4 sm:p-5 pt-1 space-y-4">
-              {/* Geolocation Status Notice */}
-              <div
-                className={`rounded-xl border p-3 text-xs flex items-start gap-2.5 ${
-                  locPermissionState === "denied"
-                    ? "bg-destructive/10 border-destructive/30 text-destructive"
-                    : userCoords
-                      ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300"
-                      : "bg-primary/5 border-primary/20 text-foreground"
-                }`}
+          <div className="w-full space-y-2">
+            {openSessions.length > 1 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSessionId(null);
+                  loadOpenSessions();
+                }}
+                className="text-xs font-semibold text-[#D4AF37] hover:underline flex items-center gap-1 mb-1 cursor-pointer"
               >
-                <MapPin className="size-4 shrink-0 mt-0.5" />
-                <div className="space-y-1 flex-1">
-                  <div className="font-semibold text-xs flex items-center justify-between">
-                    <span>
-                      {locPermissionState === "denied"
-                        ? "Location Access Blocked"
-                        : userCoords
-                          ? `Location Ready (±${userCoords.accuracy}m)`
-                          : "Classroom Range Validation"}
-                    </span>
-                    {sessionInfo?.radius_m && (
-                      <span className="text-[10px] opacity-75 font-normal">
-                        Radius: {sessionInfo.radius_m}m
-                      </span>
+                <ArrowLeft className="size-3" />
+                <span>Switch to another lecture session</span>
+              </button>
+            )}
+
+            <Card className="w-full glass-card overflow-hidden rounded-2xl">
+              {/* Session Info Banner in Navy & Gold */}
+              <div
+                className="p-5 text-white"
+                style={{
+                  background: "linear-gradient(135deg, #0F2A5C 0%, #0A1F44 100%)",
+                  borderBottom: "1px solid rgba(212, 175, 55, 0.2)",
+                }}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {sessionInfo?.courseCode && (
+                        <Badge
+                          className="border-none text-[10px] font-mono font-bold"
+                          style={{ backgroundColor: "rgba(212, 175, 55, 0.2)", color: "#D4AF37" }}
+                        >
+                          {sessionInfo.courseCode}
+                        </Badge>
+                      )}
+                      <Badge
+                        className="font-bold border-none text-[10px]"
+                        style={{
+                          backgroundColor:
+                            sessionInfo?.status === "CLOSED" ? "rgba(193, 68, 59, 0.2)" : "rgba(212, 175, 55, 0.2)",
+                          color: sessionInfo?.status === "CLOSED" ? "#C1443B" : "#D4AF37",
+                        }}
+                      >
+                        {sessionInfo?.status === "CLOSED" ? "Closed" : "Active Session"}
+                      </Badge>
+                    </div>
+                    <h2 className="text-base sm:text-lg font-bold text-white leading-tight">
+                      {sessionInfo?.title}
+                    </h2>
+                    {sessionInfo?.courseTitle && sessionInfo.courseTitle !== sessionInfo.title && (
+                      <p className="text-xs text-white/70">{sessionInfo.courseTitle}</p>
                     )}
                   </div>
-                  <p className="text-[11px] leading-relaxed opacity-90">
-                    {locPermissionState === "denied"
-                      ? "Your browser blocked location access. Please tap the permissions lock in your address bar and toggle Location to 'Allow', then retry."
-                      : userCoords
-                        ? "Device coordinates captured. Tap the button below to submit your attendance."
-                        : "Location access will be requested upon clicking check-in to confirm your presence."}
-                  </p>
-                  {!userCoords && locPermissionState !== "denied" && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleManualLocationRequest}
-                      disabled={requestingLoc}
-                      className="h-7 text-[11px] px-2.5 mt-1 border-primary/30 text-primary hover:bg-primary/10 cursor-pointer"
-                    >
-                      {requestingLoc ? (
-                        <>
-                          <Loader2 className="size-3 animate-spin mr-1" />
-                          Checking GPS...
-                        </>
-                      ) : (
-                        <>
-                          <Navigation className="size-3 mr-1" />
-                          Pre-Verify My Location
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* Check-in Form */}
-              <form onSubmit={submit} className="space-y-3.5">
-                <div className="space-y-1.5">
-                  <Label htmlFor="student-index" className="text-xs font-semibold">
-                    Student Index Number
-                  </Label>
-                  <Input
-                    id="student-index"
-                    placeholder="e.g. 2084931"
-                    value={index}
-                    onChange={(e) => setIndex(e.target.value)}
-                    required
-                    autoFocus
-                    className="h-10 font-mono text-sm tracking-wide uppercase"
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    Must match your enrolled KNUST student record.
-                  </p>
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={loading || sessionInfo?.status === "CLOSED"}
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10 text-xs sm:text-sm gap-2 shadow-xs cursor-pointer"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      Verifying Range & Checking In...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="size-4" />
-                      Check In & Mark Present
-                    </>
-                  )}
-                </Button>
-
-                {sessionInfo?.status === "CLOSED" && (
-                  <p className="text-xs text-destructive text-center font-medium">
-                    This attendance session has been marked closed by the lecturer.
-                  </p>
-                )}
-              </form>
-
-              {/* Anti-fraud Notice - Stacked Vertically for Portrait Mobile */}
-              <div className="pt-2 border-t flex flex-col items-center gap-1.5 text-[11px] text-muted-foreground text-center">
-                <span className="flex items-center gap-1 justify-center">
-                  <ShieldCheck className="size-3.5 text-primary shrink-0" /> Duplicate-safe verification
-                </span>
-                <Link to="/student" className="text-primary hover:underline font-medium">
-                  Go to Student Portal →
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          /* Success Screen */
-          <Card className="w-full shadow-lg border-emerald-500/30 overflow-hidden text-center animate-in fade-in">
-            <div className="bg-emerald-600 p-6 text-white text-center space-y-2">
-              <div className="mx-auto size-14 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center shadow-inner">
-                <CheckCircle2 className="size-8 text-white" />
-              </div>
-              <h2 className="text-xl font-extrabold text-white">
-                {done.alreadyMarked ? "Attendance Already Recorded" : "Marked Present!"}
-              </h2>
-              <p className="text-xs text-white/90">
-                {done.alreadyMarked
-                  ? `You are already registered as present for this session (${done.time || "today"}).`
-                  : "Your classroom attendance has been permanently recorded."}
-              </p>
-            </div>
-
-            <CardContent className="p-5 sm:p-6 space-y-4">
-              <div className="rounded-xl bg-muted/50 p-4 border text-left space-y-2">
-                <div className="flex justify-between items-center text-xs pb-2 border-b">
-                  <span className="text-muted-foreground">Student Name</span>
-                  <span className="font-bold text-foreground">{done.name}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs pb-2 border-b">
-                  <span className="text-muted-foreground">Index Number</span>
-                  <span className="font-mono font-bold text-foreground">{done.indexNumber}</span>
-                </div>
-                {sessionInfo?.courseCode && (
-                  <div className="flex justify-between items-center text-xs pb-2 border-b">
-                    <span className="text-muted-foreground">Course</span>
-                    <span className="font-bold text-primary">{sessionInfo.courseCode}</span>
+                  <div
+                    className="size-8 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: "rgba(212, 175, 55, 0.15)", color: "#D4AF37" }}
+                  >
+                    <School className="size-4" />
                   </div>
-                )}
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">Geofence Proximity</span>
-                  <span className="font-semibold text-emerald-600">
-                    Verified ~{done.distance}m from classroom
-                  </span>
                 </div>
               </div>
 
-              {/* Action buttons stacked for portrait mobile */}
-              <div className="flex flex-col gap-2 pt-2 w-full max-w-xs mx-auto">
-                <Link to="/student" className="w-full">
-                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-9 gap-1.5 cursor-pointer">
-                    Open Student Portal <ArrowRight className="size-3.5" />
-                  </Button>
-                </Link>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDone(null)}
-                  className="w-full text-xs h-9"
+              <CardHeader className="p-4 sm:p-5 pb-2">
+                <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2 text-[#0A1F44] dark:text-white">
+                  <Navigation className="size-4 text-[#D4AF37]" />
+                  Confirm Classroom Attendance
+                </CardTitle>
+                <CardDescription className="text-xs text-neutral-500 leading-relaxed">
+                  Enter your student index number. Device GPS coordinates verify you are physically inside the lecture hall.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="p-4 sm:p-5 pt-1 space-y-4">
+                {/* Geolocation Status Notice */}
+                <div
+                  className={`rounded-xl border p-3 text-xs flex items-start gap-2.5 ${
+                    locPermissionState === "denied"
+                      ? "bg-red-50 border-red-200 text-red-800"
+                      : userCoords
+                        ? "bg-[#D4AF37]/10 dark:bg-[#0A1F44]/40 border-[#D4AF37]/30 text-[#0A1F44] dark:text-[#D4AF37]"
+                        : "bg-[#F8F1D9] border-[#D4AF37]/30 text-[#0A1F44]"
+                  }`}
                 >
-                  Check In Another
-                </Button>
+                  <MapPin className="size-4 shrink-0 mt-0.5 text-[#D4AF37]" />
+                  <div className="space-y-1 flex-1">
+                    <div className="font-semibold text-xs flex items-center justify-between">
+                      <span>
+                        {locPermissionState === "denied"
+                          ? "Location Access Blocked"
+                          : userCoords
+                            ? `Location Ready (±${userCoords.accuracy}m)`
+                            : "Classroom Range Validation"}
+                      </span>
+                      {sessionInfo?.radius_m && (
+                        <span className="text-[10px] opacity-75 font-normal">
+                          Radius: {sessionInfo.radius_m}m
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] leading-relaxed opacity-90">
+                      {locPermissionState === "denied"
+                        ? "Your browser blocked location access. Please allow Location in your browser settings and try again."
+                        : userCoords
+                          ? "Coordinates captured. Tap the button below to submit attendance."
+                          : "Location access will confirm you are within the classroom geofence range."}
+                    </p>
+                    {!userCoords && locPermissionState !== "denied" && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleManualLocationRequest}
+                        disabled={requestingLoc}
+                        className="h-7 text-[11px] px-3 mt-1 rounded-full border-[#D4AF37] text-[#0A1F44] hover:bg-[#F8F1D9] cursor-pointer"
+                      >
+                        {requestingLoc ? (
+                          <>
+                            <Loader2 className="size-3 animate-spin mr-1" />
+                            Checking GPS...
+                          </>
+                        ) : (
+                          <>
+                            <Navigation className="size-3 mr-1 text-[#D4AF37]" />
+                            Pre-Verify Location
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Check-in Form */}
+                <form onSubmit={submit} className="space-y-3.5">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="student-index" className="text-xs font-bold text-neutral-600 dark:text-neutral-300 uppercase tracking-wider ml-1">
+                      Student Index Number
+                    </Label>
+                    <Input
+                      id="student-index"
+                      placeholder="e.g. 10987654"
+                      value={index}
+                      onChange={(e) => setIndex(e.target.value)}
+                      required
+                      autoFocus
+                      className="h-11 font-mono text-sm tracking-wide uppercase rounded-full border-[#E4E4EC] bg-[#FAFAFA] dark:bg-white/5 focus-visible:ring-[#D4AF37]"
+                    />
+                    <p className="text-[11px] text-neutral-400 ml-2">
+                      Enter your official university student index number.
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading || sessionInfo?.status === "CLOSED"}
+                    className="w-full py-3.5 rounded-full font-bold text-sm text-white transition-all cursor-pointer flex items-center justify-center gap-2"
+                    style={{
+                      backgroundColor: "#0A1F44",
+                    }}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin text-[#D4AF37]" />
+                        <span>Confirming Location & Checking In...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="size-4 text-[#D4AF37]" />
+                        <span>Check In & Mark Present</span>
+                      </>
+                    )}
+                  </button>
+
+                  {sessionInfo?.status === "CLOSED" && (
+                    <p className="text-xs text-red-600 text-center font-medium">
+                      This attendance session has been marked closed by the lecturer.
+                    </p>
+                  )}
+                </form>
+
+                {/* Return link */}
+                <div className="pt-2 border-t border-[#F0F0F5] dark:border-white/10 flex items-center justify-between text-xs text-neutral-500">
+                  <span className="flex items-center gap-1">
+                    <ShieldCheck className="size-3.5 text-neutral-400" /> Duplicate-safe
+                  </span>
+                  <Link to="/student" className="font-bold text-[#0A1F44] dark:text-[#D4AF37] hover:underline">
+                    Go to Student Portal →
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          /* Success Screen matching HTML 2 checkin-success */
+          <Card className="w-full shadow-md border border-[#D4AF37]/30 dark:border-[#D4AF37]/40 bg-white dark:bg-[#0A1F44] rounded-3xl overflow-hidden text-center">
+            <div className="p-8 flex flex-col items-center justify-center">
+              <div className="size-16 rounded-full bg-[#D4AF37]/10 dark:bg-[#0A1F44]/50 flex items-center justify-center mb-4">
+                <CheckCircle2 className="size-10 text-[#D4AF37]" />
               </div>
-            </CardContent>
-          </Card>
-        )}
+                <h2 className="text-2xl font-extrabold text-[#0A1F44] dark:text-white">
+                  Checked in!
+                </h2>
+                <div className="text-sm font-semibold text-neutral-500 mt-1">
+                  {sessionInfo?.courseCode || "Classroom Session"} · {sessionInfo?.title || "Lecture"}
+                </div>
+
+                <div className="mt-6 w-full bg-[#F8F8FA] dark:bg-white/5 rounded-2xl p-5 border border-[#E4E4EC] dark:border-white/10 text-center">
+                  <div className="text-xs text-neutral-400 uppercase tracking-wider font-semibold">
+                    Time of Check-In
+                  </div>
+                  <div className="text-sm font-bold text-[#0A1F44] dark:text-white mt-1">
+                    {done.time || "Today"} · Proximity Verified (~{done.distance}m)
+                  </div>
+
+                  <div className="my-3 border-t border-[#EBEBEB] dark:border-white/10" />
+
+                  <div className="text-xs text-neutral-400 uppercase tracking-wider font-semibold">
+                    Student Details
+                  </div>
+                  <div className="text-base font-bold text-[#0A1F44] dark:text-white mt-0.5">
+                    {done.name}
+                  </div>
+                  <div className="font-mono text-xs font-semibold text-[#D4AF37]">
+                    {done.indexNumber}
+                  </div>
+                </div>
+
+                <div className="mt-6 w-full flex flex-col gap-2">
+                  <Link to="/student" className="w-full">
+                    <button
+                      type="button"
+                      className="w-full py-3.5 rounded-full font-bold text-sm text-white transition-all cursor-pointer"
+                      style={{ backgroundColor: "#0A1F44" }}
+                    >
+                      Back to Student Portal
+                    </button>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setDone(null)}
+                    className="w-full py-2.5 text-xs font-semibold text-neutral-500 hover:text-[#0A1F44] transition-colors cursor-pointer"
+                  >
+                    Check In Another Student
+                  </button>
+                </div>
+              </div>
+            </Card>
+          )}
       </div>
-      <PublicFooter />
     </div>
   );
 }

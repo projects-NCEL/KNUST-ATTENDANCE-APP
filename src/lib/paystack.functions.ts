@@ -40,7 +40,7 @@ export const startCheckout = createServerFn({ method: "POST" })
           owner_id: data.userId || null,
           plan_code: plan.code,
           plan_name: plan.name,
-          paystack_plan: plan.paystackPlanCode,
+          paystack_plan: (plan as any).paystackPlanCode || null,
         },
       }),
     });

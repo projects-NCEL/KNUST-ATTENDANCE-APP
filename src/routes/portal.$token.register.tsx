@@ -40,23 +40,23 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
-import { PublicFooter } from "@/components/PublicFooter";
-import { KnustEmblem } from "@/components/KnustEmblem";
+import { QmarkLogo } from "@/components/QmarkLogo";
+import { StudentQrPassCard } from "@/components/StudentQrPassCard";
 
 export const Route = createFileRoute("/portal/$token/register")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Student Registration — KNUST ATTENDANCE APP" },
+      { title: "Student Registration — Qmark" },
       {
         name: "description",
         content:
-          "New students register themselves and instantly receive their personal KNUST attendance QR code.",
+          "New students register themselves and instantly receive their personal Qmark attendance QR pass.",
       },
-      { property: "og:title", content: "Student Registration — KNUST ATTENDANCE APP" },
+      { property: "og:title", content: "Student Registration — Qmark" },
       {
         property: "og:description",
-        content: "Register once and get your personal attendance QR code.",
+        content: "Register once and get your personal digital attendance pass on Qmark.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -276,7 +276,7 @@ function RegisterPage() {
         await QRCode.toDataURL(row.qr_uuid, {
           width: 360,
           margin: 2,
-          color: { dark: "#00552b", light: "#ffffff" },
+          color: { dark: "#D4AF37", light: "#ffffff" },
         }),
       );
       toast.success(
@@ -299,7 +299,7 @@ function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col justify-between">
+    <div className="min-h-screen bg-transparent flex flex-col justify-between">
       <div className="flex-1 flex flex-col items-center justify-center px-3 py-4 sm:py-6 w-full max-w-sm sm:max-w-md mx-auto min-w-0">
         <div className="w-full max-w-sm sm:max-w-md mt-2 mb-3">
           <Link to="/portal/$token" params={{ token }}>
@@ -311,16 +311,16 @@ function RegisterPage() {
         </div>
 
         {!created ? (
-          <Card className="w-full max-w-sm sm:max-w-md shadow-md border-primary/20">
+          <Card className="w-full max-w-sm sm:max-w-md glass-card rounded-2xl border border-[#D4AF37]/35 shadow-card">
             <CardHeader className="text-center p-4 sm:p-5 pb-2">
               <div className="flex justify-center mb-1.5">
-                <KnustEmblem size={40} />
+                <QmarkLogo size="sm" variant="full" />
               </div>
               <CardTitle className="flex items-center justify-center gap-1.5 text-base sm:text-lg font-bold">
                 <UserPlus className="size-4 text-primary" /> New Student Registration
               </CardTitle>
               <CardDescription className="text-xs leading-relaxed">
-                Kwame Nkrumah University of Science and Technology. Register once to receive your universal QR attendance pass.
+                Register once on Qmark to receive your personal digital QR attendance pass.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4 sm:p-5 pt-2">
@@ -415,25 +415,20 @@ function RegisterPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="w-full max-w-sm sm:max-w-md border-primary/20 shadow-md">
-            <CardHeader className="text-center p-4 sm:p-5 pb-2">
-              <CardTitle className="text-base sm:text-lg font-bold">{created.full_name}</CardTitle>
-              <CardDescription className="text-xs">
-                <span className="font-mono font-semibold">{created.index_number}</span> · Level {created.level} · {created.department}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-5 pt-2 flex flex-col gap-3">
-              <div className="flex justify-center p-3 bg-white rounded-xl border shadow-inner max-w-[240px] mx-auto w-full">
-                <img src={qrDataUrl} alt="Student QR Code" className="w-full h-auto aspect-square max-w-[220px] object-contain" />
-              </div>
-              <Button onClick={downloadPng} className="w-full h-9 text-xs font-semibold cursor-pointer">
-                <Download className="size-3.5 mr-1" /> Download PNG
-              </Button>
-              <p className="text-[11px] text-muted-foreground text-center">
-                Save this image to your phone gallery. You can show it in any lecture session to verify attendance.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="w-full max-w-sm sm:max-w-md space-y-4">
+            <StudentQrPassCard
+              student={{
+                indexNumber: created.index_number,
+                fullName: created.full_name,
+                level: created.level,
+                department: created.department,
+                token: created.qr_uuid,
+              }}
+            />
+            <p className="text-[11px] text-muted-foreground text-center">
+              Your Qmark pass is active. You can present this screen or download the QR to verify attendance in any class session.
+            </p>
+          </div>
         )}
 
         <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
@@ -507,7 +502,6 @@ function RegisterPage() {
           </DialogContent>
         </Dialog>
       </div>
-      <PublicFooter />
     </div>
   );
 }

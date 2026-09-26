@@ -59,7 +59,7 @@ import { toast } from "sonner";
 import { getPublicOrigin } from "@/lib/public-origin";
 
 export const Route = createFileRoute("/_authenticated/sessions")({
-  head: () => ({ meta: [{ title: "Sessions — KNUST ATTENDANCE APP" }] }),
+  head: () => ({ meta: [{ title: "Sessions — Qmark" }] }),
   component: SessionsPage,
 });
 
@@ -280,7 +280,7 @@ function SessionsPage() {
       const dataUrl = await QRCode.toDataURL(url, {
         width: 800,
         margin: 2,
-        color: { dark: "#00552b", light: "#ffffff" },
+        color: { dark: "#D4AF37", light: "#ffffff" },
       });
       setProjecting({
         id: s.id,

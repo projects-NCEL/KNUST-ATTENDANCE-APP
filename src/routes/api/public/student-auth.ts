@@ -241,6 +241,40 @@ export const Route = createFileRoute("/api/public/student-auth")({
             });
           }
 
+          // ACTION: Fetch currently open lecturer sessions for student check-in
+          if (action === "get_active_sessions") {
+            const allSessions = await queryCollectionRest("attendance_sessions", { limit: 50 });
+            const openSessions = allSessions.filter((s: any) => {
+              const status = (s.status || "").toUpperCase();
+              return status === "OPEN" || status === "ACTIVE" || (s.is_active === true && status !== "CLOSED");
+            });
+
+            const courses = await queryCollectionRest("courses", { limit: 100 }).catch(() => []);
+            const courseMap = new Map<string, any>();
+            courses.forEach((c) => courseMap.set(c.id, c));
+
+            const enriched = openSessions.map((s: any) => {
+              const c = s.course_id ? courseMap.get(s.course_id) : null;
+              return {
+                id: s.id,
+                title: s.title || c?.title || "Class Attendance",
+                courseCode: c?.code || s.course_code || "",
+                courseTitle: c?.title || s.course_title || "",
+                session_number: s.session_number,
+                latitude: typeof s.latitude === "number" ? s.latitude : null,
+                longitude: typeof s.longitude === "number" ? s.longitude : null,
+                radius_m: s.radius_m || 100,
+                status: "OPEN",
+                is_active: true,
+                owner_id: s.owner_id,
+                course_id: s.course_id,
+                starts_at: s.starts_at || s.created_at || null,
+              };
+            });
+
+            return Response.json({ ok: true, sessions: enriched });
+          }
+
           // ACTION: Projector QR Check-in (Direct attendance recording)
           if (action === "projector_check_in") {
             const { session_id, user_lat, user_lng, accuracy, distance_m, geofence_flagged } = body;
