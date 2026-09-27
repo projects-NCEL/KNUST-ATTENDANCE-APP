@@ -1,9 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, User, LogOut } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { InAppNotificationCenter } from "@/components/PushNotificationManager";
 import { Button } from "@/components/ui/button";
-import type { ReactNode } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 
 export interface QmarkTitleBarProps {
   onBack?: () => void;
@@ -26,12 +25,28 @@ export function QmarkTitleBar({
   backTo,
   tag = "GH",
   user,
-  notificationUserId,
+  notificationUserId: _notificationUserId,
   onSignOut,
   extraActions,
   showBack = true,
 }: QmarkTitleBarProps) {
   const navigate = useNavigate();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const userPillRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      if (userPillRef.current && !userPillRef.current.contains(e.target as Node)) {
+        setIsExpanded(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, []);
 
   const handleBack = () => {
     if (onBack) {
@@ -46,6 +61,11 @@ export function QmarkTitleBar({
   };
 
   const displayName = user?.name ? user.name.trim().split(" ")[0] : null;
+  const initial = (
+    user?.name?.trim()?.charAt(0) ||
+    user?.email?.trim()?.charAt(0) ||
+    "P"
+  ).toUpperCase();
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-[#0A1F44]/95 backdrop-blur-md rounded-b-[28px] sm:rounded-b-[36px] border-b-2 border-[#D4AF37]/40 shadow-[0_4px_24px_-4px_rgba(10,31,68,0.08),0_1px_2px_rgba(212,175,55,0.12)] transition-all">
@@ -92,30 +112,50 @@ export function QmarkTitleBar({
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {extraActions}
 
-          {/* Pill Capsule with Circular Gold-Ringed Avatar & First Name (Matching the design) */}
+          {/* Pill Capsule with Circular Gold-Ringed Avatar & First Name (Collapsed by default to show only photo/initial, fully opens on hover or click) */}
           {user && (
-            <div className="rounded-full border border-[#D4AF37]/50 dark:border-[#D4AF37]/60 bg-white/90 dark:bg-[#0A1F44] pl-1 pr-3 sm:pr-4 py-1 flex items-center gap-2 shadow-xs">
-              <div className="size-7 sm:size-8 rounded-full ring-2 ring-[#D4AF37] overflow-hidden bg-[#0A1F44] text-[#D4AF37] flex items-center justify-center shrink-0 shadow-2xs font-bold text-xs uppercase">
+            <div
+              ref={userPillRef}
+              onClick={() => setIsExpanded((prev) => !prev)}
+              onMouseEnter={() => setIsExpanded(true)}
+              onMouseLeave={() => setIsExpanded(false)}
+              className={`group/userpill cursor-pointer rounded-full border border-[#D4AF37]/50 dark:border-[#D4AF37]/60 bg-white/95 dark:bg-[#0A1F44]/95 p-1 flex items-center transition-all duration-300 ease-out shadow-xs select-none ${
+                isExpanded ? "pr-3 sm:pr-4 gap-2" : "hover:pr-3 hover:sm:pr-4 hover:gap-2"
+              }`}
+              title={displayName || user.role || user.email || "Account Profile"}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setIsExpanded((prev) => !prev);
+                }
+              }}
+            >
+              <div className="size-7 sm:size-8 rounded-full ring-2 ring-[#D4AF37] overflow-hidden bg-[#0A1F44] text-[#D4AF37] flex items-center justify-center shrink-0 shadow-2xs font-bold text-xs uppercase transition-transform duration-300 group-hover/userpill:scale-105">
                 {user.avatarUrl ? (
                   <img
                     src={user.avatarUrl}
                     alt={user.name || "User"}
                     className="size-full object-cover"
                   />
-                ) : displayName ? (
-                  <span>{displayName.charAt(0).toUpperCase()}</span>
                 ) : (
-                  <User className="size-4" />
+                  <span>{initial}</span>
                 )}
               </div>
-              <span className="font-bold text-xs sm:text-sm text-[#0A1F44] dark:text-white truncate max-w-[85px] sm:max-w-[130px]">
-                {displayName || user.role || "User"}
-              </span>
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-out flex items-center ${
+                  isExpanded
+                    ? "max-w-[160px] opacity-100"
+                    : "max-w-0 opacity-0 group-hover/userpill:max-w-[160px] group-hover/userpill:opacity-100 group-hover/userpill:ml-1"
+                }`}
+              >
+                <span className="font-bold text-xs sm:text-sm text-[#0A1F44] dark:text-white whitespace-nowrap truncate max-w-[85px] sm:max-w-[140px]">
+                  {displayName || user.role || "User"}
+                </span>
+              </div>
             </div>
           )}
-
-          {/* In-App Notification Center (closes on outside click) */}
-          {notificationUserId && <InAppNotificationCenter userId={notificationUserId} />}
 
           <ThemeToggle className="h-8 w-8" />
 

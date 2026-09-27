@@ -252,13 +252,6 @@ function LaunchAndGatewayPage() {
 
               <div className="flex items-center gap-2">
                 <ThemeToggle />
-                <Link
-                  to="/check-in"
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#D4AF37]/15 dark:bg-[#D4AF37]/25 text-[#0A1F44] dark:text-[#D4AF37] border border-[#D4AF37]/35 hover:bg-[#D4AF37]/30 transition-all cursor-pointer"
-                >
-                  <QrCode className="size-3.5 text-[#D4AF37]" />
-                  <span>Check In</span>
-                </Link>
               </div>
             </header>
 

@@ -100,6 +100,11 @@ function AuthPage() {
         const userCred = await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password);
         await syncUserToFirestore(userCred.user);
         toast.success("Account created successfully");
+        try {
+          sessionStorage.setItem("qmark_just_signed_up", "true");
+        } catch {
+          // Ignore storage error
+        }
         navigate({ to: "/dashboard" });
       }
     } catch (err: unknown) {

@@ -198,7 +198,9 @@ function AccountPage() {
   const [devices, setDevices] = useState<UserDevice[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"all" | "directory" | "settings">("all");
+  const [activeTab, setActiveTab] = useState<
+    "academic" | "students" | "classroom" | "institution" | "settings"
+  >("academic");
   const currentDeviceId = getDeviceId();
 
   const fetchDevices = async () => {
@@ -316,123 +318,188 @@ function AccountPage() {
   };
 
   const scrollToSettings = () => {
-    setActiveTab("all");
+    setActiveTab("settings");
     settingsSectionRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
     <AppShell>
       <div className="space-y-8 animate-in fade-in duration-400">
-        {/* Profile & Account Banner - Navy, Gold, and Crisp Contrast */}
+        {/* Profile & Account Banner - High-End Professional Glassmorphism & Gold Brilliance */}
         <section
-          className="relative overflow-hidden rounded-3xl bg-[#0A1F44] text-white p-5 sm:p-8 shadow-xl border-2 border-[#D4AF37]/50"
-          style={{ background: "linear-gradient(135deg, #0A1F44 0%, #0E2858 50%, #0A1F44 100%)" }}
+          className="relative overflow-hidden rounded-[32px] p-6 sm:p-8 backdrop-blur-2xl bg-white/70 dark:bg-[#0A1F44]/75 border-2 border-[#D4AF37]/50 shadow-[0_20px_50px_-10px_rgba(10,31,68,0.15),0_0_0_1px_rgba(212,175,55,0.25)] transition-all duration-300"
         >
-          <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-[#D4AF37]/15 blur-3xl" />
-          <div className="pointer-events-none absolute -left-10 -bottom-10 size-40 rounded-full bg-[#D4AF37]/10 blur-2xl" />
+          {/* Subtle multi-layer ambient glows and reflection highlights */}
+          <div className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-[#D4AF37]/20 dark:bg-[#D4AF37]/15 blur-3xl" />
+          <div className="pointer-events-none absolute -left-12 -bottom-12 size-52 rounded-full bg-[#0A1F44]/10 dark:bg-black/40 blur-2xl" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37]/80 to-transparent" />
 
-          <div className="relative flex flex-col gap-5">
-            {/* Top row: Avatar, Verified Badge, Account Title & User Email */}
-            <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-              <div className="size-14 sm:size-20 rounded-2xl bg-[#061226] border-2 border-[#D4AF37]/60 p-1 flex items-center justify-center shrink-0 shadow-lg text-white">
-                <UserCheck className="size-7 sm:size-10 text-[#D4AF37]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-[#061226]/80 px-2.5 sm:px-3 py-0.5 text-[10px] sm:text-[11px] font-bold tracking-wider uppercase text-[#D4AF37] border border-[#D4AF37]/50 shadow-2xs">
-                  <ShieldCheck className="size-3 sm:size-3.5 shrink-0 text-[#D4AF37]" />
-                  <span className="truncate">Verified Academic Account</span>
+          <div className="relative flex flex-col gap-6">
+            {/* Top row: Avatar (Gmail profile photo or gold-ringed user emblem), Verified Badge, Account Title & User Email */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
+              <div className="flex items-center gap-4 sm:gap-5 min-w-0">
+                {/* Circular Gold-Ringed Avatar with Real Glass Backing */}
+                <div className="relative size-16 sm:size-20 rounded-full p-1 ring-2 ring-[#D4AF37] bg-white/90 dark:bg-[#061226]/90 backdrop-blur-md flex items-center justify-center shrink-0 shadow-[0_8px_20px_rgba(212,175,55,0.25)]">
+                  {user?.user_metadata?.avatar_url ? (
+                    <img
+                      src={user.user_metadata.avatar_url as string}
+                      alt={user.user_metadata.full_name || user.email || "Account avatar"}
+                      className="size-full rounded-full object-cover shadow-inner"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="size-full rounded-full bg-gradient-to-br from-[#0A1F44] to-[#112A59] dark:from-[#061226] dark:to-[#0A1F44] flex items-center justify-center text-[#D4AF37] font-extrabold text-xl sm:text-2xl shadow-inner uppercase tracking-wider">
+                      {user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || "P"}
+                    </div>
+                  )}
+                  {/* Active online status badge */}
+                  <span className="absolute bottom-0 right-0 size-4 sm:size-4.5 rounded-full bg-[#10B981] ring-2 ring-white dark:ring-[#0A1F44] shadow-xs" />
                 </div>
-                <h1 className="mt-1 sm:mt-2 text-xl sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-xs truncate">
-                  My Account
-                </h1>
-                <p className="mt-0.5 text-xs sm:text-sm text-[#F5E5A3] font-mono font-medium truncate">
-                  {user?.email || "Academic User"}
-                </p>
+
+                <div className="min-w-0 flex-1">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-[#D4AF37]/15 dark:bg-[#D4AF37]/20 px-3 py-0.5 text-[10px] sm:text-[11px] font-bold tracking-wider uppercase text-[#854d0e] dark:text-[#D4AF37] border border-[#D4AF37]/40 shadow-2xs">
+                    <ShieldCheck className="size-3.5 shrink-0 text-[#D4AF37]" />
+                    <span className="truncate">Verified Faculty Account</span>
+                  </div>
+                  <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0A1F44] dark:text-white truncate">
+                    {user?.user_metadata?.full_name || "Faculty Account"}
+                  </h1>
+                  <p className="mt-0.5 text-xs sm:text-sm text-neutral-600 dark:text-[#F5E5A3] font-mono font-medium truncate">
+                    {user?.email || "Academic User"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Settings Shortcut button */}
+              <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+                <Button
+                  variant="secondary"
+                  onClick={scrollToSettings}
+                  className="rounded-full bg-[#0A1F44] dark:bg-[#D4AF37] text-white dark:text-[#0A1F44] hover:bg-[#112A59] dark:hover:bg-[#F3E5AB] font-bold shadow-md cursor-pointer h-10 px-5 text-xs sm:text-sm transition-all hover:scale-105"
+                >
+                  <Settings className="size-4 mr-2 shrink-0" /> Manage Security
+                </Button>
               </div>
             </div>
 
-            {/* Bottom/Secondary row: Role, Access Level & Settings button */}
-            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/20 sm:border-t-0 sm:pt-0">
-              <div className="flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl bg-[#061226]/85 border border-[#D4AF37]/40 shadow-xs text-left">
-                <div className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-wider">
+            {/* Bottom/Secondary row: Role, Access Level & Institutional Standing Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3.5 pt-3 border-t border-[#D4AF37]/25">
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-white/60 dark:bg-white/5 backdrop-blur-md border border-[#D4AF37]/30 shadow-xs text-left">
+                <div className="text-[10px] uppercase font-bold text-[#854d0e] dark:text-[#D4AF37] tracking-wider">
                   Assigned Role
                 </div>
-                <div className="text-xs sm:text-sm font-bold text-white capitalize truncate mt-0.5">
+                <div className="text-xs sm:text-sm font-bold text-[#0A1F44] dark:text-white capitalize truncate mt-0.5">
                   {primaryRole}
                 </div>
               </div>
-              <div className="flex-1 min-w-[130px] px-3.5 py-2.5 rounded-xl bg-[#061226]/85 border border-[#D4AF37]/40 shadow-xs text-left">
-                <div className="text-[10px] uppercase font-bold text-[#D4AF37] tracking-wider">
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-white/60 dark:bg-white/5 backdrop-blur-md border border-[#D4AF37]/30 shadow-xs text-left">
+                <div className="text-[10px] uppercase font-bold text-[#854d0e] dark:text-[#D4AF37] tracking-wider">
                   Access Level
                 </div>
-                <div className="text-xs sm:text-sm font-bold text-white truncate mt-0.5">
-                  {isAdmin ? "Full Admin" : "Faculty Tutor"}
+                <div className="text-xs sm:text-sm font-bold text-[#0A1F44] dark:text-white truncate mt-0.5">
+                  {isAdmin ? "Full Administrator" : "Academic Lecturer"}
                 </div>
               </div>
-              <Button
-                variant="secondary"
-                onClick={scrollToSettings}
-                className="w-full sm:w-auto bg-[#D4AF37] text-[#0A1F44] hover:bg-[#D4AF37]/90 border-0 font-bold shadow-xs cursor-pointer h-9 px-3.5 text-xs sm:text-sm"
-              >
-                <Settings className="size-4 mr-1.5 text-[#0A1F44] shrink-0" /> Account Settings
-              </Button>
+              <div className="col-span-2 sm:col-span-1 p-3 sm:p-3.5 rounded-2xl bg-white/60 dark:bg-white/5 backdrop-blur-md border border-[#D4AF37]/30 shadow-xs text-left">
+                <div className="text-[10px] uppercase font-bold text-[#854d0e] dark:text-[#D4AF37] tracking-wider">
+                  Device Sessions
+                </div>
+                <div className="text-xs sm:text-sm font-bold text-[#0A1F44] dark:text-white truncate mt-0.5">
+                  {devices.length} / {MAX_DEVICES_PER_ACCOUNT} Connected
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* View Selection Filter Tabs — Horizontally Scrollable & Movable */}
+        {/* View Selection Filter Tabs — Grouped Cleanly (No long "All Tools" scroll) */}
         <div className="overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 border-b border-[#D4AF37]/20 pb-2">
           <div className="flex items-center gap-2 min-w-max">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setActiveTab("all")}
-              className={`rounded-lg text-xs font-semibold px-3 py-1.5 shrink-0 whitespace-nowrap cursor-pointer transition-colors ${
-                activeTab === "all"
-                  ? "bg-[#D4AF37] text-[#0A1F44] font-bold shadow-xs"
+              onClick={() => setActiveTab("academic")}
+              className={`rounded-full text-xs font-semibold px-4 py-2 shrink-0 whitespace-nowrap cursor-pointer transition-all ${
+                activeTab === "academic"
+                  ? "bg-[#0A1F44] dark:bg-[#D4AF37] text-white dark:text-[#0A1F44] font-bold shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
-              All Tools & Settings
+              <CalendarRange className="size-3.5 mr-1.5" /> Academic Structure
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setActiveTab("directory")}
-              className={`rounded-lg text-xs font-semibold px-3 py-1.5 shrink-0 whitespace-nowrap cursor-pointer transition-colors ${
-                activeTab === "directory"
-                  ? "bg-[#D4AF37] text-[#0A1F44] font-bold shadow-xs"
+              onClick={() => setActiveTab("students")}
+              className={`rounded-full text-xs font-semibold px-4 py-2 shrink-0 whitespace-nowrap cursor-pointer transition-all ${
+                activeTab === "students"
+                  ? "bg-[#0A1F44] dark:bg-[#D4AF37] text-white dark:text-[#0A1F44] font-bold shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
-              Academic Directory
+              <Users className="size-3.5 mr-1.5" /> Students & Enrollment
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveTab("classroom")}
+              className={`rounded-full text-xs font-semibold px-4 py-2 shrink-0 whitespace-nowrap cursor-pointer transition-all ${
+                activeTab === "classroom"
+                  ? "bg-[#0A1F44] dark:bg-[#D4AF37] text-white dark:text-[#0A1F44] font-bold shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+            >
+              <CalendarClock className="size-3.5 mr-1.5" /> Classroom Operations
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setActiveTab("institution")}
+              className={`rounded-full text-xs font-semibold px-4 py-2 shrink-0 whitespace-nowrap cursor-pointer transition-all ${
+                activeTab === "institution"
+                  ? "bg-[#0A1F44] dark:bg-[#D4AF37] text-white dark:text-[#0A1F44] font-bold shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+            >
+              <Building2 className="size-3.5 mr-1.5" /> Institutional & Docs
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setActiveTab("settings")}
-              className={`rounded-lg text-xs font-semibold px-3 py-1.5 shrink-0 whitespace-nowrap cursor-pointer transition-colors ${
+              className={`rounded-full text-xs font-semibold px-4 py-2 shrink-0 whitespace-nowrap cursor-pointer transition-all ${
                 activeTab === "settings"
-                  ? "bg-[#D4AF37] text-[#0A1F44] font-bold shadow-xs"
+                  ? "bg-[#0A1F44] dark:bg-[#D4AF37] text-white dark:text-[#0A1F44] font-bold shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
-              Settings & Security
+              <Settings className="size-3.5 mr-1.5" /> Settings & Security
             </Button>
           </div>
         </div>
 
-        {/* Academic Directory Sections */}
-        {(activeTab === "all" || activeTab === "directory") && (
-          <div className="space-y-8">
-            {ACCOUNT_SECTIONS.map((section, sIndex) => (
+        {/* Grouped Academic Directory Sections by selected category */}
+        {activeTab !== "settings" && (
+          <div className="space-y-6">
+            {ACCOUNT_SECTIONS.filter((section) => {
+              if (activeTab === "academic") return section.category.includes("Academic");
+              if (activeTab === "students") return section.category.includes("Students");
+              if (activeTab === "classroom")
+                return (
+                  section.category.includes("Classroom") ||
+                  section.category.includes("Announcements")
+                );
+              if (activeTab === "institution")
+                return section.category.includes("Institutional");
+              return true;
+            }).map((section, sIndex) => (
               <div key={section.category} className="space-y-3.5">
-                <div className="border-b border-black/10 dark:border-white/10 pb-2">
-                  <h2 className="text-lg font-bold tracking-tight text-black dark:text-white flex items-center gap-2">
-                    <span className="size-2 rounded-full bg-[#D4AF37] dark:bg-[#D4AF37]" />
+                <div className="border-b border-[#D4AF37]/20 pb-2">
+                  <h2 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-[#D4AF37]" />
                     {section.category}
                   </h2>
-                  <p className="text-xs text-black/65 dark:text-white/65 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {section.description}
                   </p>
                 </div>
@@ -472,7 +539,7 @@ function AccountPage() {
         )}
 
         {/* Embedded Settings & Security Section */}
-        {(activeTab === "all" || activeTab === "settings") && (
+        {activeTab === "settings" && (
           <div ref={settingsSectionRef} id="settings" className="space-y-6 pt-4">
             <div className="border-b border-black/10 dark:border-white/10 pb-2">
               <h2 className="text-xl font-bold tracking-tight text-black dark:text-white flex items-center gap-2">

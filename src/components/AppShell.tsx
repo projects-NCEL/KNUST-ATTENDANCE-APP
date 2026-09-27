@@ -26,7 +26,7 @@ import {
   type UserDevice,
 } from "@/lib/device-manager";
 import { DeviceLimitDialog } from "@/components/DeviceLimitDialog";
-import { InAppNotificationCenter } from "@/components/PushNotificationManager";
+import { NotificationPermissionModal } from "@/components/NotificationPermissionModal";
 import { toast } from "sonner";
 import { clearUserAppCache } from "@/lib/query-client";
 
@@ -50,10 +50,15 @@ function TutorFloatingNav() {
       initial={{ y: 80, opacity: 0, scale: 0.95 }}
       animate={{ y: 0, opacity: 1, scale: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 20 }}
-      className="fixed bottom-3.5 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[96vw] pointer-events-auto select-none"
+      className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[96vw] pointer-events-auto select-none"
       aria-label="Tutor Quick Access Navigation"
     >
-      <div className="relative flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full backdrop-blur-2xl sm:backdrop-blur-3xl bg-neutral-500/15 dark:bg-neutral-800/25 border border-neutral-400/25 dark:border-neutral-700/30 shadow-[0_16px_45px_-8px_rgba(0,0,0,0.18),inset_0_1px_1px_rgba(255,255,255,0.25)] dark:shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.1)] ring-1 ring-neutral-900/5 dark:ring-white/10">
+      {/* Real Multi-layered Glassmorphism Container with Gold Radiance */}
+      <div className="relative flex items-center gap-1.5 sm:gap-3.5 px-3.5 sm:px-6 py-2.5 sm:py-3 rounded-full backdrop-blur-2xl sm:backdrop-blur-3xl bg-white/75 dark:bg-[#0A1F44]/80 border-2 border-[#D4AF37]/45 dark:border-[#D4AF37]/50 shadow-[0_20px_50px_-10px_rgba(10,31,68,0.25),0_0_0_1px_rgba(212,175,55,0.3),inset_0_1px_2px_rgba(255,255,255,0.6)] dark:shadow-[0_25px_60px_-12px_rgba(0,0,0,0.8),0_0_0_1px_rgba(212,175,55,0.35),inset_0_1px_2px_rgba(255,255,255,0.15)] ring-1 ring-[#D4AF37]/20">
+        
+        {/* Subtle interior gold shimmer sheen across the pill */}
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#D4AF37]/80 to-transparent" />
+
         {/* Left items: Scanner, Sessions */}
         {leftItems.map((item) => {
           const isActive = pathname.startsWith(item.to);
@@ -61,23 +66,26 @@ function TutorFloatingNav() {
           return (
             <Link key={item.to} to={item.to as string} className="relative group">
               <motion.div
-                whileHover={{ scale: 1.08, y: -2 }}
+                whileHover={{ scale: 1.09, y: -2 }}
                 whileTap={{ scale: 0.92 }}
-                className={`relative flex flex-col items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-full transition-all duration-200 cursor-pointer ${
+                className={`relative flex flex-col items-center justify-center px-3.5 sm:px-4.5 py-1.5 sm:py-2 rounded-full transition-all duration-300 cursor-pointer ${
                   isActive
-                    ? "text-primary font-bold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/40 dark:hover:bg-white/10"
+                    ? "text-[#0A1F44] dark:text-[#D4AF37] font-extrabold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-[#D4AF37]/15 dark:hover:bg-[#D4AF37]/20"
                 }`}
               >
-                {isActive && (
+                {/* Golden Animated Glow Halo around active/hovered items */}
+                {isActive ? (
                   <motion.div
                     layoutId="floating-nav-indicator"
-                    className="absolute inset-0 rounded-full bg-primary/15 dark:bg-primary/25 border border-primary/30 shadow-xs"
+                    className="absolute inset-0 rounded-full bg-gradient-to-b from-[#FEF08A]/60 via-[#F3E5AB]/40 to-transparent dark:from-[#D4AF37]/35 dark:to-[#D4AF37]/10 border border-[#D4AF37]/60 shadow-[0_0_16px_rgba(212,175,55,0.35)]"
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
+                ) : (
+                  <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 ring-1 ring-[#D4AF37]/40 shadow-[0_0_12px_rgba(212,175,55,0.2)] pointer-events-none" />
                 )}
-                <Icon className="size-5 sm:size-5.5 shrink-0 z-10 transition-transform group-hover:scale-110" />
-                <span className="text-[10px] sm:text-xs font-semibold leading-tight mt-0.5 tracking-tight z-10 hidden xs:inline">
+                <Icon className={`size-5 sm:size-5.5 shrink-0 z-10 transition-transform duration-300 group-hover:scale-115 ${isActive ? "text-[#0A1F44] dark:text-[#D4AF37] stroke-[2.5]" : "group-hover:text-[#D4AF37]"}`} />
+                <span className="text-[10px] sm:text-xs font-bold leading-tight mt-0.5 tracking-tight z-10 hidden xs:inline">
                   {item.label}
                 </span>
               </motion.div>
@@ -85,22 +93,29 @@ function TutorFloatingNav() {
           );
         })}
 
-        {/* Center item: Home (Dashboard) */}
-        <Link to={"/dashboard" as string} className="relative group mx-0.5 sm:mx-1.5">
+        {/* Center Prominent Standout Item: Home (Dashboard) */}
+        <Link to={"/dashboard" as string} className="relative group mx-1 sm:mx-2.5">
           <motion.div
-            whileHover={{ scale: 1.1, y: -3 }}
-            whileTap={{ scale: 0.92 }}
+            whileHover={{ scale: 1.12, y: -4 }}
+            whileTap={{ scale: 0.94 }}
             className="relative flex flex-col items-center justify-center cursor-pointer"
           >
+            {/* Ambient Pulsing Gold Glow beneath Home */}
+            <div className={`absolute -inset-1 rounded-full blur-md transition-all duration-300 ${
+              isHomeActive
+                ? "bg-[#D4AF37]/60 opacity-100 animate-pulse"
+                : "bg-[#D4AF37]/30 opacity-60 group-hover:opacity-100"
+            }`} />
+
             <div
-              className={`size-[48px] sm:size-[56px] rounded-full flex flex-col items-center justify-center shadow-lg transition-all duration-300 ${
+              className={`relative size-[52px] sm:size-[62px] rounded-full flex flex-col items-center justify-center transition-all duration-300 ${
                 isHomeActive
-                  ? "bg-[#0A1F44] text-[#D4AF37] ring-4 ring-[#D4AF37]/40 shadow-xl scale-105"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-primary/25"
+                  ? "bg-gradient-to-br from-[#0A1F44] via-[#0E2858] to-[#0A1F44] text-[#D4AF37] ring-4 ring-[#D4AF37] shadow-[0_8px_25px_rgba(212,175,55,0.45)] scale-105"
+                  : "bg-gradient-to-br from-[#0A1F44] to-[#112A59] text-white hover:text-[#D4AF37] ring-2 ring-[#D4AF37]/60 hover:ring-[#D4AF37] shadow-lg hover:shadow-[0_8px_22px_rgba(212,175,55,0.35)]"
               }`}
             >
-              <Home className="size-5 sm:size-6 shrink-0" />
-              <span className="text-[9px] sm:text-[10px] font-bold leading-none mt-0.5 tracking-tight">
+              <Home className={`size-5 sm:size-6.5 shrink-0 transition-transform group-hover:scale-110 ${isHomeActive ? "stroke-[2.5]" : ""}`} />
+              <span className="text-[9px] sm:text-[10px] font-extrabold leading-none mt-0.5 tracking-tight uppercase">
                 Home
               </span>
             </div>
@@ -114,23 +129,26 @@ function TutorFloatingNav() {
           return (
             <Link key={item.to} to={item.to as string} className="relative group">
               <motion.div
-                whileHover={{ scale: 1.08, y: -2 }}
+                whileHover={{ scale: 1.09, y: -2 }}
                 whileTap={{ scale: 0.92 }}
-                className={`relative flex flex-col items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-full transition-all duration-200 cursor-pointer ${
+                className={`relative flex flex-col items-center justify-center px-3.5 sm:px-4.5 py-1.5 sm:py-2 rounded-full transition-all duration-300 cursor-pointer ${
                   isActive
-                    ? "text-primary font-bold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/40 dark:hover:bg-white/10"
+                    ? "text-[#0A1F44] dark:text-[#D4AF37] font-extrabold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-[#D4AF37]/15 dark:hover:bg-[#D4AF37]/20"
                 }`}
               >
-                {isActive && (
+                {/* Golden Animated Glow Halo around active/hovered items */}
+                {isActive ? (
                   <motion.div
                     layoutId="floating-nav-indicator"
-                    className="absolute inset-0 rounded-full bg-primary/15 dark:bg-primary/25 border border-primary/30 shadow-xs"
+                    className="absolute inset-0 rounded-full bg-gradient-to-b from-[#FEF08A]/60 via-[#F3E5AB]/40 to-transparent dark:from-[#D4AF37]/35 dark:to-[#D4AF37]/10 border border-[#D4AF37]/60 shadow-[0_0_16px_rgba(212,175,55,0.35)]"
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
+                ) : (
+                  <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 ring-1 ring-[#D4AF37]/40 shadow-[0_0_12px_rgba(212,175,55,0.2)] pointer-events-none" />
                 )}
-                <Icon className="size-5 sm:size-5.5 shrink-0 z-10 transition-transform group-hover:scale-110" />
-                <span className="text-[10px] sm:text-xs font-semibold leading-tight mt-0.5 tracking-tight z-10 hidden xs:inline">
+                <Icon className={`size-5 sm:size-5.5 shrink-0 z-10 transition-transform duration-300 group-hover:scale-115 ${isActive ? "text-[#0A1F44] dark:text-[#D4AF37] stroke-[2.5]" : "group-hover:text-[#D4AF37]"}`} />
+                <span className="text-[10px] sm:text-xs font-bold leading-tight mt-0.5 tracking-tight z-10 hidden xs:inline">
                   {item.label}
                 </span>
               </motion.div>
@@ -153,6 +171,31 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, roles } = useAuth();
   const [deviceLimitOpen, setDeviceLimitOpen] = useState(false);
   const [activeDevices, setActiveDevices] = useState<UserDevice[]>([]);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+
+  // Notification prompt check: ONLY appears once after initial signup for the first time on this device
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const isJustSignedUp = sessionStorage.getItem("qmark_just_signed_up") === "true";
+      const promptShownDevice =
+        localStorage.getItem(`qmark_notification_prompt_shown_${user.id}`) ||
+        localStorage.getItem("qmark_notification_prompt_shown_global");
+      const permGranted = typeof Notification !== "undefined" && Notification.permission === "granted";
+
+      if (isJustSignedUp && !promptShownDevice && !permGranted) {
+        sessionStorage.removeItem("qmark_just_signed_up");
+        const timer = setTimeout(() => {
+          setShowNotificationModal(true);
+        }, 800);
+        return () => clearTimeout(timer);
+      } else if (isJustSignedUp) {
+        sessionStorage.removeItem("qmark_just_signed_up");
+      }
+    } catch {
+      // Ignore
+    }
+  }, [user?.id]);
 
   const signOut = async () => {
     clearUserAppCache();
@@ -187,12 +230,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex w-full">
       {user?.id && (
-        <DeviceLimitDialog
-          open={deviceLimitOpen}
-          userId={user.id}
-          devices={activeDevices}
-          onResolved={() => setDeviceLimitOpen(false)}
-        />
+        <>
+          <DeviceLimitDialog
+            open={deviceLimitOpen}
+            userId={user.id}
+            devices={activeDevices}
+            onResolved={() => setDeviceLimitOpen(false)}
+          />
+          <NotificationPermissionModal
+            open={showNotificationModal}
+            onClose={() => setShowNotificationModal(false)}
+            userContext={{
+              userId: user.id,
+              userRole: "lecturer",
+            }}
+          />
+        </>
       )}
 
       <main className="flex-1 min-w-0 bg-transparent flex flex-col relative">
@@ -219,21 +272,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               navigate({ to: "/dashboard" });
             }
           }}
-          extraActions={
-            !isDashboard ? (
-              <Link to={"/dashboard" as string}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg"
-                  title="Dashboard Home"
-                >
-                  <Home className="size-4 shrink-0" />
-                  <span className="hidden xs:inline">Home</span>
-                </Button>
-              </Link>
-            ) : null
-          }
         />
 
         {/* Content area: well-proportioned responsive container with generous bottom clearance on desktop/laptop for floating nav */}

@@ -370,6 +370,17 @@ function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Notifications & Push Preferences Management */}
+        {user?.id && (
+          <PushNotificationManager
+            userContext={{
+              userId: user.id,
+              userRole: "lecturer",
+            }}
+            showCard={true}
+          />
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

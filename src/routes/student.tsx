@@ -60,6 +60,7 @@ import {
   InAppNotificationCenter,
   StudentPushBanner,
 } from "@/components/PushNotificationManager";
+import { NotificationPermissionModal } from "@/components/NotificationPermissionModal";
 
 export const Route = createFileRoute("/student")({
   ssr: false,
@@ -224,6 +225,7 @@ function StudentPortalPage() {
 
   // Authenticated State
   const [me, setMe] = useState<StudentMe | null>(null);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [courses, setCourses] = useState<CourseAttendanceRow[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -260,6 +262,31 @@ function StudentPortalPage() {
     const interval = setInterval(checkSessions, 15000);
     return () => clearInterval(interval);
   }, [me]);
+
+  // Notification prompt check: ONLY appears once after initial signup for the first time on this device
+  useEffect(() => {
+    if (!me?.index_number) return;
+    try {
+      const isJustSignedUp = sessionStorage.getItem("qmark_just_signed_up") === "true";
+      const promptShownDevice =
+        localStorage.getItem(`qmark_notification_prompt_shown_${me.index_number}`) ||
+        localStorage.getItem("qmark_notification_prompt_shown_global");
+      const permGranted = typeof Notification !== "undefined" && Notification.permission === "granted";
+
+      // If user just signed up on this device for the very first time and hasn't been shown it yet
+      if (isJustSignedUp && !promptShownDevice && !permGranted) {
+        sessionStorage.removeItem("qmark_just_signed_up");
+        const timer = setTimeout(() => {
+          setShowNotificationModal(true);
+        }, 800);
+        return () => clearTimeout(timer);
+      } else if (isJustSignedUp) {
+        sessionStorage.removeItem("qmark_just_signed_up");
+      }
+    } catch {
+      // Ignore
+    }
+  }, [me?.index_number]);
 
   // Account Settings state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -399,6 +426,11 @@ function StudentPortalPage() {
 
       toast.success("✓ Registration complete! Your personal attendance pass is ready.");
       saveStudentSession(data.student?.index_number || cleanIndex, regPassword);
+      try {
+        sessionStorage.setItem("qmark_just_signed_up", "true");
+      } catch {
+        // Ignore storage error
+      }
       setMe(data.student);
       setStep("login");
     } catch (err: any) {
@@ -855,6 +887,19 @@ function StudentPortalPage() {
 
   return (
     <div className="min-h-screen bg-transparent flex flex-col">
+      {/* First-login Notification Permission Modal (Rebranded from Square Go iOS 13) */}
+      {me && (
+        <NotificationPermissionModal
+          open={showNotificationModal}
+          onClose={() => setShowNotificationModal(false)}
+          userContext={{
+            userId: me.index_number,
+            userRole: "student",
+            studentId: me.id,
+          }}
+        />
+      )}
+
       {/* Title Bar matching exact image design */}
       <QmarkTitleBar
         tag="GH"
