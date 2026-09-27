@@ -43,28 +43,37 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
+  const errorMessage = error?.message || "An unexpected error occurred.";
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+        <h1 className="text-xl font-bold tracking-tight text-foreground">
           This page didn't load
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          {errorMessage.includes("redirect") || errorMessage.includes("authStateReady")
+            ? "Your session expired or needs authentication. Please sign in to continue."
+            : "Something went wrong on our end. You can try refreshing or head back home."}
         </p>
+        {process.env.NODE_ENV !== "production" && (
+          <div className="mt-3 p-3 bg-muted/60 rounded-xl text-left text-xs font-mono text-muted-foreground break-all max-h-36 overflow-y-auto border border-border/60">
+            {errorMessage}
+          </div>
+        )}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 cursor-pointer"
           >
             Try again
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex items-center justify-center rounded-full border border-input bg-background px-5 py-2 text-sm font-semibold text-foreground transition-all hover:bg-accent cursor-pointer"
           >
             Go home
           </a>
@@ -97,16 +106,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "apple-mobile-web-app-title", content: "Qmark" },
       { property: "og:type", content: "website" },
-      { property: "og:image", content: "/qmark_icon_standalone.png" },
-      { property: "og:image:secure_url", content: "/qmark_icon_standalone.png" },
+      { property: "og:image", content: "/og-image.jpg" },
+      { property: "og:image:secure_url", content: "/og-image.jpg" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "Qmark — Attendance, verified instantly." },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Qmark — Next-Gen Attendance & Roll-Call Platform" },
+      { name: "twitter:title", content: "Qmark — Attendance, verified instantly." },
       {
         name: "twitter:description",
         content:
           "Instant QR attendance verification, digital pass cards, and real-time roll-call for students and lecturers.",
       },
-      { name: "twitter:image", content: "/qmark_icon_standalone.png" },
+      { name: "twitter:image", content: "/og-image.jpg" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -163,6 +175,38 @@ function RootComponent() {
     // Register PWA Web Push service worker in browser
     if (typeof window !== "undefined") {
       registerPushServiceWorker().catch(() => {});
+
+      // Enforce anti-copy on non-input elements
+      const isInputTarget = (target: EventTarget | null) => {
+        if (!target || !(target instanceof HTMLElement)) return false;
+        const tag = target.tagName.toLowerCase();
+        if (tag === "input" || tag === "textarea") return true;
+        if (target.isContentEditable) return true;
+        if (target.closest("input, textarea, [contenteditable='true']")) return true;
+        return false;
+      };
+
+      const handleCopyCut = (e: ClipboardEvent) => {
+        if (!isInputTarget(e.target)) {
+          e.preventDefault();
+        }
+      };
+
+      const handleDragStart = (e: DragEvent) => {
+        if (!isInputTarget(e.target)) {
+          e.preventDefault();
+        }
+      };
+
+      document.addEventListener("copy", handleCopyCut);
+      document.addEventListener("cut", handleCopyCut);
+      document.addEventListener("dragstart", handleDragStart);
+
+      return () => {
+        document.removeEventListener("copy", handleCopyCut);
+        document.removeEventListener("cut", handleCopyCut);
+        document.removeEventListener("dragstart", handleDragStart);
+      };
     }
   }, []);
 

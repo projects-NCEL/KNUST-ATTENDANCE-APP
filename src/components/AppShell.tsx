@@ -150,7 +150,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     pathname === "/dashboard" ||
     pathname === "/dashboard/" ||
     pathname.startsWith("/dashboard");
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const [deviceLimitOpen, setDeviceLimitOpen] = useState(false);
   const [activeDevices, setActiveDevices] = useState<UserDevice[]>([]);
 

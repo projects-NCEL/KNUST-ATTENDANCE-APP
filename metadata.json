@@ -1,6 +1,6 @@
 {
-  "name": "KNUST ATTENDANCE APP",
-  "description": "Official KNUST attendance tracking and QR-code check-in system for courses, lectures, and students.",
+  "name": "Qmark — Attendance Platform",
+  "description": "Next-generation academic attendance and roll-call platform with instant QR verification and digital student passes.",
   "requestFramePermissions": ["camera", "geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
