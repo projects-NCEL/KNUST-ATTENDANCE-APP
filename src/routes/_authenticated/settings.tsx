@@ -71,8 +71,11 @@ function SettingsPage() {
       toast.success(`Revoked ${d.device_name}`);
       await fetchDevices();
       if (d.device_id === currentDeviceId) {
+        localStorage.removeItem("qroll_active_gateway");
+        localStorage.removeItem("qroll_lecturer_logged_in");
+        localStorage.setItem("qroll_logged_out", "true");
         await firebaseAuth.signOut();
-        window.location.href = "/auth";
+        window.location.href = "/";
       }
     } catch (err: any) {
       toast.error(err?.message || "Failed to revoke device");

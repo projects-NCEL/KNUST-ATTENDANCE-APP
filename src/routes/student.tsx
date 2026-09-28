@@ -527,6 +527,8 @@ function StudentPortalPage() {
       }
 
       saveStudentSession(indexNum, pass);
+      localStorage.setItem("qroll_active_gateway", "student");
+      localStorage.removeItem("qroll_logged_out");
       setIndex(indexNum);
       setPassword(pass);
       setMe(data.student);
@@ -829,6 +831,8 @@ function StudentPortalPage() {
 
   const handleSignOut = () => {
     clearStudentSession();
+    localStorage.removeItem("qroll_active_gateway");
+    localStorage.setItem("qroll_logged_out", "true");
     setMe(null);
     setPassword("");
     setConfirmPassword("");
@@ -953,12 +957,12 @@ function StudentPortalPage() {
                     <h3 className="font-bold text-lg text-white leading-snug">
                       Your Personal Digital QR Pass
                     </h3>
-                    <p className="text-xs text-white/70 leading-relaxed">
+                    <p className="text-xs text-white/90 leading-relaxed font-normal">
                       Instant classroom check-ins, Apple Wallet-style dynamic QR badges, assignments, and real-time push alerts on your phone.
                     </p>
                   </div>
 
-                  <div className="space-y-2 pt-2 border-t border-white/10 text-xs text-white/80">
+                  <div className="space-y-2 pt-2 border-t border-white/15 text-xs text-white/95 font-medium">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="size-3.5 text-[#D4AF37] shrink-0" />
                       <span>Apple Wallet style digital QR pass</span>

@@ -67,6 +67,15 @@ export function QmarkTitleBar({
     "P"
   ).toUpperCase();
 
+  // Clicking Qmark logo/emblem returns to active dashboard (lecturer dashboard or student pass)
+  const dashboardTarget =
+    user?.role === "student" ||
+    (typeof window !== "undefined" &&
+      (window.location.pathname.startsWith("/student") ||
+        localStorage.getItem("qroll_active_gateway") === "student"))
+      ? "/student"
+      : "/dashboard";
+
   return (
     <header className="sticky top-0 mt-0 pt-0 z-40 w-full bg-white/95 dark:bg-[#0A1F44]/95 backdrop-blur-md rounded-b-[28px] sm:rounded-b-[36px] border-b-2 border-[#D4AF37]/40 shadow-[0_4px_24px_-4px_rgba(10,31,68,0.08),0_1px_2px_rgba(212,175,55,0.12)] transition-all">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2.5 sm:gap-3 min-w-0">
@@ -86,8 +95,9 @@ export function QmarkTitleBar({
 
           {/* Brand Emblem, Name, and Pill Tag */}
           <Link
-            to="/"
-            className="flex items-center gap-2 sm:gap-2.5 hover:opacity-95 transition group min-w-0"
+            to={dashboardTarget}
+            className="flex items-center gap-2 sm:gap-2.5 hover:opacity-95 transition group min-w-0 cursor-pointer"
+            title="Return to Dashboard"
           >
             <div className="relative size-9 sm:size-10 rounded-full p-0.5 ring-2 ring-[#D4AF37] bg-white dark:bg-[#0A1F44] flex items-center justify-center shadow-xs shrink-0">
               <img

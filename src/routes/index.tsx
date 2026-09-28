@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -10,11 +10,11 @@ import {
   ChevronRight,
   CheckCircle2,
   Users,
-  MapPin,
   Clock,
 } from "lucide-react";
 import { QmarkLogo } from "@/components/QmarkLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AddToHomeScreenBanner } from "@/components/AddToHomeScreenBanner";
 import { firebaseAuth, onAuthStateChanged } from "@/integrations/firebase/config";
 
 export const Route = createFileRoute("/")({
@@ -50,28 +50,49 @@ function LaunchAndGatewayPage() {
   const [lecturerEmail, setLecturerEmail] = useState<string | null>(null);
 
   useEffect(() => {
+    // If the user previously logged into a gateway and did not sign out, keep them logged in and take them straight to dashboard!
+    const activeGateway = typeof window !== "undefined" ? localStorage.getItem("qroll_active_gateway") : null;
+    const hasStudentSession = typeof window !== "undefined" && Boolean(localStorage.getItem("qroll_student_session"));
+    const isLoggedOut = typeof window !== "undefined" && localStorage.getItem("qroll_logged_out") === "true";
+
+    if (!isLoggedOut && activeGateway === "student" && hasStudentSession) {
+      navigate({ to: "/student", replace: true });
+      return;
+    }
+
     const unsub = onAuthStateChanged(firebaseAuth, (user) => {
       if (user) {
         setHasLecturerSession(true);
         setLecturerEmail(user.email || user.displayName || "Lecturer");
+        const gateway = typeof window !== "undefined" ? localStorage.getItem("qroll_active_gateway") : null;
+        const loggedOut = typeof window !== "undefined" && localStorage.getItem("qroll_logged_out") === "true";
+        if (!loggedOut && (gateway === "lecturer" || !gateway)) {
+          localStorage.setItem("qroll_active_gateway", "lecturer");
+          localStorage.setItem("qroll_lecturer_logged_in", "true");
+          navigate({ to: "/dashboard", replace: true });
+        }
       } else {
         setHasLecturerSession(false);
         setLecturerEmail(null);
       }
     });
 
-    // Auto transition launch splash after 2.4s
+    // Auto transition launch splash after 1.8s
     const timer = setTimeout(() => {
       setScreen("gateway");
-    }, 2400);
+    }, 1800);
 
     return () => {
       unsub();
       clearTimeout(timer);
     };
-  }, []);
+  }, [navigate]);
 
   const handleSelectRole = (role: "student" | "lecturer") => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("qroll_logged_out");
+      localStorage.setItem("qroll_active_gateway", role);
+    }
     if (role === "student") {
       navigate({ to: "/student" });
     } else {
@@ -298,19 +319,19 @@ function LaunchAndGatewayPage() {
                   <h2 className="mt-5 text-xl sm:text-2xl font-bold text-[#0A1F44] dark:text-white group-hover:text-[#D4AF37] transition-colors">
                     Student Portal
                   </h2>
-                  <p className="mt-2 text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
+                  <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-200 leading-relaxed font-normal">
                     View your Digital QR Pass, monitor attendance percentage for each course, check
                     exam eligibility, and submit absence excuses.
                   </p>
 
                   <div className="mt-4 flex flex-wrap gap-1.5">
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-neutral-200 border border-black/5 dark:border-white/10">
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-white border border-black/5 dark:border-white/10">
                       Digital QR Pass
                     </span>
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-neutral-200 border border-black/5 dark:border-white/10">
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-white border border-black/5 dark:border-white/10">
                       Course Standing
                     </span>
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-neutral-200 border border-black/5 dark:border-white/10">
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-white border border-black/5 dark:border-white/10">
                       Excuses
                     </span>
                   </div>
@@ -349,19 +370,19 @@ function LaunchAndGatewayPage() {
                   <h2 className="mt-5 text-xl sm:text-2xl font-bold text-[#0A1F44] dark:text-white group-hover:text-[#D4AF37] transition-colors">
                     Lecturer Portal
                   </h2>
-                  <p className="mt-2 text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
+                  <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-200 leading-relaxed font-normal">
                     Staff access only. Launch live broadcast sessions, verify attendance with classroom
                     geofencing, track real-time rosters, and export reports.
                   </p>
 
                   <div className="mt-4 flex flex-wrap gap-1.5">
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-neutral-200 border border-black/5 dark:border-white/10">
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-white border border-black/5 dark:border-white/10">
                       Live Sessions
                     </span>
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-neutral-200 border border-black/5 dark:border-white/10">
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-white border border-black/5 dark:border-white/10">
                       Geofence Radar
                     </span>
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-neutral-200 border border-black/5 dark:border-white/10">
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-white border border-black/5 dark:border-white/10">
                       Rosters & Grades
                     </span>
                   </div>
@@ -374,31 +395,8 @@ function LaunchAndGatewayPage() {
               </motion.div>
             </div>
 
-            {/* Quick Check-in Banner */}
-            <div className="mt-6 p-4 sm:p-5 rounded-3xl glass-card border border-[#D4AF37]/30 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
-              <div className="flex items-center gap-3.5">
-                <div
-                  className="size-11 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: "rgba(212, 175, 55, 0.15)", color: "#D4AF37" }}
-                >
-                  <MapPin className="size-5.5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[#0A1F44] dark:text-white">
-                    Need to check into a live class right now?
-                  </h3>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    Use your device GPS location to record attendance in classroom range.
-                  </p>
-                </div>
-              </div>
-              <Link
-                to="/check-in"
-                className="w-full sm:w-auto px-6 py-2.5 rounded-full font-bold text-xs text-center transition-all cursor-pointer shrink-0 shadow-sm hover:scale-105 bg-[#0A1F44] text-white dark:bg-[#D4AF37] dark:text-[#0A1F44] border border-[#D4AF37]/40 hover:opacity-95"
-              >
-                Launch Check-In
-              </Link>
-            </div>
+            {/* Direct Add to Home Screen PWA component for iOS and Android */}
+            <AddToHomeScreenBanner />
           </motion.div>
         )}
       </AnimatePresence>

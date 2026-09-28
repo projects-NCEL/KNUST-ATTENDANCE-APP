@@ -154,18 +154,18 @@ export const StudentQrPassCard: React.FC<StudentQrPassCardProps> = ({
               <button
                 type="button"
                 onClick={copyIndex}
-                className="text-xs font-mono text-white/70 hover:text-white flex items-center gap-1 bg-white/10 px-2.5 py-0.5 rounded-full cursor-pointer transition-colors"
+                className="text-xs font-mono text-white/90 hover:text-white flex items-center gap-1 bg-white/15 px-2.5 py-0.5 rounded-full cursor-pointer transition-colors"
                 title="Click to copy Index"
               >
                 <span>Index: {student.indexNumber}</span>
-                {copied ? <Check className="size-3 text-[#D4AF37]" /> : <Copy className="size-3 text-white/60" />}
+                {copied ? <Check className="size-3 text-[#D4AF37]" /> : <Copy className="size-3 text-white/85" />}
               </button>
               {student.level && (
-                <span className="text-xs text-white/60">• Level {student.level}</span>
+                <span className="text-xs text-white/85">• Level {student.level}</span>
               )}
             </div>
             {student.department && (
-              <p className="text-[11px] text-white/50 truncate mt-1">{student.department}</p>
+              <p className="text-[11px] text-white/80 font-medium truncate mt-1">{student.department}</p>
             )}
           </div>
 
@@ -258,7 +258,7 @@ export const StudentQrPassCard: React.FC<StudentQrPassCardProps> = ({
           </div>
 
           {/* Brightness note */}
-          <div className="mt-4 flex items-center justify-center gap-2 text-xs text-white/60">
+          <div className="mt-4 flex items-center justify-center gap-2 text-xs text-white/85 font-medium">
             <span
               className="size-2 rounded-full"
               style={{ backgroundColor: "#D4AF37", boxShadow: "0 0 6px #D4AF37" }}

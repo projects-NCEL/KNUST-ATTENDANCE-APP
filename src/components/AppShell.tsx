@@ -199,8 +199,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     clearUserAppCache();
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("qroll_active_gateway");
+      localStorage.removeItem("qroll_lecturer_logged_in");
+      localStorage.setItem("qroll_logged_out", "true");
+    }
     await firebaseAuth.signOut();
-    router.navigate({ to: "/auth" });
+    router.navigate({ to: "/" });
   };
 
   // Enforce 4-device limit & listen for revocation

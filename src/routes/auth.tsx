@@ -71,6 +71,9 @@ function AuthPage() {
     try {
       const result = await signInWithPopup(firebaseAuth, googleProvider);
       await syncUserToFirestore(result.user);
+      localStorage.setItem("qroll_active_gateway", "lecturer");
+      localStorage.setItem("qroll_lecturer_logged_in", "true");
+      localStorage.removeItem("qroll_logged_out");
       toast.success(`Signed in as ${result.user.displayName || result.user.email || "Lecturer"}`);
       navigate({ to: "/dashboard" });
     } catch (err: unknown) {
@@ -111,6 +114,9 @@ function AuthPage() {
         // Check if user already exists
         const userCred = await signInWithEmailAndPassword(firebaseAuth, cleanEmail, password);
         await syncUserToFirestore(userCred.user);
+        localStorage.setItem("qroll_active_gateway", "lecturer");
+        localStorage.setItem("qroll_lecturer_logged_in", "true");
+        localStorage.removeItem("qroll_logged_out");
         toast.success("Signed in successfully");
         navigate({ to: "/dashboard" });
       } else {
@@ -118,6 +124,9 @@ function AuthPage() {
         try {
           const userCred = await createUserWithEmailAndPassword(firebaseAuth, cleanEmail, password);
           await syncUserToFirestore(userCred.user);
+          localStorage.setItem("qroll_active_gateway", "lecturer");
+          localStorage.setItem("qroll_lecturer_logged_in", "true");
+          localStorage.removeItem("qroll_logged_out");
           toast.success("Account created successfully");
           try {
             sessionStorage.setItem("qmark_just_signed_up", "true");
@@ -139,6 +148,9 @@ function AuthPage() {
               try {
                 const signInCred = await signInWithEmailAndPassword(firebaseAuth, cleanEmail, password);
                 await syncUserToFirestore(signInCred.user);
+                localStorage.setItem("qroll_active_gateway", "lecturer");
+                localStorage.setItem("qroll_lecturer_logged_in", "true");
+                localStorage.removeItem("qroll_logged_out");
                 toast.success("Signed in successfully to your existing account");
                 navigate({ to: "/dashboard" });
                 return;
@@ -247,7 +259,7 @@ function AuthPage() {
               className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
                 tab === "signin"
                   ? "bg-white dark:bg-[#0B1D3A] text-[#0A1F44] dark:text-white shadow-xs"
-                  : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
               }`}
             >
               Sign In
@@ -258,7 +270,7 @@ function AuthPage() {
               className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
                 tab === "signup"
                   ? "bg-white dark:bg-[#0B1D3A] text-[#0A1F44] dark:text-white shadow-xs"
-                  : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+                  : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
               }`}
             >
               Create Account
@@ -268,46 +280,46 @@ function AuthPage() {
           {/* Form */}
           <form onSubmit={handleEmailAuth} className="space-y-4">
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1.5 ml-3">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 mb-1.5 ml-3">
                 Staff Email
               </label>
               <div className="flex items-center gap-3 px-4 py-3 rounded-full border border-[#E4E4EC] dark:border-white/15 bg-[#FAFAFA] dark:bg-white/5 focus-within:border-[#D4AF37] transition-colors">
-                <Mail className="size-4 text-[#8891A4] shrink-0" />
+                <Mail className="size-4 text-slate-400 dark:text-[#D4AF37] shrink-0" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="lecturer@university.edu.gh"
                   required
-                  className="w-full bg-transparent text-sm text-[#0A1F44] dark:text-white outline-none placeholder:text-neutral-400"
+                  className="w-full bg-transparent text-sm text-[#0A1F44] dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-slate-400 font-medium"
                 />
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5 ml-3 mr-2">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
                   Password
                 </label>
                 {tab === "signin" && (
                   <button
                     type="button"
                     onClick={handleForgotPassword}
-                    className="text-[11px] font-semibold text-[#854d0e] dark:text-[#D4AF37] hover:underline cursor-pointer"
+                    className="text-[11px] font-bold text-[#854d0e] dark:text-[#D4AF37] hover:underline cursor-pointer"
                   >
                     Forgot password?
                   </button>
                 )}
               </div>
               <div className="flex items-center gap-3 px-4 py-3 rounded-full border border-[#E4E4EC] dark:border-white/15 bg-[#FAFAFA] dark:bg-white/5 focus-within:border-[#D4AF37] transition-colors">
-                <Lock className="size-4 text-[#8891A4] shrink-0" />
+                <Lock className="size-4 text-slate-400 dark:text-[#D4AF37] shrink-0" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full bg-transparent text-sm text-[#0A1F44] dark:text-white outline-none placeholder:text-neutral-400"
+                  className="w-full bg-transparent text-sm text-[#0A1F44] dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-slate-400 font-medium"
                 />
               </div>
             </div>
@@ -331,7 +343,7 @@ function AuthPage() {
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-[#EBEBEB] dark:border-white/10" />
             </div>
-            <span className="relative bg-white dark:bg-[#0A1F44] px-3 text-xs text-[#8891A4]">
+            <span className="relative bg-white dark:bg-[#0B1D3A] px-3 text-xs font-semibold text-slate-500 dark:text-slate-200">
               or
             </span>
           </div>
@@ -372,7 +384,7 @@ function AuthPage() {
           <div className="mt-6 text-center">
             <Link
               to="/student"
-              className="text-xs font-semibold text-[#8891A4] hover:text-[#0A1F44] dark:hover:text-[#D4AF37] transition-colors"
+              className="text-xs font-semibold text-slate-600 dark:text-slate-200 hover:text-[#0A1F44] dark:hover:text-[#D4AF37] transition-colors"
             >
               ← Looking for your Student Pass? Enter Student Portal
             </Link>
