@@ -84,7 +84,7 @@ function LaunchAndGatewayPage() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#F8F8FA] dark:bg-[#061631] text-[#0A1F44] dark:text-[#F2F2F2] flex flex-col justify-between overflow-x-hidden font-sans transition-colors">
+    <div className="relative min-h-screen w-full bg-[#F8F8FA] dark:bg-[#061631] text-[#0A1F44] dark:text-[#F2F2F2] flex flex-col justify-between overflow-x-hidden font-sans transition-colors pt-0 mt-0">
       <AnimatePresence mode="wait">
         {screen === "launch" ? (
           /* ============================================================== */
@@ -97,7 +97,7 @@ function LaunchAndGatewayPage() {
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.4 }}
             onClick={() => setScreen("gateway")}
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 bg-[#0A1F44] text-white cursor-pointer select-none"
+            className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-50 flex flex-col items-center justify-center pt-0 px-4 sm:px-6 pb-6 bg-[#0A1F44] text-white cursor-pointer select-none m-0"
           >
             {/* Ambient Radial Center Halo */}
             <div
@@ -244,10 +244,10 @@ function LaunchAndGatewayPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4 }}
-            className="flex-1 flex flex-col justify-between max-w-2xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12"
+            className="flex-1 flex flex-col justify-between max-w-2xl mx-auto w-full px-4 sm:px-6 pt-0 sm:pt-1 pb-8 sm:pb-12"
           >
             {/* Header Navigation */}
-            <header className="flex items-center justify-between pb-6 border-b border-[#E4E4EC] dark:border-white/10">
+            <header className="flex items-center justify-between pt-0 mt-0 pb-4 sm:pb-6 border-b border-[#E4E4EC] dark:border-white/10">
               <QmarkLogo size="md" variant="full" />
 
               <div className="flex items-center gap-2">

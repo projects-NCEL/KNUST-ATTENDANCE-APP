@@ -68,7 +68,7 @@ export function QmarkTitleBar({
   ).toUpperCase();
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-[#0A1F44]/95 backdrop-blur-md rounded-b-[28px] sm:rounded-b-[36px] border-b-2 border-[#D4AF37]/40 shadow-[0_4px_24px_-4px_rgba(10,31,68,0.08),0_1px_2px_rgba(212,175,55,0.12)] transition-all">
+    <header className="sticky top-0 mt-0 pt-0 z-40 w-full bg-white/95 dark:bg-[#0A1F44]/95 backdrop-blur-md rounded-b-[28px] sm:rounded-b-[36px] border-b-2 border-[#D4AF37]/40 shadow-[0_4px_24px_-4px_rgba(10,31,68,0.08),0_1px_2px_rgba(212,175,55,0.12)] transition-all">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2.5 sm:gap-3 min-w-0">
         {/* Left Side: Circular Back Button & Emblem + App Name + Tag */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">

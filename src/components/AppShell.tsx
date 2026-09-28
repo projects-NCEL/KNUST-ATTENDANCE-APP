@@ -248,7 +248,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </>
       )}
 
-      <main className="flex-1 min-w-0 bg-transparent flex flex-col relative">
+      <main className="flex-1 min-w-0 bg-transparent flex flex-col relative pt-0 mt-0">
         {/* Title bar matching exact screenshot design */}
         <QmarkTitleBar
           tag="GH"

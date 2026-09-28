@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { registerPushServiceWorker } from "@/lib/push-client";
 import { GoldMeshBackground } from "@/components/GoldMeshBackground";
+import { GlobalProgressBar } from "@/components/GlobalProgressBar";
 
 function NotFoundComponent() {
   return (
@@ -159,7 +160,7 @@ function RootShell({ children }: { children: ReactNode }) {
         />
         <HeadContent />
       </head>
-      <body className="bg-background text-foreground antialiased selection:bg-[#D4AF37]/30 min-h-screen relative">
+      <body className="bg-background text-foreground antialiased selection:bg-[#D4AF37]/30 min-h-screen w-full max-w-[100vw] overflow-x-hidden relative overscroll-none">
         <GoldMeshBackground />
         {children}
         <Scripts />
@@ -212,6 +213,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <GlobalProgressBar />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>

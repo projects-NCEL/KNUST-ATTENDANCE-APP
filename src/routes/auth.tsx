@@ -1,6 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  fetchSignInMethodsForEmail,
+} from "firebase/auth";
 import {
   firebaseAuth,
   onAuthStateChanged,
@@ -69,11 +75,13 @@ function AuthPage() {
       navigate({ to: "/dashboard" });
     } catch (err: unknown) {
       console.error("Google sign in error:", err);
-      const errorObj = err as { code?: string; message?: string };
+      const errorObj = err as { code?: string; message?: string; email?: string; credential?: any };
       if (errorObj?.code === "auth/popup-closed-by-user") {
         toast.info("Google sign-in was cancelled.");
       } else if (errorObj?.code === "auth/popup-blocked") {
         toast.error("Google sign-in popup was blocked. Please allow popups for this site.");
+      } else if (errorObj?.code === "auth/account-exists-with-different-credential") {
+        toast.info("This email is already registered with password. Please sign in with your email & password.");
       } else {
         toast.error(errorObj?.message || "Failed to sign in with Google.");
       }
@@ -89,27 +97,75 @@ function AuthPage() {
       return;
     }
 
+    const cleanEmail = email.trim().toLowerCase();
     setEmailLoading(true);
+
     try {
       if (tab === "signin") {
-        const userCred = await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
+        // Check if user already exists
+        const userCred = await signInWithEmailAndPassword(firebaseAuth, cleanEmail, password);
         await syncUserToFirestore(userCred.user);
         toast.success("Signed in successfully");
         navigate({ to: "/dashboard" });
       } else {
-        const userCred = await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password);
-        await syncUserToFirestore(userCred.user);
-        toast.success("Account created successfully");
+        // User wants to create account or set password for their email/Google account
         try {
-          sessionStorage.setItem("qmark_just_signed_up", "true");
-        } catch {
-          // Ignore storage error
+          const userCred = await createUserWithEmailAndPassword(firebaseAuth, cleanEmail, password);
+          await syncUserToFirestore(userCred.user);
+          toast.success("Account created successfully");
+          try {
+            sessionStorage.setItem("qmark_just_signed_up", "true");
+          } catch {
+            // Ignore storage error
+          }
+          navigate({ to: "/dashboard" });
+        } catch (createErr: any) {
+          if (createErr.code === "auth/email-already-in-use") {
+            // Check sign in methods: user likely used Google previously
+            const methods = await fetchSignInMethodsForEmail(firebaseAuth, cleanEmail);
+            if (methods.includes("google.com") && !methods.includes("password")) {
+              toast.info(
+                "An account with this Google email already exists! Please click 'Continue with Google' to sign in instantly.",
+                { duration: 6000 },
+              );
+            } else {
+              // Try signing in directly if the password matches
+              try {
+                const signInCred = await signInWithEmailAndPassword(firebaseAuth, cleanEmail, password);
+                await syncUserToFirestore(signInCred.user);
+                toast.success("Signed in successfully to your existing account");
+                navigate({ to: "/dashboard" });
+                return;
+              } catch {
+                toast.error("An account already exists with this email. Please switch to Sign In.");
+                setTab("signin");
+              }
+            }
+          } else {
+            throw createErr;
+          }
         }
-        navigate({ to: "/dashboard" });
       }
     } catch (err: unknown) {
       const errorObj = err as { code?: string; message?: string };
-      if (errorObj.code === "auth/user-not-found" || errorObj.code === "auth/wrong-password" || errorObj.code === "auth/invalid-credential") {
+      if (
+        errorObj.code === "auth/user-not-found" ||
+        errorObj.code === "auth/wrong-password" ||
+        errorObj.code === "auth/invalid-credential"
+      ) {
+        // Check if the user has an existing Google account for this email
+        try {
+          const methods = await fetchSignInMethodsForEmail(firebaseAuth, cleanEmail);
+          if (methods.includes("google.com")) {
+            toast.info(
+              "This email is registered with Google. Use 'Continue with Google' or use password reset to set a password.",
+              { duration: 7000 },
+            );
+            return;
+          }
+        } catch {
+          // Ignore
+        }
         toast.error("Invalid email or password");
       } else if (errorObj.code === "auth/email-already-in-use") {
         toast.error("An account already exists with this email. Please sign in.");
@@ -121,10 +177,27 @@ function AuthPage() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error("Please enter your email address first");
+      return;
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    try {
+      await sendPasswordResetEmail(firebaseAuth, cleanEmail);
+      toast.success(
+        `Password reset instructions sent to ${cleanEmail}. Check your inbox/spam folder to set or reset your password.`,
+        { duration: 6000 },
+      );
+    } catch (err: any) {
+      toast.error(err?.message || "Could not send reset email. Ensure the address is correct.");
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-transparent text-[#0A1F44] dark:text-[#F2F2F2] flex flex-col justify-between font-sans transition-colors">
+    <div className="min-h-screen bg-transparent text-[#0A1F44] dark:text-[#F2F2F2] flex flex-col justify-between font-sans transition-colors pt-0 mt-0">
       {/* Top Header */}
-      <header className="w-full max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+      <header className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-0 mt-0 pb-3 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <QmarkLogo size="sm" variant="full" />
         </Link>
@@ -206,9 +279,20 @@ function AuthPage() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1.5 ml-3">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1.5 ml-3 mr-2">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                  Password
+                </label>
+                {tab === "signin" && (
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className="text-[11px] font-semibold text-[#854d0e] dark:text-[#D4AF37] hover:underline cursor-pointer"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
               <div className="flex items-center gap-3 px-4 py-3 rounded-full border border-[#E4E4EC] dark:border-white/15 bg-[#FAFAFA] dark:bg-white/5 focus-within:border-[#D4AF37] transition-colors">
                 <Lock className="size-4 text-[#8891A4] shrink-0" />
                 <input
