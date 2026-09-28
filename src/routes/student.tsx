@@ -519,6 +519,13 @@ function StudentPortalPage() {
         return false;
       }
 
+      if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      }
+
       saveStudentSession(indexNum, pass);
       setIndex(indexNum);
       setPassword(pass);
@@ -918,7 +925,7 @@ function StudentPortalPage() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-3.5 sm:py-6 md:py-8 min-w-0 overflow-x-hidden">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-3.5 sm:py-6 md:py-8 min-w-0 overflow-x-clip">
         {!me ? (
           /* ========================================================================= */
           /* AUTHENTICATION SCREENS (INDEX CHECK, FIRST-TIME PASSWORD, LOGIN, RESET)   */
@@ -1732,7 +1739,7 @@ function StudentPortalPage() {
                   </div>
 
                   {/* Attendance Grade Stat Box (Afterpay / Revolut KPI styling) */}
-                  <div className="rounded-2xl p-3.5 sm:p-4 bg-white/10 dark:bg-black/30 backdrop-blur-md border border-[#D4AF37]/30 w-full sm:w-auto text-left sm:text-right min-w-0">
+                  <div className="rounded-2xl p-3.5 sm:p-4 bg-white/10 dark:bg-[#0A1F44]/50 backdrop-blur-md border border-[#D4AF37]/30 w-full sm:w-auto text-left sm:text-right min-w-0">
                     <div className="flex flex-col items-start sm:items-end gap-1 min-w-0">
                       <div className="text-[10px] sm:text-xs text-[#D4AF37] font-bold tracking-wider uppercase">
                         Running Attendance

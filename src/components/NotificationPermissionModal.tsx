@@ -124,14 +124,14 @@ export function NotificationPermissionModal({
         >
           {/* Subtle Ambient Gold Radiance */}
           <div className="pointer-events-none absolute -top-16 -right-16 size-48 rounded-full bg-[#D4AF37]/15 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-16 -left-16 size-48 rounded-full bg-[#0A1F44]/20 dark:bg-black/50 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-16 -left-16 size-48 rounded-full bg-[#0A1F44]/20 dark:bg-[#0B1D3A]/70 blur-3xl" />
 
           {/* Graphic Artwork matching Square Go iOS 13 phone illustration with Qmark styling */}
           <div className="relative mt-2 mb-8 flex items-center justify-center">
             {/* Soft Pastel Background Disc */}
             <div className="size-48 sm:size-52 rounded-full bg-gradient-to-b from-[#FEF9C3]/70 via-[#F3E5AB]/40 to-transparent dark:from-[#D4AF37]/15 dark:to-transparent flex items-center justify-center relative">
               {/* Phone Silhouette Container */}
-              <div className="relative w-28 sm:w-32 h-44 sm:h-48 rounded-[28px] sm:rounded-[32px] bg-[#0A1F44] dark:bg-[#06142c] border-[3px] border-[#D4AF37]/50 shadow-xl overflow-hidden flex flex-col items-center pt-2.5">
+              <div className="relative w-28 sm:w-32 h-44 sm:h-48 rounded-[28px] sm:rounded-[32px] bg-[#0A1F44] dark:bg-[#0B1D3A] border-[3px] border-[#D4AF37]/50 shadow-xl overflow-hidden flex flex-col items-center pt-2.5">
                 {/* Dynamic Island / Speaker Notch */}
                 <div className="w-10 h-3 rounded-full bg-black/70 mb-3" />
 

@@ -29,8 +29,8 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-navy: #0A1F44;
-  --color-navy-dark: #061226;
-  --color-navy-light: #112A59;
+  --color-navy-dark: #0B1D3A;
+  --color-navy-light: #163668;
   --color-gold: #D4AF37;
   --color-gold-light: #F5E5A3;
   --color-gold-dark: #AA820A;
@@ -65,20 +65,20 @@
 }
 
 .dark {
-  /* Qmark Dark Theme: Deepest Obsidian/Navy (#050B14), Dark Navy Glass (#0A1F44), Brilliant Gold (#D4AF37), Crisp White Text (#FFFFFF) */
-  --background: #050b14;
-  --foreground: #ffffff;
-  --card: rgba(10, 31, 68, 0.75);
+  /* Qmark Dark Theme: Elegant Deep Midnight Navy (#0B1D3A), Dark Navy Glass (#0D234A), Brilliant Gold (#D4AF37), Crisp White Text (#FFFFFF) */
+  --background: #0b1d3a;
+  --foreground: #f8fafc;
+  --card: rgba(13, 35, 74, 0.82);
   --card-foreground: #ffffff;
-  --popover: #0a1f44;
+  --popover: #0e2347;
   --popover-foreground: #ffffff;
   --primary: #d4af37;
   --primary-foreground: #0a1f44;
-  --secondary: #0d234d;
+  --secondary: #132d56;
   --secondary-foreground: #ffffff;
-  --muted: #0d234d;
+  --muted: #132d56;
   --muted-foreground: #94a3b8;
-  --accent: #132b5c;
+  --accent: #173868;
   --accent-foreground: #d4af37;
   --gold: #d4af37;
   --gold-foreground: #0a1f44;
@@ -93,19 +93,28 @@
   * {
     border-color: var(--color-border);
   }
-  html,
+  html {
+    scroll-behavior: smooth;
+    overflow-x: clip;
+    overflow-y: auto;
+    overscroll-behavior-x: none;
+    width: 100%;
+    max-width: 100vw;
+    margin: 0;
+    padding: 0;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
-    overscroll-behavior: none;
-    overscroll-behavior-y: none;
+    overflow-x: clip;
+    overflow-y: auto;
     overscroll-behavior-x: none;
     position: relative;
     width: 100%;
     max-width: 100vw;
+    min-height: 100vh;
     margin: 0;
     padding: 0;
     transition: background-color 0.25s ease, color 0.25s ease;
@@ -135,6 +144,16 @@
     user-select: text !important;
     -webkit-touch-callout: default !important;
   }
+
+  /* Prevent mobile browser optical auto-zoom on input focus by guaranteeing min 16px font-size */
+  @media (max-width: 768px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+
   h1,
   h2,
   h3,
@@ -143,13 +162,12 @@
     letter-spacing: -0.02em;
   }
 
-  /* Prevent overscroll bounce and viewport bleed */
+  /* Natural document-level layout: prevent overflow traps on #root so desktop mousewheel and trackpad scroll smoothly */
   #root,
   #__next {
     min-height: 100vh;
     width: 100%;
     max-width: 100vw;
-    overflow-x: hidden;
     position: relative;
     margin: 0;
     padding: 0;
@@ -193,7 +211,7 @@
   background: radial-gradient(ellipse at 50% 0%, rgba(212, 175, 55, 0.25) 0%, rgba(10, 31, 68, 0.05) 55%, transparent 100%);
 }
 .dark .gold-shade-gradient {
-  background: radial-gradient(ellipse at 50% 0%, rgba(212, 175, 55, 0.35) 0%, rgba(5, 11, 20, 0.6) 65%, transparent 100%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(212, 175, 55, 0.35) 0%, rgba(11, 29, 58, 0.6) 65%, transparent 100%);
 }
 
 .gold-conic-glow {
@@ -212,11 +230,11 @@
   box-shadow: 0 12px 32px -6px rgba(10, 31, 68, 0.07), 0 0 0 1px rgba(212, 175, 55, 0.16);
 }
 .dark .glass-card {
-  background: rgba(10, 31, 68, 0.65);
+  background: rgba(13, 35, 74, 0.75);
   backdrop-filter: blur(22px);
   -webkit-backdrop-filter: blur(22px);
   border: 1px solid rgba(212, 175, 55, 0.38);
-  box-shadow: 0 16px 45px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(212, 175, 55, 0.22);
+  box-shadow: 0 16px 45px -8px rgba(10, 31, 68, 0.45), 0 0 0 1px rgba(212, 175, 55, 0.22);
 }
 
 .glass-pill {
@@ -226,7 +244,7 @@
   border: 1px solid rgba(212, 175, 55, 0.35);
 }
 .dark .glass-pill {
-  background: rgba(10, 31, 68, 0.58);
+  background: rgba(13, 35, 74, 0.65);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(212, 175, 55, 0.42);

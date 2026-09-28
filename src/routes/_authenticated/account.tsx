@@ -331,7 +331,7 @@ function AccountPage() {
         >
           {/* Subtle multi-layer ambient glows and reflection highlights */}
           <div className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-[#D4AF37]/20 dark:bg-[#D4AF37]/15 blur-3xl" />
-          <div className="pointer-events-none absolute -left-12 -bottom-12 size-52 rounded-full bg-[#0A1F44]/10 dark:bg-black/40 blur-2xl" />
+          <div className="pointer-events-none absolute -left-12 -bottom-12 size-52 rounded-full bg-[#0A1F44]/10 dark:bg-[#0B1D3A]/60 blur-2xl" />
           <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37]/80 to-transparent" />
 
           <div className="relative flex flex-col gap-6">
@@ -339,7 +339,7 @@ function AccountPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
               <div className="flex items-center gap-4 sm:gap-5 min-w-0">
                 {/* Circular Gold-Ringed Avatar with Real Glass Backing */}
-                <div className="relative size-16 sm:size-20 rounded-full p-1 ring-2 ring-[#D4AF37] bg-white/90 dark:bg-[#061226]/90 backdrop-blur-md flex items-center justify-center shrink-0 shadow-[0_8px_20px_rgba(212,175,55,0.25)]">
+                <div className="relative size-16 sm:size-20 rounded-full p-1 ring-2 ring-[#D4AF37] bg-white/90 dark:bg-[#0B1D3A]/90 backdrop-blur-md flex items-center justify-center shrink-0 shadow-[0_8px_20px_rgba(212,175,55,0.25)]">
                   {user?.user_metadata?.avatar_url ? (
                     <img
                       src={user.user_metadata.avatar_url as string}

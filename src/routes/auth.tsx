@@ -98,6 +98,12 @@ function AuthPage() {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    }
     setEmailLoading(true);
 
     try {
@@ -240,7 +246,7 @@ function AuthPage() {
               onClick={() => setTab("signin")}
               className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
                 tab === "signin"
-                  ? "bg-white dark:bg-[#061631] text-[#0A1F44] dark:text-white shadow-xs"
+                  ? "bg-white dark:bg-[#0B1D3A] text-[#0A1F44] dark:text-white shadow-xs"
                   : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
               }`}
             >
@@ -251,7 +257,7 @@ function AuthPage() {
               onClick={() => setTab("signup")}
               className={`flex-1 py-2 text-xs font-bold rounded-full transition-all cursor-pointer ${
                 tab === "signup"
-                  ? "bg-white dark:bg-[#061631] text-[#0A1F44] dark:text-white shadow-xs"
+                  ? "bg-white dark:bg-[#0B1D3A] text-[#0A1F44] dark:text-white shadow-xs"
                   : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
               }`}
             >

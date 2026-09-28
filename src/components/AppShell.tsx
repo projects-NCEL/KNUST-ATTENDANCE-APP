@@ -54,7 +54,7 @@ function TutorFloatingNav() {
       aria-label="Tutor Quick Access Navigation"
     >
       {/* Real Multi-layered Glassmorphism Container with Gold Radiance */}
-      <div className="relative flex items-center gap-1.5 sm:gap-3.5 px-3.5 sm:px-6 py-2.5 sm:py-3 rounded-full backdrop-blur-2xl sm:backdrop-blur-3xl bg-white/75 dark:bg-[#0A1F44]/80 border-2 border-[#D4AF37]/45 dark:border-[#D4AF37]/50 shadow-[0_20px_50px_-10px_rgba(10,31,68,0.25),0_0_0_1px_rgba(212,175,55,0.3),inset_0_1px_2px_rgba(255,255,255,0.6)] dark:shadow-[0_25px_60px_-12px_rgba(0,0,0,0.8),0_0_0_1px_rgba(212,175,55,0.35),inset_0_1px_2px_rgba(255,255,255,0.15)] ring-1 ring-[#D4AF37]/20">
+      <div className="relative flex items-center gap-1.5 sm:gap-3.5 px-3.5 sm:px-6 py-2.5 sm:py-3 rounded-full backdrop-blur-2xl sm:backdrop-blur-3xl bg-white/75 dark:bg-[#0A1F44]/80 border-2 border-[#D4AF37]/45 dark:border-[#D4AF37]/50 shadow-[0_20px_50px_-10px_rgba(10,31,68,0.25),0_0_0_1px_rgba(212,175,55,0.3),inset_0_1px_2px_rgba(255,255,255,0.6)] dark:shadow-[0_25px_60px_-12px_rgba(10,31,68,0.7),0_0_0_1px_rgba(212,175,55,0.35),inset_0_1px_2px_rgba(255,255,255,0.15)] ring-1 ring-[#D4AF37]/20">
         
         {/* Subtle interior gold shimmer sheen across the pill */}
         <div className="pointer-events-none absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#D4AF37]/80 to-transparent" />

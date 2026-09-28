@@ -84,7 +84,7 @@ function LaunchAndGatewayPage() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#F8F8FA] dark:bg-[#061631] text-[#0A1F44] dark:text-[#F2F2F2] flex flex-col justify-between overflow-x-hidden font-sans transition-colors pt-0 mt-0">
+    <div className="relative min-h-screen w-full bg-[#F8F8FA] dark:bg-[#0B1D3A] text-[#0A1F44] dark:text-[#F2F2F2] flex flex-col justify-between overflow-x-clip font-sans transition-colors pt-0 mt-0">
       <AnimatePresence mode="wait">
         {screen === "launch" ? (
           /* ============================================================== */

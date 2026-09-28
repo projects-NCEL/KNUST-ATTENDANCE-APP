@@ -28,21 +28,115 @@ export interface UserDevice {
 }
 
 /**
- * Retrieves or generates a persistent device ID for this client browser/device.
+ * Computes a stable hardware device fingerprint representing the physical machine
+ * across different browsers on the same device.
  */
-export function getDeviceId(): string {
-  if (typeof window === "undefined") return "server-instance";
-  const KEY = "qroll_device_id";
-  let id = localStorage.getItem(KEY);
-  if (!id) {
-    id = "dev_" + crypto.randomUUID().replace(/-/g, "").slice(0, 16);
-    localStorage.setItem(KEY, id);
+function getHardwareFingerprint(): string {
+  if (typeof window === "undefined") return "server-hardware";
+
+  const nav = window.navigator as any;
+  const screen = window.screen;
+
+  // Extract core hardware & platform identifiers that remain invariant across browsers on same device
+  const os = getNormalizedOS();
+  const screenResolution = `${Math.max(screen.width, screen.height)}x${Math.min(screen.width, screen.height)}`;
+  const colorDepth = screen.colorDepth || 24;
+  const hardwareConcurrency = nav.hardwareConcurrency || 4;
+  // Maximum touch points (hardware attribute of device display)
+  const maxTouchPoints = nav.maxTouchPoints || 0;
+  
+  // Platform / architecture hint
+  const platform = nav.platform || "";
+  
+  // Audio context / WebGL renderer clues if available
+  let gpuVendorRenderer = "";
+  try {
+    const canvas = document.createElement("canvas");
+    const gl = (canvas.getContext("webgl") || canvas.getContext("experimental-webgl")) as WebGLRenderingContext | null;
+    if (gl) {
+      const ext = gl.getExtension("WEBGL_debug_renderer_info");
+      if (ext) {
+        gpuVendorRenderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || "";
+      }
+    }
+  } catch {
+    // Ignore canvas/webgl restrictions
   }
-  return id;
+
+  // Combine invariant hardware features into a clean raw string
+  const rawParts = [
+    os,
+    screenResolution,
+    colorDepth,
+    hardwareConcurrency,
+    maxTouchPoints,
+    platform,
+    gpuVendorRenderer.trim(),
+  ].join("###");
+
+  // Hash string into a deterministic compact hex identifier
+  let hash = 0;
+  for (let i = 0; i < rawParts.length; i++) {
+    const char = rawParts.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0; // Convert to 32bit integer
+  }
+
+  const positiveHash = Math.abs(hash).toString(16).padStart(8, "0");
+  const deviceType = getDeviceCategory();
+  return `dev_${deviceType}_${positiveHash}`;
+}
+
+function getNormalizedOS(): string {
+  if (typeof window === "undefined") return "Server";
+  const ua = navigator.userAgent;
+  if (/Windows/i.test(ua)) return "Windows";
+  if (/Macintosh|Mac OS X/i.test(ua)) return "macOS";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "iOS";
+  if (/Android/i.test(ua)) return "Android";
+  if (/Linux/i.test(ua)) return "Linux";
+  return "UnknownOS";
+}
+
+function getDeviceCategory(): "desktop" | "mobile" | "tablet" {
+  if (typeof window === "undefined") return "desktop";
+  const ua = navigator.userAgent;
+  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
+    return "tablet";
+  }
+  if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated/i.test(ua)) {
+    return "mobile";
+  }
+  return "desktop";
 }
 
 /**
- * Analyzes browser navigator to identify OS, browser, and device type.
+ * Retrieves or computes a persistent hardware device ID for this physical device.
+ * Even if a user opens Chrome, Edge, Safari, or Firefox on the same laptop or phone,
+ * it resolves to the same physical device ID so the limit applies strictly to devices, not browsers.
+ */
+export function getDeviceId(): string {
+  if (typeof window === "undefined") return "server-instance";
+  const KEY = "qroll_hardware_device_id";
+
+  // Check stored ID on this browser
+  const stored = localStorage.getItem(KEY);
+  if (stored && stored.startsWith("dev_")) {
+    return stored;
+  }
+
+  // Compute deterministic hardware fingerprint
+  const hwId = getHardwareFingerprint();
+  try {
+    localStorage.setItem(KEY, hwId);
+  } catch {
+    // Ignore storage quota
+  }
+  return hwId;
+}
+
+/**
+ * Analyzes browser navigator to identify OS, browser, and physical device.
  */
 export function getDeviceInfo(): {
   name: string;
@@ -55,32 +149,29 @@ export function getDeviceInfo(): {
   }
 
   const ua = navigator.userAgent;
-
-  // OS detection
-  let os = "Unknown OS";
-  if (/Windows/i.test(ua)) os = "Windows";
-  else if (/Macintosh|Mac OS X/i.test(ua)) os = "macOS";
-  else if (/iPhone|iPad|iPod/i.test(ua)) os = "iOS";
-  else if (/Android/i.test(ua)) os = "Android";
-  else if (/Linux/i.test(ua)) os = "Linux";
+  const os = getNormalizedOS();
 
   // Browser detection
-  let browser = "Web Browser";
-  if (/Edg\//i.test(ua)) browser = "Microsoft Edge";
+  let browser = "Browser";
+  if (/Edg\//i.test(ua)) browser = "Edge";
   else if (/Chrome\//i.test(ua) && !/Edg\//i.test(ua)) browser = "Chrome";
   else if (/Safari\//i.test(ua) && !/Chrome\//i.test(ua)) browser = "Safari";
   else if (/Firefox\//i.test(ua)) browser = "Firefox";
   else if (/OPR|Opera/i.test(ua)) browser = "Opera";
 
-  // Device type
-  let type: "desktop" | "mobile" | "tablet" = "desktop";
-  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
-    type = "tablet";
-  } else if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated/i.test(ua)) {
-    type = "mobile";
+  const type = getDeviceCategory();
+
+  // Clean, device-centric naming: e.g. "Windows PC (Chrome)", "MacBook / iMac (Safari)", "Android Device (Chrome)"
+  let deviceDescriptor = "Computer";
+  if (type === "mobile") {
+    deviceDescriptor = os === "iOS" ? "iPhone" : `${os} Phone`;
+  } else if (type === "tablet") {
+    deviceDescriptor = os === "iOS" ? "iPad" : `${os} Tablet`;
+  } else {
+    deviceDescriptor = os === "macOS" ? "Mac" : `${os} PC`;
   }
 
-  const name = `${browser} on ${os}`;
+  const name = `${deviceDescriptor} (${browser})`;
   return { name, type, browser, os };
 }
 
