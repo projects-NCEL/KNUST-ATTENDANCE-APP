@@ -2,18 +2,17 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  BookOpen,
-  Radio,
+  GraduationCap,
+  Building2,
   QrCode,
   ArrowRight,
   ShieldCheck,
-  ChevronRight,
   CheckCircle2,
-  Users,
-  Clock,
+  CalendarCheck,
+  MapPin,
+  FileSpreadsheet,
 } from "lucide-react";
-import { QmarkLogo } from "@/components/QmarkLogo";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { QmarkTitleBar } from "@/components/QmarkTitleBar";
 import { AddToHomeScreenBanner } from "@/components/AddToHomeScreenBanner";
 import { firebaseAuth, onAuthStateChanged } from "@/integrations/firebase/config";
 
@@ -104,28 +103,39 @@ function LaunchAndGatewayPage() {
     }
   };
 
+  const handleSignOut = async () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("qroll_active_gateway");
+      localStorage.removeItem("qroll_lecturer_logged_in");
+      localStorage.setItem("qroll_logged_out", "true");
+    }
+    await firebaseAuth.signOut();
+    setHasLecturerSession(false);
+    setLecturerEmail(null);
+  };
+
   return (
-    <div className="relative min-h-screen w-full bg-[#F8F8FA] dark:bg-[#0B1D3A] text-[#0A1F44] dark:text-[#F2F2F2] flex flex-col justify-between overflow-x-clip font-sans transition-colors pt-0 mt-0">
+    <div className="relative min-h-screen w-full bg-background text-foreground flex flex-col justify-between overflow-x-clip font-sans transition-colors pt-0 mt-0">
       <AnimatePresence mode="wait">
         {screen === "launch" ? (
           /* ============================================================== */
-          /* 1. ANIMATED LAUNCH SCREEN (NAVY & GOLD SPECIFICATION)         */
+          /* 1. ANIMATED LAUNCH SCREEN (NAVY & GOLD INSTITUTIONAL SPLASH)   */
           /* ============================================================== */
           <motion.div
             key="launch-screen"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.35 }}
             onClick={() => setScreen("gateway")}
             className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-50 flex flex-col items-center justify-center pt-0 px-4 sm:px-6 pb-6 bg-[#0A1F44] text-white cursor-pointer select-none m-0"
           >
-            {/* Ambient Radial Center Halo */}
+            {/* Subtle Ambient Radial Halo */}
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
                 background:
-                  "radial-gradient(ellipse 320px 320px at 50% 45%, rgba(212,175,55,0.12) 0%, transparent 70%)",
+                  "radial-gradient(ellipse 320px 320px at 50% 45%, rgba(184,134,27,0.12) 0%, transparent 70%)",
               }}
             />
 
@@ -139,20 +149,19 @@ function LaunchAndGatewayPage() {
               >
                 <svg
                   viewBox="0 0 100 100"
-                  width="100"
-                  height="100"
+                  width="96"
+                  height="96"
                   fill="none"
                   style={{ overflow: "visible" }}
                 >
-                  {/* Subtle Glow Circle */}
-                  <circle cx="46" cy="44" r="38" fill="#D4AF37" opacity="0.08" />
+                  <circle cx="46" cy="44" r="38" fill="#B8861B" opacity="0.1" />
 
                   {/* Golden Center Ring */}
                   <motion.circle
                     cx="46"
                     cy="44"
                     r="26"
-                    stroke="#D4AF37"
+                    stroke="#B8861B"
                     strokeWidth="4.5"
                     strokeLinecap="round"
                     fill="none"
@@ -164,7 +173,7 @@ function LaunchAndGatewayPage() {
                   {/* QR Corner Brackets */}
                   <motion.path
                     d="M 18 32 L 18 22 L 28 22"
-                    stroke="#D4AF37"
+                    stroke="#B8861B"
                     strokeWidth="3.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -174,7 +183,7 @@ function LaunchAndGatewayPage() {
                   />
                   <motion.path
                     d="M 64 22 L 74 22 L 74 32"
-                    stroke="#D4AF37"
+                    stroke="#B8861B"
                     strokeWidth="3.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -184,7 +193,7 @@ function LaunchAndGatewayPage() {
                   />
                   <motion.path
                     d="M 18 56 L 18 66 L 28 66"
-                    stroke="#D4AF37"
+                    stroke="#B8861B"
                     strokeWidth="3.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -193,10 +202,10 @@ function LaunchAndGatewayPage() {
                     transition={{ duration: 0.4, delay: 0.4 }}
                   />
 
-                  {/* Verification Checkmark shooting out */}
+                  {/* Verification Checkmark */}
                   <motion.path
                     d="M 58 58 L 68 70 L 88 46"
-                    stroke="#D4AF37"
+                    stroke="#B8861B"
                     strokeWidth="5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -209,13 +218,13 @@ function LaunchAndGatewayPage() {
 
               {/* Wordmark */}
               <motion.div
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
                 className="text-center"
               >
                 <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white">
-                  Q<span style={{ color: "#D4AF37" }}>mark</span>
+                  Q<span className="text-[#E2BD56]">mark</span>
                 </h1>
               </motion.div>
 
@@ -223,19 +232,19 @@ function LaunchAndGatewayPage() {
               <motion.div
                 initial={{ opacity: 0, scaleX: 0 }}
                 animate={{ opacity: 1, scaleX: 1 }}
-                transition={{ duration: 0.5, delay: 0.5 }}
-                className="mt-4 flex flex-col items-center gap-2.5 w-60"
+                transition={{ duration: 0.5, delay: 0.45 }}
+                className="mt-4 flex flex-col items-center gap-2 w-60"
               >
                 <div
                   className="h-[1.5px] w-full"
                   style={{
                     background:
-                      "linear-gradient(90deg, transparent, #D4AF37 20%, #D4AF37 80%, transparent)",
+                      "linear-gradient(90deg, transparent, #B8861B 20%, #B8861B 80%, transparent)",
                   }}
                 />
                 <span
                   className="text-xs font-semibold tracking-[0.14em] uppercase text-center"
-                  style={{ color: "rgba(212,175,55,0.85)" }}
+                  style={{ color: "rgba(226,189,86,0.9)" }}
                 >
                   Attendance, verified instantly.
                 </span>
@@ -248,155 +257,162 @@ function LaunchAndGatewayPage() {
                 <motion.div
                   initial={{ x: "-100%" }}
                   animate={{ x: "0%" }}
-                  transition={{ duration: 2, ease: "easeInOut" }}
-                  className="h-full w-full"
-                  style={{ backgroundColor: "#D4AF37" }}
+                  transition={{ duration: 1.8, ease: "easeInOut" }}
+                  className="h-full w-full bg-[#B8861B]"
                 />
               </div>
-              <span className="text-[11px] text-white/40 font-medium">Tap anywhere to enter</span>
+              <span className="text-[11px] text-white/50 font-medium">Tap anywhere to enter</span>
             </div>
           </motion.div>
         ) : (
           /* ============================================================== */
-          /* 2. CLEAN LIGHT-MODE GATEWAY SELECTION                         */
+          /* 2. GATEWAY SCREEN WITH DASHBOARD TITLE BAR & SLEEK COMPACT UI  */
           /* ============================================================== */
           <motion.div
             key="gateway-screen"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.4 }}
-            className="flex-1 flex flex-col justify-between max-w-2xl mx-auto w-full px-4 sm:px-6 pt-0 sm:pt-1 pb-8 sm:pb-12"
+            transition={{ duration: 0.3 }}
+            className="flex-1 flex flex-col justify-between w-full min-w-0"
           >
-            {/* Header Navigation */}
-            <header className="flex items-center justify-between pt-0 mt-0 pb-4 sm:pb-6 border-b border-[#E4E4EC] dark:border-white/10">
-              <QmarkLogo size="md" variant="full" />
+            {/* Same Title Bar Design Used Across Dashboard Pages */}
+            <QmarkTitleBar
+              tag="PORTAL"
+              user={
+                hasLecturerSession && lecturerEmail
+                  ? {
+                      name: lecturerEmail.split("@")[0],
+                      email: lecturerEmail,
+                      role: "Faculty",
+                    }
+                  : null
+              }
+              onSignOut={hasLecturerSession ? handleSignOut : undefined}
+              showBack={false}
+            />
 
-              <div className="flex items-center gap-2">
-                <ThemeToggle />
+            {/* Main Portal Content Container (Balanced, Not Oversized) */}
+            <main className="flex-1 flex flex-col justify-center max-w-xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 min-w-0">
+              {/* Header Headline */}
+              <div className="text-center mb-6 sm:mb-8">
+                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold tracking-wider uppercase mb-2 bg-[#B8861B]/15 text-[#B8861B] dark:text-[#E2BD56] border border-[#B8861B]/30 shadow-2xs">
+                  ATTENDANCE PORTAL
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0A1F44] dark:text-white">
+                  Welcome to Qmark
+                </h1>
+                <p className="mt-1.5 text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
+                  Instant QR verification, digital student passes, and live classroom sessions.
+                </p>
               </div>
-            </header>
 
-            {/* Welcome Heading */}
-            <div className="mt-8 sm:mt-12 text-center">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase mb-3 bg-[#B8861B]/15 dark:bg-[#B8861B]/25 text-[#0A1F44] dark:text-[#E2BD56] border border-[#B8861B]/35">
-                SELECT YOUR PORTAL
+              {/* Compact, Proportionate Portal Cards (Redesigned: Sleek & Non-Oversized) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                {/* 1. STUDENT PORTAL CARD */}
+                <motion.div
+                  whileHover={{ y: -3, scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleSelectRole("student")}
+                  className="group relative p-4 sm:p-4.5 rounded-2xl glass-card border border-[#B8861B]/30 hover:border-[#B8861B] hover:shadow-gold transition-all duration-200 cursor-pointer flex flex-col justify-between overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-[#B8861B]/10 rounded-full blur-xl pointer-events-none group-hover:bg-[#B8861B]/15 transition-all" />
+
+                  <div>
+                    {/* Top Row: Icon Badge & Status Pill */}
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div className="size-10 rounded-xl bg-[#0A1F44] text-[#E2BD56] dark:bg-[#132C57] dark:text-[#E2BD56] flex items-center justify-center shrink-0 border border-[#B8861B]/30 shadow-2xs transition-transform group-hover:scale-105">
+                        <GraduationCap className="size-5" />
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-[#B8861B]/15 text-[#B8861B] dark:text-[#E2BD56] border border-[#B8861B]/30">
+                        STUDENT
+                      </span>
+                    </div>
+
+                    {/* Title & Concise Summary */}
+                    <h2 className="text-base sm:text-lg font-bold text-[#0A1F44] dark:text-white group-hover:text-[#B8861B] transition-colors">
+                      Student Portal
+                    </h2>
+                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                      Access your Digital QR Pass, monitor attendance rates, and submit excuses.
+                    </p>
+
+                    {/* Minimal Feature Tags */}
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100/90 dark:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/10 flex items-center gap-1">
+                        <QrCode className="size-2.5 text-[#B8861B]" />
+                        QR Pass
+                      </span>
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100/90 dark:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/10 flex items-center gap-1">
+                        <CalendarCheck className="size-2.5 text-[#B8861B]" />
+                        Standing
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Compact Bottom Action Bar */}
+                  <div className="mt-4 pt-3 border-t border-slate-200/70 dark:border-white/10 flex items-center justify-between text-xs font-bold text-[#0A1F44] dark:text-[#E2BD56]">
+                    <span>Enter with Index</span>
+                    <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </motion.div>
+
+                {/* 2. LECTURER & FACULTY PORTAL CARD */}
+                <motion.div
+                  whileHover={{ y: -3, scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleSelectRole("lecturer")}
+                  className="group relative p-4 sm:p-4.5 rounded-2xl glass-card border border-[#B8861B]/30 hover:border-[#B8861B] hover:shadow-gold transition-all duration-200 cursor-pointer flex flex-col justify-between overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-[#0A1F44]/08 dark:bg-[#B8861B]/10 rounded-full blur-xl pointer-events-none group-hover:bg-[#B8861B]/15 transition-all" />
+
+                  <div>
+                    {/* Top Row: Icon Badge & Status Pill */}
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div className="size-10 rounded-xl bg-[#0A1F44] text-[#E2BD56] dark:bg-[#132C57] dark:text-[#E2BD56] flex items-center justify-center shrink-0 border border-[#B8861B]/30 shadow-2xs transition-transform group-hover:scale-105">
+                        <Building2 className="size-5" />
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-[#0A1F44]/10 dark:bg-white/10 text-[#0A1F44] dark:text-slate-200 border border-slate-200/80 dark:border-white/10">
+                        FACULTY
+                      </span>
+                    </div>
+
+                    {/* Title & Concise Summary */}
+                    <h2 className="text-base sm:text-lg font-bold text-[#0A1F44] dark:text-white group-hover:text-[#B8861B] transition-colors">
+                      Lecturer Portal
+                    </h2>
+                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                      Start classroom sessions, verify student QR check-ins, and export reports.
+                    </p>
+
+                    {/* Minimal Feature Tags */}
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100/90 dark:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/10 flex items-center gap-1">
+                        <MapPin className="size-2.5 text-[#B8861B]" />
+                        Geofenced
+                      </span>
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100/90 dark:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/10 flex items-center gap-1">
+                        <FileSpreadsheet className="size-2.5 text-[#B8861B]" />
+                        Rosters
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Compact Bottom Action Bar */}
+                  <div className="mt-4 pt-3 border-t border-slate-200/70 dark:border-white/10 flex items-center justify-between text-xs font-bold text-[#0A1F44] dark:text-[#E2BD56]">
+                    <span>{hasLecturerSession ? "Open Dashboard" : "Faculty Sign In"}</span>
+                    <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </motion.div>
               </div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#0A1F44] dark:text-white">
-                Every attendance moment,<br className="hidden sm:inline" /> in one place.
-              </h1>
-              <p className="mt-3 text-sm sm:text-base text-neutral-600 dark:text-neutral-300 max-w-md mx-auto">
-                Secure QR attendance passes, geofenced classroom verification, and live course records.
-              </p>
-            </div>
 
-            {/* Portal Cards Grid */}
-            <div className="mt-8 sm:mt-10 grid sm:grid-cols-2 gap-4 sm:gap-6">
-              {/* CARD 1: STUDENT PORTAL */}
-              <motion.div
-                whileHover={{ y: -4, scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleSelectRole("student")}
-                className="group relative p-6 sm:p-7 rounded-3xl glass-card border border-[#B8861B]/30 hover:border-[#B8861B] hover:shadow-gold transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden"
-              >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#B8861B]/10 rounded-full blur-2xl pointer-events-none group-hover:bg-[#B8861B]/20 transition-all" />
+              {/* Browser-Aware Direct Add to Home Screen Component */}
+              <AddToHomeScreenBanner />
+            </main>
 
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div
-                      className="size-13 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm"
-                      style={{ backgroundColor: "rgba(184, 134, 27, 0.15)", color: "#0A1F44" }}
-                    >
-                      <BookOpen className="size-6 text-[#B8861B]" />
-                    </div>
-                    <span
-                      className="text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider"
-                      style={{ backgroundColor: "rgba(184, 134, 27, 0.15)", color: "#B8861B", border: "1px solid rgba(184, 134, 27, 0.35)" }}
-                    >
-                      STUDENT
-                    </span>
-                  </div>
-
-                  <h2 className="mt-5 text-xl sm:text-2xl font-bold text-[#0A1F44] dark:text-white group-hover:text-[#D4AF37] transition-colors">
-                    Student Portal
-                  </h2>
-                  <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-200 leading-relaxed font-normal">
-                    View your Digital QR Pass, monitor attendance percentage for each course, check
-                    exam eligibility, and submit absence excuses.
-                  </p>
-
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-white border border-black/5 dark:border-white/10">
-                      Digital QR Pass
-                    </span>
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-white border border-black/5 dark:border-white/10">
-                      Course Standing
-                    </span>
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-white border border-black/5 dark:border-white/10">
-                      Excuses
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-[#D4AF37]/20 flex items-center justify-between text-xs font-bold text-[#0A1F44] dark:text-[#D4AF37]">
-                  <span>Enter with Index Number</span>
-                  <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </motion.div>
-
-              {/* CARD 2: LECTURER & FACULTY */}
-              <motion.div
-                whileHover={{ y: -4, scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleSelectRole("lecturer")}
-                className="group relative p-6 sm:p-7 rounded-3xl glass-card border border-[#D4AF37]/30 hover:border-[#D4AF37] hover:shadow-gold transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden"
-              >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#0A1F44]/10 dark:bg-[#D4AF37]/10 rounded-full blur-2xl pointer-events-none group-hover:bg-[#D4AF37]/20 transition-all" />
-
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div
-                      className="size-13 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm"
-                      style={{ backgroundColor: "rgba(10,31,68,0.1)", color: "#0A1F44" }}
-                    >
-                      <Radio className="size-6 text-[#0A1F44] dark:text-[#D4AF37]" />
-                    </div>
-                    <span
-                      className="text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider text-[#0A1F44] dark:text-[#D4AF37] bg-[rgba(10,31,68,0.08)] dark:bg-[#D4AF37]/15 border border-[#D4AF37]/30"
-                    >
-                      FACULTY
-                    </span>
-                  </div>
-
-                  <h2 className="mt-5 text-xl sm:text-2xl font-bold text-[#0A1F44] dark:text-white group-hover:text-[#D4AF37] transition-colors">
-                    Lecturer Portal
-                  </h2>
-                  <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-200 leading-relaxed font-normal">
-                    Staff access only. Launch live broadcast sessions, verify attendance with classroom
-                    geofencing, track real-time rosters, and export reports.
-                  </p>
-
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-white border border-black/5 dark:border-white/10">
-                      Live Sessions
-                    </span>
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-white border border-black/5 dark:border-white/10">
-                      Geofence Radar
-                    </span>
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10 text-[#0A1F44] dark:text-white border border-black/5 dark:border-white/10">
-                      Rosters & Grades
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-[#D4AF37]/20 flex items-center justify-between text-xs font-bold text-[#0A1F44] dark:text-[#D4AF37]">
-                  <span>{hasLecturerSession ? `Signed in (${lecturerEmail})` : "Staff Sign In"}</span>
-                  <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </motion.div>
-            </div>
-
-            {/* Direct Add to Home Screen PWA component for iOS and Android */}
-            <AddToHomeScreenBanner />
+            {/* Bottom Subtle Institutional Footer */}
+            <footer className="py-3 px-4 text-center text-[11px] text-muted-foreground">
+              Qmark • Institutional Roll-Call & Instant QR Verification
+            </footer>
           </motion.div>
         )}
       </AnimatePresence>
