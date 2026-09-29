@@ -378,10 +378,10 @@ function HistoryPage() {
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-              <HistoryIcon className="size-6 text-primary" /> Academic history
+            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
+              <HistoryIcon className="size-6 text-[#D4AF37]" /> Academic History
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground font-medium mt-1">
               Every semester ever recorded, including archived ones. Records here are permanent.
             </p>
           </div>

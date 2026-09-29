@@ -158,6 +158,12 @@ function RootShell({ children }: { children: ReactNode }) {
                   document.documentElement.classList.remove('dark');
                 }
               } catch (_) {}
+
+              // Capture native PWA install prompt globally as early as possible
+              window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                window.__pwaInstallPrompt = e;
+              });
             `,
           }}
         />

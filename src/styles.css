@@ -31,16 +31,16 @@
   --color-navy: #0A1F44;
   --color-navy-dark: #0B1D3A;
   --color-navy-light: #163668;
-  --color-gold: #D4AF37;
-  --color-gold-light: #F5E5A3;
-  --color-gold-dark: #AA820A;
+  --color-gold: #B8861B;
+  --color-gold-light: #D9AE38;
+  --color-gold-dark: #8A6408;
   --font-display: "Poppins", "Manrope", system-ui, sans-serif;
   --font-sans: "Manrope", "Poppins", system-ui, sans-serif;
 }
 
 :root {
   --radius: 1rem;
-  /* Qmark Light Theme: Pure White (#FFFFFF), Crisp Slate-White (#F8FAFC), Deep Royal Navy (#0A1F44), Warm Regal Gold (#D4AF37) */
+  /* Qmark Light Theme: Pure White (#FFFFFF), Crisp Slate-White (#F8FAFC), Deep Royal Navy (#0A1F44), Warm Regal Antique Gold (#B8861B) */
   --background: #f8fafc;
   --foreground: #0a1f44;
   --card: rgba(255, 255, 255, 0.88);
@@ -55,38 +55,38 @@
   --muted-foreground: #64748b;
   --accent: #fbf5df;
   --accent-foreground: #0a1f44;
-  --gold: #d4af37;
-  --gold-foreground: #0a1f44;
+  --gold: #b8861b;
+  --gold-foreground: #ffffff;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --border: rgba(212, 175, 55, 0.22);
-  --input: rgba(212, 175, 55, 0.24);
-  --ring: #d4af37;
+  --border: rgba(184, 134, 27, 0.28);
+  --input: rgba(184, 134, 27, 0.28);
+  --ring: #b8861b;
 }
 
 .dark {
-  /* Qmark Dark Theme: Elegant Deep Midnight Navy (#0B1D3A), Dark Navy Glass (#0D234A), Brilliant Gold (#D4AF37), Crisp White Text (#FFFFFF) */
+  /* Qmark Dark Theme: Deep Midnight Navy (#0B1D3A), Dark Navy Glass (#0D234A), Warm Darker Gold (#C29524), Crisp White Text (#FFFFFF) */
   --background: #0b1d3a;
   --foreground: #f8fafc;
   --card: rgba(13, 35, 74, 0.82);
   --card-foreground: #ffffff;
   --popover: #0e2347;
   --popover-foreground: #ffffff;
-  --primary: #d4af37;
+  --primary: #c29524;
   --primary-foreground: #0a1f44;
   --secondary: #132d56;
   --secondary-foreground: #ffffff;
   --muted: #132d56;
   --muted-foreground: #cbd5e1;
   --accent: #173868;
-  --accent-foreground: #d4af37;
-  --gold: #d4af37;
+  --accent-foreground: #c29524;
+  --gold: #c29524;
   --gold-foreground: #0a1f44;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: rgba(212, 175, 55, 0.32);
-  --input: rgba(212, 175, 55, 0.32);
-  --ring: #d4af37;
+  --border: rgba(194, 149, 36, 0.36);
+  --input: rgba(194, 149, 36, 0.36);
+  --ring: #c29524;
 }
 
 @layer base {
@@ -180,42 +180,42 @@
 
 /* Radial micro-dot matrix with gold accents */
 .bg-gold-dots {
-  background-image: radial-gradient(circle, rgba(212, 175, 55, 0.32) 1.5px, transparent 1.5px);
+  background-image: radial-gradient(circle, rgba(184, 134, 27, 0.26) 1.5px, transparent 1.5px);
   background-size: 24px 24px;
 }
 .dark .bg-gold-dots {
-  background-image: radial-gradient(circle, rgba(212, 175, 55, 0.42) 1.5px, transparent 1.5px);
+  background-image: radial-gradient(circle, rgba(194, 149, 36, 0.35) 1.5px, transparent 1.5px);
   background-size: 24px 24px;
 }
 
 /* Geometric diamond mesh pattern */
 .bg-gold-diamonds {
   background-image: 
-    linear-gradient(45deg, rgba(212, 175, 55, 0.16) 25%, transparent 25%), 
-    linear-gradient(-45deg, rgba(212, 175, 55, 0.16) 25%, transparent 25%), 
-    linear-gradient(45deg, transparent 75%, rgba(212, 175, 55, 0.16) 75%), 
-    linear-gradient(-45deg, transparent 75%, rgba(212, 175, 55, 0.16) 75%);
+    linear-gradient(45deg, rgba(184, 134, 27, 0.14) 25%, transparent 25%), 
+    linear-gradient(-45deg, rgba(184, 134, 27, 0.14) 25%, transparent 25%), 
+    linear-gradient(45deg, transparent 75%, rgba(184, 134, 27, 0.14) 75%), 
+    linear-gradient(-45deg, transparent 75%, rgba(184, 134, 27, 0.14) 75%);
   background-size: 28px 28px;
 }
 .dark .bg-gold-diamonds {
   background-image: 
-    linear-gradient(45deg, rgba(212, 175, 55, 0.24) 25%, transparent 25%), 
-    linear-gradient(-45deg, rgba(212, 175, 55, 0.24) 25%, transparent 25%), 
-    linear-gradient(45deg, transparent 75%, rgba(212, 175, 55, 0.24) 75%), 
-    linear-gradient(-45deg, transparent 75%, rgba(212, 175, 55, 0.24) 75%);
+    linear-gradient(45deg, rgba(194, 149, 36, 0.20) 25%, transparent 25%), 
+    linear-gradient(-45deg, rgba(194, 149, 36, 0.20) 25%, transparent 25%), 
+    linear-gradient(45deg, transparent 75%, rgba(194, 149, 36, 0.20) 75%), 
+    linear-gradient(-45deg, transparent 75%, rgba(194, 149, 36, 0.20) 75%);
   background-size: 28px 28px;
 }
 
 /* Radiant Gold Shade Gradients */
 .gold-shade-gradient {
-  background: radial-gradient(ellipse at 50% 0%, rgba(212, 175, 55, 0.25) 0%, rgba(10, 31, 68, 0.05) 55%, transparent 100%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(184, 134, 27, 0.20) 0%, rgba(10, 31, 68, 0.05) 55%, transparent 100%);
 }
 .dark .gold-shade-gradient {
-  background: radial-gradient(ellipse at 50% 0%, rgba(212, 175, 55, 0.35) 0%, rgba(11, 29, 58, 0.6) 65%, transparent 100%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(194, 149, 36, 0.28) 0%, rgba(11, 29, 58, 0.6) 65%, transparent 100%);
 }
 
 .gold-conic-glow {
-  background: conic-gradient(from 180deg at 50% 50%, rgba(212, 175, 55, 0.28) 0deg, rgba(10, 31, 68, 0.08) 120deg, rgba(212, 175, 55, 0.28) 240deg, rgba(10, 31, 68, 0.08) 360deg);
+  background: conic-gradient(from 180deg at 50% 50%, rgba(184, 134, 27, 0.22) 0deg, rgba(10, 31, 68, 0.08) 120deg, rgba(184, 134, 27, 0.22) 240deg, rgba(10, 31, 68, 0.08) 360deg);
 }
 
 /* ========================================================================= */
@@ -223,31 +223,31 @@
 /* ========================================================================= */
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(212, 175, 55, 0.32);
-  box-shadow: 0 12px 32px -6px rgba(10, 31, 68, 0.07), 0 0 0 1px rgba(212, 175, 55, 0.16);
+  border: 1px solid rgba(184, 134, 27, 0.30);
+  box-shadow: 0 12px 32px -6px rgba(10, 31, 68, 0.07), 0 0 0 1px rgba(184, 134, 27, 0.15);
 }
 .dark .glass-card {
-  background: rgba(13, 35, 74, 0.75);
+  background: rgba(13, 35, 74, 0.78);
   backdrop-filter: blur(22px);
   -webkit-backdrop-filter: blur(22px);
-  border: 1px solid rgba(212, 175, 55, 0.38);
-  box-shadow: 0 16px 45px -8px rgba(10, 31, 68, 0.45), 0 0 0 1px rgba(212, 175, 55, 0.22);
+  border: 1px solid rgba(194, 149, 36, 0.35);
+  box-shadow: 0 16px 45px -8px rgba(10, 31, 68, 0.45), 0 0 0 1px rgba(194, 149, 36, 0.20);
 }
 
 .glass-pill {
-  background: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(212, 175, 55, 0.35);
+  border: 1px solid rgba(184, 134, 27, 0.32);
 }
 .dark .glass-pill {
-  background: rgba(13, 35, 74, 0.65);
+  background: rgba(13, 35, 74, 0.70);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(212, 175, 55, 0.42);
+  border: 1px solid rgba(194, 149, 36, 0.38);
 }
 
 /* ========================================================================= */
@@ -255,7 +255,7 @@
 /* ========================================================================= */
 
 @utility text-gold {
-  color: #d4af37;
+  color: #b8861b;
 }
 @utility text-navy {
   color: #0a1f44;
@@ -265,18 +265,18 @@
   color: #ffffff;
 }
 @utility bg-gold {
-  background-color: #d4af37;
-  color: #0a1f44;
+  background-color: #b8861b;
+  color: #ffffff;
 }
 @utility border-gold {
-  border-color: #d4af37;
+  border-color: #b8861b;
 }
 @utility border-gold-subtle {
-  border-color: rgba(212, 175, 55, 0.3);
+  border-color: rgba(184, 134, 27, 0.3);
 }
 @utility shadow-gold {
-  box-shadow: 0 0 24px -4px rgba(212, 175, 55, 0.3);
+  box-shadow: 0 0 24px -4px rgba(184, 134, 27, 0.3);
 }
 @utility shadow-card {
-  box-shadow: 0 4px 20px -2px rgba(10, 31, 68, 0.08), 0 0 0 1px rgba(212, 175, 55, 0.15);
+  box-shadow: 0 4px 20px -2px rgba(10, 31, 68, 0.08), 0 0 0 1px rgba(184, 134, 27, 0.15);
 }

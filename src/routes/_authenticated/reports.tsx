@@ -493,11 +493,13 @@ function ReportsPage() {
 
   return (
     <AppShell>
-      <h1 className="text-2xl md:text-3xl font-bold mb-1">Reports</h1>
-      <p className="text-sm text-muted-foreground mb-5">
-        Pick a course, then view a single class day or the combined semester total. <b>1</b> =
-        scanned, <b>0</b> = did not scan.
-      </p>
+      <div className="mb-5">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight mb-1">Reports</h1>
+        <p className="text-sm text-muted-foreground font-medium">
+          Pick a course, then view a single class day or the combined semester total. <b>1</b> =
+          scanned, <b>0</b> = did not scan.
+        </p>
+      </div>
 
       <Card className="mb-4">
         <CardContent className="p-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -53,8 +53,8 @@ function StudentPortalLinksPage() {
     <AppShell>
       <div className="max-w-3xl mx-auto space-y-4 pb-12">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Student Portal & Links</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">Student Portal & Links</h1>
+          <p className="text-sm text-muted-foreground font-medium mt-1">
             Share these links with your students to access their digital attendance cards, course records, and session check-ins.
           </p>
         </div>

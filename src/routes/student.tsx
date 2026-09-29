@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,7 @@ import {
   Printer,
   UserPlus,
   Radio,
+  Sparkles,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { toast } from "sonner";
@@ -979,12 +981,15 @@ function StudentPortalPage() {
                 </div>
               </div>
 
-              {/* Right Column / Auth Form Area */}
-              <div className="md:col-span-7 flex flex-col justify-center bg-transparent">
-                <div className="h-1.5 bg-gradient-to-r from-[#0A1F44] via-[#D4AF37] to-[#0A1F44]" />
+              {/* Right Column / Auth Form Area (Redesigned: Slick, Minimalist, Animated UI/UX) */}
+              <div className="md:col-span-7 flex flex-col justify-between bg-white/95 dark:bg-[#0B1E3D]/95 backdrop-blur-2xl transition-all duration-300 relative overflow-hidden border-t md:border-t-0 md:border-l border-slate-200/60 dark:border-white/10 min-w-0">
+                {/* Subtle Ambient Gold Radiance Accent */}
+                <div className="pointer-events-none absolute -top-24 -right-24 size-64 rounded-full bg-[#B8861B]/15 blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-24 -left-24 size-56 rounded-full bg-[#0A1F44]/10 dark:bg-[#123164]/40 blur-3xl" />
+                <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-[#B8861B] to-transparent opacity-90 relative z-10" />
 
-                {/* Mode Selector Tabs */}
-                <div className="p-1 sm:p-1.5 bg-muted/70 border-b grid grid-cols-2 sm:grid-cols-4 gap-1 text-[11px] sm:text-xs">
+                {/* Ultra-slick Minimalist Segmented Navigation */}
+                <div className="p-1 sm:p-1.5 m-3 sm:m-5 mb-1.5 rounded-2xl bg-slate-100/90 dark:bg-[#07152B]/90 border border-slate-200/80 dark:border-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)] grid grid-cols-4 gap-1 text-[11px] sm:text-xs relative z-10">
                   <button
                     type="button"
                     onClick={() => {
@@ -992,14 +997,22 @@ function StudentPortalPage() {
                       setPassword("");
                       setConfirmPassword("");
                     }}
-                    className={`py-2 px-1.5 rounded-lg font-semibold transition text-center truncate cursor-pointer ${
+                    className={`relative py-2 sm:py-2.5 px-1 rounded-xl font-bold transition-all text-center truncate cursor-pointer z-10 flex items-center justify-center gap-1 ${
                       step === "login"
-                        ? "bg-background text-foreground shadow-xs border"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "text-[#0A1F44] dark:text-[#E2BD56]"
+                        : "text-slate-500 dark:text-slate-400 hover:text-foreground"
                     }`}
                   >
+                    {step === "login" && (
+                      <motion.div
+                        layoutId="studentAuthSegmentActive"
+                        className="absolute inset-0 rounded-xl bg-white dark:bg-[#143160] shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-slate-200/80 dark:border-[#B8861B]/35 -z-10"
+                        transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                      />
+                    )}
                     Sign In
                   </button>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -1007,15 +1020,23 @@ function StudentPortalPage() {
                       setRegPassword("");
                       setRegConfirmPassword("");
                     }}
-                    className={`py-2 px-1.5 rounded-lg font-bold transition text-center truncate cursor-pointer flex items-center justify-center gap-1 ${
+                    className={`relative py-2 sm:py-2.5 px-1 rounded-xl font-bold transition-all text-center truncate cursor-pointer z-10 flex items-center justify-center gap-1 ${
                       step === "register"
-                        ? "bg-primary text-primary-foreground shadow-xs"
-                        : "text-primary bg-primary/10 hover:bg-primary/20"
+                        ? "text-[#0A1F44] dark:text-[#E2BD56]"
+                        : "text-slate-500 dark:text-slate-400 hover:text-foreground"
                     }`}
                   >
+                    {step === "register" && (
+                      <motion.div
+                        layoutId="studentAuthSegmentActive"
+                        className="absolute inset-0 rounded-xl bg-white dark:bg-[#143160] shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-slate-200/80 dark:border-[#B8861B]/35 -z-10"
+                        transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                      />
+                    )}
                     <UserPlus className="size-3.5 shrink-0" />
-                    <span>Register New</span>
+                    <span>Register</span>
                   </button>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -1023,14 +1044,22 @@ function StudentPortalPage() {
                       setPassword("");
                       setConfirmPassword("");
                     }}
-                    className={`py-2 px-1.5 rounded-lg font-semibold transition text-center truncate cursor-pointer ${
+                    className={`relative py-2 sm:py-2.5 px-1 rounded-xl font-bold transition-all text-center truncate cursor-pointer z-10 flex items-center justify-center gap-1 ${
                       step === "index" || step === "create"
-                        ? "bg-background text-foreground shadow-xs border"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "text-[#0A1F44] dark:text-[#E2BD56]"
+                        : "text-slate-500 dark:text-slate-400 hover:text-foreground"
                     }`}
                   >
+                    {(step === "index" || step === "create") && (
+                      <motion.div
+                        layoutId="studentAuthSegmentActive"
+                        className="absolute inset-0 rounded-xl bg-white dark:bg-[#143160] shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-slate-200/80 dark:border-[#B8861B]/35 -z-10"
+                        transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                      />
+                    )}
                     Activate
                   </button>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -1038,679 +1067,739 @@ function StudentPortalPage() {
                       setPassword("");
                       setConfirmPassword("");
                     }}
-                    className={`py-2 px-1.5 rounded-lg font-semibold transition text-center truncate cursor-pointer ${
+                    className={`relative py-2 sm:py-2.5 px-1 rounded-xl font-bold transition-all text-center truncate cursor-pointer z-10 flex items-center justify-center gap-1 ${
                       step === "reset"
-                        ? "bg-background text-foreground shadow-xs border"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "text-[#0A1F44] dark:text-[#E2BD56]"
+                        : "text-slate-500 dark:text-slate-400 hover:text-foreground"
                     }`}
                   >
-                    Reset Password
+                    {step === "reset" && (
+                      <motion.div
+                        layoutId="studentAuthSegmentActive"
+                        className="absolute inset-0 rounded-xl bg-white dark:bg-[#143160] shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-slate-200/80 dark:border-[#B8861B]/35 -z-10"
+                        transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                      />
+                    )}
+                    Reset
                   </button>
                 </div>
 
-                {/* Distinct New Student Registration Screen */}
-                {step === "register" && (
-                  <>
-                    <CardHeader className="text-center pb-3 pt-5 px-4 sm:px-6">
-                      <div className="flex justify-center mb-2 md:hidden">
-                        <div className="size-10 rounded-xl bg-[#D4AF37] flex items-center justify-center shadow-xs">
-                          <QmarkLogo size="xs" variant="icon" />
+                <AnimatePresence mode="wait">
+                  {/* Distinct New Student Registration Screen */}
+                  {step === "register" && (
+                    <motion.div
+                      key="register"
+                      initial={{ opacity: 0, y: 10, scale: 0.985 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.985 }}
+                      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                      className="flex-1 flex flex-col justify-center relative z-10"
+                    >
+                      <CardHeader className="text-center pb-2 pt-1 px-4 sm:px-6">
+                        <div className="mx-auto size-11 rounded-2xl ring-2 ring-[#D4AF37]/40 bg-[#0A1F44] p-1 flex items-center justify-center mb-1.5 shadow-sm">
+                          <UserPlus className="size-5 text-[#D4AF37]" />
                         </div>
-                      </div>
-                      <CardTitle className="text-lg sm:text-xl font-bold flex items-center justify-center gap-2 text-foreground">
-                        <UserPlus className="size-5 text-[#D4AF37]" /> New Student Registration
-                      </CardTitle>
-                      <CardDescription className="text-xs max-w-sm mx-auto">
-                        Qmark Academic Network. Register once to create your student account and get your permanent QR attendance pass.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4 px-4 sm:px-6">
-                      <form onSubmit={handleSelfRegistration} className="space-y-3">
-                        <div className="space-y-1">
-                          <Label className="text-xs font-semibold">Full Legal Name</Label>
-                          <Input
-                            placeholder="e.g. Kwame Mensah"
-                            value={regFullName}
-                            onChange={(e) => setRegFullName(e.target.value)}
-                            required
-                            className="h-10 text-sm"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <Label className="text-xs font-semibold">Student Index Number</Label>
-                          <Input
-                            placeholder="e.g. 2084931"
-                            value={regIndex}
-                            onChange={(e) => setRegIndex(e.target.value)}
-                            required
-                            className="h-10 font-mono text-sm uppercase tracking-wide"
-                          />
-                        </div>
-
-                        {/* Stacked Vertically for Portrait Mobile Compatibility */}
-                        <div className="space-y-3">
+                        <CardTitle className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground">
+                          New Student Registration
+                        </CardTitle>
+                        <CardDescription className="text-xs text-slate-500 dark:text-slate-300 max-w-sm mx-auto">
+                          Qmark Academic Network. Register once to create your student account and get your digital QR pass.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3.5 px-4 sm:px-6 pb-5">
+                        <form onSubmit={handleSelfRegistration} className="space-y-3">
                           <div className="space-y-1">
-                            <Label className="text-xs font-semibold">Academic Level</Label>
-                            <Select value={regLevel} onValueChange={setRegLevel}>
-                              <SelectTrigger className="h-10 text-sm">
-                                <SelectValue placeholder="Select level" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="100">Level 100 (Freshman)</SelectItem>
-                                <SelectItem value="200">Level 200 (Sophomore)</SelectItem>
-                                <SelectItem value="300">Level 300 (Junior)</SelectItem>
-                                <SelectItem value="400">Level 400 (Senior)</SelectItem>
-                                <SelectItem value="500">Level 500 (Final Year / Eng)</SelectItem>
-                                <SelectItem value="600">Level 600 (Clinical / Pharm)</SelectItem>
-                                <SelectItem value="Postgraduate">Postgraduate</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                              Full Legal Name
+                            </Label>
+                            <Input
+                              placeholder="e.g. Kwame Mensah"
+                              value={regFullName}
+                              onChange={(e) => setRegFullName(e.target.value)}
+                              required
+                              className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
                           </div>
 
                           <div className="space-y-1">
-                            <Label className="text-xs font-semibold">Department / Faculty</Label>
-                            {departmentsList.length > 0 ? (
-                              <Select value={regDepartment} onValueChange={setRegDepartment}>
-                                <SelectTrigger className="h-10 text-sm">
-                                  <SelectValue placeholder="Select Department" />
+                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                              Student Index Number
+                            </Label>
+                            <Input
+                              placeholder="e.g. 2084931"
+                              value={regIndex}
+                              onChange={(e) => setRegIndex(e.target.value)}
+                              required
+                              className="h-11 font-mono text-sm uppercase tracking-wide rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
+                          </div>
+
+                          {/* Stacked Vertically for Portrait Mobile Compatibility */}
+                          <div className="space-y-2.5">
+                            <div className="space-y-1">
+                              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                                Academic Level
+                              </Label>
+                              <Select value={regLevel} onValueChange={setRegLevel}>
+                                <SelectTrigger className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus:ring-2 focus:ring-[#D4AF37]/40 focus:border-[#D4AF37]">
+                                  <SelectValue placeholder="Select level" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {departmentsList.map((d) => (
-                                    <SelectItem key={d.id} value={d.name}>
-                                      {d.name}
-                                    </SelectItem>
-                                  ))}
+                                  <SelectItem value="100">Level 100 (Freshman)</SelectItem>
+                                  <SelectItem value="200">Level 200 (Sophomore)</SelectItem>
+                                  <SelectItem value="300">Level 300 (Junior)</SelectItem>
+                                  <SelectItem value="400">Level 400 (Senior)</SelectItem>
+                                  <SelectItem value="500">Level 500 (Final Year / Eng)</SelectItem>
+                                  <SelectItem value="600">Level 600 (Clinical / Pharm)</SelectItem>
+                                  <SelectItem value="Postgraduate">Postgraduate</SelectItem>
                                 </SelectContent>
                               </Select>
+                            </div>
+
+                            <div className="space-y-1">
+                              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                                Department / Faculty
+                              </Label>
+                              {departmentsList.length > 0 ? (
+                                <Select value={regDepartment} onValueChange={setRegDepartment}>
+                                  <SelectTrigger className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus:ring-2 focus:ring-[#D4AF37]/40 focus:border-[#D4AF37]">
+                                    <SelectValue placeholder="Select Department" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {departmentsList.map((d) => (
+                                      <SelectItem key={d.id} value={d.name}>
+                                        {d.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Input
+                                  placeholder="e.g. Computer Science"
+                                  value={regDepartment}
+                                  onChange={(e) => setRegDepartment(e.target.value)}
+                                  className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                                />
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                              Program of Study (Major)
+                            </Label>
+                            <Input
+                              placeholder="e.g. BSc Computer Science"
+                              value={regProgram}
+                              onChange={(e) => setRegProgram(e.target.value)}
+                              className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                              Email Address
+                            </Label>
+                            <Input
+                              type="email"
+                              placeholder="student@example.com"
+                              value={regEmail}
+                              onChange={(e) => setRegEmail(e.target.value)}
+                              required
+                              className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                                Create Password
+                              </Label>
+                              <button
+                                type="button"
+                                onClick={() => setShowRegPassword(!showRegPassword)}
+                                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                {showRegPassword ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                                {showRegPassword ? "Hide" : "Show"}
+                              </button>
+                            </div>
+                            <Input
+                              type={showRegPassword ? "text" : "password"}
+                              placeholder="Minimum 6 characters"
+                              value={regPassword}
+                              onChange={(e) => setRegPassword(e.target.value)}
+                              minLength={6}
+                              required
+                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                              Confirm Password
+                            </Label>
+                            <Input
+                              type={showRegPassword ? "text" : "password"}
+                              placeholder="Re-enter password"
+                              value={regConfirmPassword}
+                              onChange={(e) => setRegConfirmPassword(e.target.value)}
+                              minLength={6}
+                              required
+                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
+                          </div>
+
+                          <div className="rounded-xl border border-[#B8861B]/30 bg-[#B8861B]/10 p-3 text-[11px] text-slate-700 dark:text-slate-200 flex items-start gap-2.5">
+                            <CheckCircle2 className="size-4 shrink-0 text-[#B8861B] mt-0.5" />
+                            <span>
+                              Upon registration, your personal QR attendance pass will be generated instantly for all enrolled courses.
+                            </span>
+                          </div>
+
+                          <Button
+                            type="submit"
+                            className="w-full h-11 rounded-xl bg-gradient-to-r from-[#B8861B] via-[#C99826] to-[#B8861B] hover:brightness-105 text-white font-bold text-sm tracking-wide shadow-[0_4px_16px_rgba(184,134,27,0.30)] hover:shadow-[0_6px_20px_rgba(184,134,27,0.40)] active:scale-[0.98] transition-all cursor-pointer border border-[#B8861B]/60"
+                            disabled={busy}
+                          >
+                            {busy ? (
+                              <span className="flex items-center gap-2">
+                                <RefreshCw className="size-4 animate-spin" /> Registering Student...
+                              </span>
                             ) : (
-                              <Input
-                                placeholder="e.g. Computer Science"
-                                value={regDepartment}
-                                onChange={(e) => setRegDepartment(e.target.value)}
-                                className="h-10 text-sm"
-                              />
+                              <span className="flex items-center gap-2">
+                                <UserPlus className="size-4" /> Register & Generate QR Pass
+                              </span>
                             )}
+                          </Button>
+
+                          <div className="pt-1 text-center">
+                            <p className="text-xs text-muted-foreground">
+                              Already registered?{" "}
+                              <button
+                                type="button"
+                                onClick={() => setStep("login")}
+                                className="text-primary font-bold hover:underline cursor-pointer"
+                              >
+                                Sign In
+                              </button>
+                            </p>
                           </div>
-                        </div>
+                        </form>
+                      </CardContent>
+                    </motion.div>
+                  )}
 
-                        <div className="space-y-1">
-                          <Label className="text-xs font-semibold">Program of Study (Major)</Label>
-                          <Input
-                            placeholder="e.g. BSc Computer Science"
-                            value={regProgram}
-                            onChange={(e) => setRegProgram(e.target.value)}
-                            className="h-10 text-sm"
-                          />
+                  {step === "index" && (
+                    <motion.div
+                      key="index"
+                      initial={{ opacity: 0, y: 10, scale: 0.985 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.985 }}
+                      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                      className="flex-1 flex flex-col justify-center relative z-10"
+                    >
+                      <CardHeader className="text-center pb-2 pt-1 px-4 sm:px-6">
+                        <div className="mx-auto size-11 rounded-2xl ring-2 ring-[#D4AF37]/40 bg-[#0A1F44] p-1 flex items-center justify-center mb-1.5 shadow-sm">
+                          <KeyRound className="size-5 text-[#D4AF37]" />
                         </div>
-
-                        <div className="space-y-1">
-                          <Label className="text-xs font-semibold">Email Address</Label>
-                          <Input
-                            type="email"
-                            placeholder="student@example.com"
-                            value={regEmail}
-                            onChange={(e) => setRegEmail(e.target.value)}
-                            required
-                            className="h-10 text-sm"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs font-semibold">Create Password</Label>
-                            <button
-                              type="button"
-                              onClick={() => setShowRegPassword(!showRegPassword)}
-                              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-                            >
-                              {showRegPassword ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
-                              {showRegPassword ? "Hide" : "Show"}
-                            </button>
+                        <CardTitle className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground">
+                          Account Activation
+                        </CardTitle>
+                        <CardDescription className="text-xs text-slate-500 dark:text-slate-300 max-w-sm mx-auto">
+                          For students pre-enrolled by their lecturer. Enter your index number and email to set up your password.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
+                        <form onSubmit={handleDirectRegister} className="space-y-3.5">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="index-num" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                              Index Number
+                            </Label>
+                            <Input
+                              id="index-num"
+                              placeholder="e.g. 2084931"
+                              value={index}
+                              onChange={(e) => setIndex(e.target.value)}
+                              autoFocus
+                              required
+                              className="h-11 font-mono text-sm tracking-wide uppercase rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
                           </div>
-                          <Input
-                            type={showRegPassword ? "text" : "password"}
-                            placeholder="Minimum 6 characters"
-                            value={regPassword}
-                            onChange={(e) => setRegPassword(e.target.value)}
-                            minLength={6}
-                            required
-                            className="h-10"
-                          />
-                        </div>
 
-                        <div className="space-y-1">
-                          <Label className="text-xs font-semibold">Confirm Password</Label>
-                          <Input
-                            type={showRegPassword ? "text" : "password"}
-                            placeholder="Re-enter password"
-                            value={regConfirmPassword}
-                            onChange={(e) => setRegConfirmPassword(e.target.value)}
-                            minLength={6}
-                            required
-                            className="h-10"
-                          />
-                        </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="student-email" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                              Registered Email Address
+                            </Label>
+                            <Input
+                              id="student-email"
+                              type="email"
+                              placeholder="e.g. student@example.com"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              required
+                              className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
+                            <p className="text-[11px] text-slate-500 dark:text-slate-300 font-medium">
+                              Must match the email recorded in the system by your instructor.
+                            </p>
+                          </div>
 
-                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-[11px] text-muted-foreground flex items-start gap-2">
-                          <CheckCircle2 className="size-3.5 shrink-0 text-primary mt-0.5" />
-                          <span>
-                            Upon registration, your personal QR attendance pass will be generated instantly for all your enrolled courses.
-                          </span>
-                        </div>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                                Create Password
+                              </Label>
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="size-3" />
+                                ) : (
+                                  <Eye className="size-3" />
+                                )}
+                                {showPassword ? "Hide" : "Show"}
+                              </button>
+                            </div>
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              placeholder="At least 6 characters"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              minLength={6}
+                              required
+                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
+                          </div>
 
-                        <Button
-                          type="submit"
-                          className="w-full h-11 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition shadow-sm cursor-pointer"
-                          disabled={busy}
-                        >
-                          {busy ? (
-                            <span className="flex items-center gap-2">
-                              <RefreshCw className="size-4 animate-spin" /> Registering Student...
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-2">
-                              <UserPlus className="size-4" /> Register & Generate QR Pass
-                            </span>
-                          )}
-                        </Button>
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                              Confirm Password
+                            </Label>
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              placeholder="Re-enter password"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              minLength={6}
+                              required
+                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
+                          </div>
 
-                        <div className="pt-1 text-center">
+                          <Button
+                            type="submit"
+                            id="student-verify-continue-btn"
+                            className="w-full h-11 rounded-xl bg-gradient-to-r from-[#B8861B] via-[#C99826] to-[#B8861B] hover:brightness-105 text-white font-bold text-sm tracking-wide shadow-[0_4px_16px_rgba(184,134,27,0.30)] hover:shadow-[0_6px_20px_rgba(184,134,27,0.40)] active:scale-[0.98] transition-all cursor-pointer border border-[#B8861B]/60"
+                            disabled={busy}
+                          >
+                            {busy ? (
+                              <span className="flex items-center gap-2">
+                                <RefreshCw className="size-4 animate-spin" /> Verifying & Saving...
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-2">
+                                <UserPlus className="size-4" /> Activate & Enter Portal
+                              </span>
+                            )}
+                          </Button>
+                        </form>
+
+                        <div className="pt-2 text-center space-y-1.5">
                           <p className="text-xs text-muted-foreground">
                             Already have an account?{" "}
                             <button
                               type="button"
                               onClick={() => setStep("login")}
-                              className="text-primary font-semibold hover:underline"
+                              className="text-primary font-bold hover:underline cursor-pointer"
                             >
                               Sign In
                             </button>
                           </p>
                         </div>
-                      </form>
-                    </CardContent>
-                  </>
-                )}
+                      </CardContent>
+                    </motion.div>
+                  )}
 
-                {step === "index" && (
-                  <>
-                    <CardHeader className="text-center pb-3 pt-5 px-4 sm:px-6">
-                      <div className="flex justify-center mb-2 md:hidden">
-                        <div className="size-10 rounded-xl bg-[#D4AF37] flex items-center justify-center shadow-xs">
-                          <QmarkLogo size="xs" variant="icon" />
+                  {step === "create" && (
+                    <motion.div
+                      key="create"
+                      initial={{ opacity: 0, y: 10, scale: 0.985 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.985 }}
+                      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                      className="flex-1 flex flex-col justify-center relative z-10"
+                    >
+                      <CardHeader className="text-center pb-2 pt-1 px-4 sm:px-6">
+                        <div className="mx-auto size-11 rounded-2xl ring-2 ring-[#D4AF37]/40 bg-[#0A1F44] p-1 flex items-center justify-center mb-1.5 shadow-sm">
+                          <Lock className="size-5 text-[#D4AF37]" />
                         </div>
-                      </div>
-                      <CardTitle className="text-lg sm:text-xl font-bold">Student Account Activation</CardTitle>
-                      <CardDescription className="text-xs max-w-sm mx-auto">
-                        For students already pre-enrolled by their lecturer. Enter your index number and email to set up your password.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4 px-4 sm:px-6">
-                      <form onSubmit={handleDirectRegister} className="space-y-3.5">
-                        <div className="space-y-1.5">
-                          <Label htmlFor="index-num" className="text-xs font-semibold">
-                            Index Number
-                          </Label>
-                          <Input
-                            id="index-num"
-                            placeholder="e.g. 2084931"
-                            value={index}
-                            onChange={(e) => setIndex(e.target.value)}
-                            autoFocus
-                            required
-                            className="h-10 font-mono text-sm tracking-wide uppercase"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <Label htmlFor="student-email" className="text-xs font-semibold">
-                            Registered Email Address
-                          </Label>
-                          <Input
-                            id="student-email"
-                            type="email"
-                            placeholder="e.g. student@example.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            className="h-10 text-sm"
-                          />
-                          <p className="text-[11px] text-muted-foreground">
-                            Matches the email recorded in the system by your instructor.
-                          </p>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs font-semibold">Create Password</Label>
-                            <button
-                              type="button"
-                              onClick={() => setShowPassword(!showPassword)}
-                              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-                            >
-                              {showPassword ? (
-                                <EyeOff className="size-3" />
-                              ) : (
-                                <Eye className="size-3" />
-                              )}
-                              {showPassword ? "Hide" : "Show"}
-                            </button>
-                          </div>
-                          <Input
-                            type={showPassword ? "text" : "password"}
-                            placeholder="At least 6 characters"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            minLength={6}
-                            required
-                            className="h-10"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold">Confirm Password</Label>
-                          <Input
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Re-enter password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            minLength={6}
-                            required
-                            className="h-10"
-                          />
-                        </div>
-
-                        <Button
-                          type="submit"
-                          id="student-verify-continue-btn"
-                          className="w-full h-11 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm tracking-wide shadow-sm hover:shadow-md active:scale-[0.99] transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer"
-                          disabled={busy}
-                        >
-                          {busy ? (
-                            <span className="flex items-center gap-2">
-                              <RefreshCw className="size-4 animate-spin" /> Verifying & Saving...
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-2">
-                              <UserPlus className="size-4" /> Sign Up & Enter Portal
-                            </span>
+                        <CardTitle className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground">Create Your Password</CardTitle>
+                        <CardDescription className="text-xs text-slate-500 dark:text-slate-300">
+                          First time accessing your portal! Create a secure password to protect your account.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
+                        <div className="p-3 bg-slate-50 dark:bg-[#07162E]/90 rounded-xl border border-slate-200/80 dark:border-white/10 text-xs space-y-1.5">
+                          {me?.full_name && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">Student:</span>
+                              <span className="font-semibold text-foreground">{me.full_name}</span>
+                            </div>
                           )}
-                        </Button>
-                      </form>
-
-                      <div className="pt-2 text-center space-y-1.5">
-                        <p className="text-xs text-muted-foreground">
-                          Already have an account?{" "}
-                          <button
-                            type="button"
-                            onClick={() => setStep("login")}
-                            className="text-primary font-semibold hover:underline"
-                          >
-                            Sign In
-                          </button>
-                        </p>
-                      </div>
-                    </CardContent>
-                  </>
-                )}
-
-              {step === "create" && (
-                <>
-                  <CardHeader className="text-center pb-3">
-                    <div className="flex justify-center mb-2">
-                      <div className="size-12 rounded-xl bg-[#D4AF37] flex items-center justify-center shadow-xs">
-                        <QmarkLogo size="xs" variant="icon" />
-                      </div>
-                    </div>
-                    <CardTitle className="text-xl font-bold">Create Your Password</CardTitle>
-                    <CardDescription className="text-xs">
-                      First time accessing your portal! Create a secure password to protect your
-                      account.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="p-3 bg-muted/50 rounded-lg border border-border/60 text-xs space-y-1.5">
-                      {me?.full_name && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground">Student:</span>
-                          <span className="font-semibold text-foreground">{me.full_name}</span>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Index Number:</span>
+                            <span className="font-mono font-semibold text-foreground">{index}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Verified Email:</span>
+                            <span className="font-medium text-[#D4AF37] flex items-center gap-1">
+                              <CheckCircle2 className="size-3.5" /> {email}
+                            </span>
+                          </div>
                         </div>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Index Number:</span>
-                        <span className="font-mono font-semibold text-foreground">{index}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Verified Email:</span>
-                        <span className="font-medium text-[#D4AF37] flex items-center gap-1">
-                          <CheckCircle2 className="size-3.5" /> {email}
-                        </span>
-                      </div>
-                    </div>
 
-                    <form onSubmit={handleCreatePassword} className="space-y-3.5">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs font-semibold">Create Password</Label>
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                        <form onSubmit={handleCreatePassword} className="space-y-3.5">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                                Password
+                              </Label>
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="size-3" />
+                                ) : (
+                                  <Eye className="size-3" />
+                                )}
+                                {showPassword ? "Hide" : "Show"}
+                              </button>
+                            </div>
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              placeholder="At least 6 characters"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              minLength={6}
+                              required
+                              autoFocus
+                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                              Confirm Password
+                            </Label>
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              placeholder="Re-enter password"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              minLength={6}
+                              required
+                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
+                          </div>
+
+                          <Button
+                            type="submit"
+                            className="w-full h-11 rounded-xl bg-gradient-to-r from-[#B8861B] via-[#C99826] to-[#B8861B] hover:brightness-105 text-white font-bold text-sm tracking-wide shadow-[0_4px_16px_rgba(184,134,27,0.30)] hover:shadow-[0_6px_20px_rgba(184,134,27,0.40)] active:scale-[0.98] transition-all cursor-pointer border border-[#B8861B]/60"
+                            disabled={busy}
                           >
-                            {showPassword ? (
-                              <EyeOff className="size-3" />
+                            {busy ? (
+                              <span className="flex items-center gap-2">
+                                <RefreshCw className="size-4 animate-spin" /> Saving Password...
+                              </span>
                             ) : (
-                              <Eye className="size-3" />
+                              <span className="flex items-center gap-2">
+                                <Lock className="size-4" /> Save Password & Enter Portal
+                              </span>
                             )}
-                            {showPassword ? "Hide" : "Show"}
-                          </button>
-                        </div>
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="At least 6 characters"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          minLength={6}
-                          required
-                          autoFocus
-                          className="h-10"
-                        />
-                      </div>
+                          </Button>
 
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold">Confirm Password</Label>
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Re-enter password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          minLength={6}
-                          required
-                          className="h-10"
-                        />
-                      </div>
-
-                      <Button
-                        type="submit"
-                        className="w-full h-11 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition shadow-sm"
-                        disabled={busy}
-                      >
-                        {busy ? (
-                          <span className="flex items-center gap-2">
-                            <RefreshCw className="size-4 animate-spin" /> Saving Password...
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-2">
-                            <Lock className="size-4" /> Save Password & Enter Portal
-                          </span>
-                        )}
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="w-full text-xs"
-                        onClick={() => {
-                          setStep("index");
-                          setPassword("");
-                          setConfirmPassword("");
-                        }}
-                      >
-                        Back to Sign Up
-                      </Button>
-                    </form>
-                  </CardContent>
-                </>
-              )}
-
-              {step === "login" && (
-                <>
-                  <div className="relative h-28 sm:h-32 w-full overflow-hidden bg-[#0A1F44] border-b border-[#D4AF37]/30">
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#0A1F44] via-[#0E2858] to-[#0A1F44]" />
-                    <div className="absolute -top-12 -right-12 w-44 h-44 rounded-full bg-[#D4AF37]/10 blur-xl pointer-events-none" />
-                    <div className="absolute bottom-3 left-4 right-4 flex items-center gap-3 text-white">
-                      <div className="size-11 rounded-xl bg-[#D4AF37] flex items-center justify-center shadow-md shrink-0">
-                        <QmarkLogo size="xs" variant="icon" />
-                      </div>
-                      <div className="min-w-0">
-                        <h2 className="font-bold text-base sm:text-lg text-white tracking-tight drop-shadow-xs truncate">
-                          Student Portal Access
-                        </h2>
-                        <p className="text-xs text-white/80 truncate">
-                          Qmark Attendance & Verification Pass
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <CardHeader className="text-center pb-2 pt-3 px-4 sm:px-6">
-                    <CardTitle className="text-lg sm:text-xl font-bold">Sign In to Student Portal</CardTitle>
-                    <CardDescription className="text-xs">
-                      Enter your university index number and password to access your dashboard.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 px-4 sm:px-6">
-                    {/* Distinct Prominent New Student Registration Banner */}
-                    <div className="rounded-xl border border-primary/25 bg-primary/5 p-3 flex flex-col gap-2">
-                      <div className="flex items-start gap-2.5">
-                        <div className="p-1 rounded-md bg-primary/10 text-primary shrink-0 mt-0.5">
-                          <UserPlus className="size-4" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs font-bold text-foreground">New student and not yet in the system?</p>
-                          <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
-                            You can register yourself directly to get your universal QR attendance pass.
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setStep("register");
-                          setRegPassword("");
-                          setRegConfirmPassword("");
-                        }}
-                        className="w-full h-8 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 cursor-pointer"
-                      >
-                        <UserPlus className="size-3.5 mr-1.5" />
-                        Register as New Student
-                      </Button>
-                    </div>
-
-                    <form onSubmit={handleLoginSubmit} className="space-y-3.5">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold">Student Index Number</Label>
-                        <Input
-                          placeholder="e.g. 2084931"
-                          value={index}
-                          onChange={(e) => setIndex(e.target.value)}
-                          required
-                          autoFocus={!index}
-                          className="h-10 font-mono text-sm uppercase tracking-wide"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs font-semibold">Password</Label>
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            className="w-full text-xs font-semibold cursor-pointer text-slate-600 dark:text-slate-300 hover:text-foreground"
                             onClick={() => {
+                              setStep("index");
                               setPassword("");
                               setConfirmPassword("");
-                              setStep("reset");
                             }}
-                            className="text-xs text-primary hover:underline font-medium"
                           >
-                            Forgot password?
-                          </button>
+                            Back to Sign Up
+                          </Button>
+                        </form>
+                      </CardContent>
+                    </motion.div>
+                  )}
+
+                  {step === "login" && (
+                    <motion.div
+                      key="login"
+                      initial={{ opacity: 0, y: 10, scale: 0.985 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.985 }}
+                      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                      className="flex-1 flex flex-col justify-center relative z-10"
+                    >
+                      <CardHeader className="text-center pb-2 pt-1 px-4 sm:px-6">
+                        <div className="mx-auto size-11 rounded-2xl ring-2 ring-[#D4AF37]/50 bg-[#0A1F44] p-1 flex items-center justify-center mb-1.5 shadow-sm">
+                          <QmarkLogo size="xs" variant="icon" />
                         </div>
-                        <div className="relative">
-                          <Input
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Enter your password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            autoFocus={!!index}
-                            required
-                            className="h-10 pr-10"
-                          />
-                          <button
+                        <CardTitle className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground">
+                          Student Portal Sign In
+                        </CardTitle>
+                        <CardDescription className="text-xs text-slate-500 dark:text-slate-300 max-w-xs mx-auto">
+                          Enter your student index number and portal password to view your pass.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
+                        {/* Slick Minimalist Registration Invitation Ribbon */}
+                        <div className="rounded-2xl border border-[#B8861B]/35 bg-gradient-to-r from-[#B8861B]/15 via-[#B8861B]/5 to-transparent p-3 sm:p-3.5 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="p-2 rounded-xl bg-[#0A1F44] text-[#E2BD56] shadow-sm shrink-0">
+                              <UserPlus className="size-4 text-[#E2BD56]" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-foreground truncate">First time student?</p>
+                              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
+                                Register to get your digital QR pass
+                              </p>
+                            </div>
+                          </div>
+                          <Button
                             type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setStep("register");
+                              setRegPassword("");
+                              setRegConfirmPassword("");
+                            }}
+                            className="h-8 text-xs font-bold text-[#0A1F44] dark:text-[#E2BD56] bg-white/80 dark:bg-[#132C57] border-[#B8861B]/40 hover:bg-[#B8861B]/15 rounded-xl cursor-pointer shrink-0 shadow-sm"
                           >
-                            {showPassword ? (
-                              <EyeOff className="size-4" />
+                            <span>Register</span>
+                            <ArrowRight className="size-3 ml-1" />
+                          </Button>
+                        </div>
+
+                        <form onSubmit={handleLoginSubmit} className="space-y-3.5">
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                              Student Index Number
+                            </Label>
+                            <Input
+                              placeholder="e.g. 2084931"
+                              value={index}
+                              onChange={(e) => setIndex(e.target.value)}
+                              required
+                              autoFocus={!index}
+                              className="h-11 font-mono text-sm uppercase tracking-wide rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#B8861B]/40 focus-visible:border-[#B8861B]"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                                Password
+                              </Label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPassword("");
+                                  setConfirmPassword("");
+                                  setStep("reset");
+                                }}
+                                className="text-xs text-primary hover:underline font-bold cursor-pointer"
+                              >
+                                Forgot password?
+                              </button>
+                            </div>
+                            <div className="relative">
+                              <Input
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Enter your password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                autoFocus={!!index}
+                                required
+                                className="h-11 pr-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#B8861B]/40 focus-visible:border-[#B8861B]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer transition-colors p-1"
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="size-4" />
+                                ) : (
+                                  <Eye className="size-4" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          <Button
+                            type="submit"
+                            className="w-full h-11 rounded-xl bg-gradient-to-r from-[#B8861B] via-[#C99826] to-[#B8861B] hover:brightness-105 text-white font-bold text-sm tracking-wide shadow-[0_4px_16px_rgba(184,134,27,0.30)] hover:shadow-[0_6px_20px_rgba(184,134,27,0.40)] active:scale-[0.98] transition-all cursor-pointer border border-[#B8861B]/60"
+                            disabled={busy}
+                          >
+                            {busy ? (
+                              <span className="flex items-center gap-2">
+                                <RefreshCw className="size-4 animate-spin" /> Signing In...
+                              </span>
                             ) : (
-                              <Eye className="size-4" />
+                              "Sign In to Portal"
                             )}
-                          </button>
+                          </Button>
+
+                          <div className="pt-2 text-center space-y-2 border-t border-slate-200/80 dark:border-white/10 mt-3">
+                            <p className="text-xs text-muted-foreground">
+                              Pre-enrolled by lecturer?{" "}
+                              <button
+                                type="button"
+                                onClick={() => setStep("index")}
+                                className="text-primary font-bold hover:underline cursor-pointer"
+                              >
+                                Activate Enrolled Account
+                              </button>
+                            </p>
+                          </div>
+                        </form>
+                      </CardContent>
+                    </motion.div>
+                  )}
+
+                  {step === "reset" && (
+                    <motion.div
+                      key="reset"
+                      initial={{ opacity: 0, y: 10, scale: 0.985 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.985 }}
+                      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                      className="flex-1 flex flex-col justify-center relative z-10"
+                    >
+                      <CardHeader className="text-center pb-2 pt-1 px-4 sm:px-6">
+                        <div className="mx-auto size-11 rounded-2xl ring-2 ring-[#D4AF37]/40 bg-[#0A1F44] p-1 flex items-center justify-center mb-1.5 shadow-sm">
+                          <ShieldCheck className="size-5 text-[#D4AF37]" />
                         </div>
-                      </div>
+                        <CardTitle className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground">
+                          Reset Student Password
+                        </CardTitle>
+                        <CardDescription className="text-xs text-slate-500 dark:text-slate-300 max-w-sm mx-auto">
+                          Provide your registered student email and index number to set a new password.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
+                        <form onSubmit={handleResetPassword} className="space-y-3.5">
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                              Student Index Number
+                            </Label>
+                            <Input
+                              placeholder="e.g. 2084931"
+                              value={index}
+                              onChange={(e) => setIndex(e.target.value)}
+                              required
+                              autoFocus={!index}
+                              className="h-11 font-mono text-sm uppercase tracking-wide rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
+                          </div>
 
-                      <Button
-                        type="submit"
-                        className="w-full h-11 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition shadow-sm cursor-pointer"
-                        disabled={busy}
-                      >
-                        {busy ? (
-                          <span className="flex items-center gap-2">
-                            <RefreshCw className="size-4 animate-spin" /> Signing In...
-                          </span>
-                        ) : (
-                          "Sign In to Portal"
-                        )}
-                      </Button>
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                              Registered Email Address
+                            </Label>
+                            <Input
+                              type="email"
+                              placeholder="your.email@example.com"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              required
+                              autoFocus={!!index}
+                              className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
+                            <p className="text-[11px] text-slate-500 dark:text-slate-300 font-medium">
+                              Must match the registered email for this student index number.
+                            </p>
+                          </div>
 
-                      <div className="pt-1 text-center space-y-2 border-t mt-3">
-                        <p className="text-xs text-muted-foreground">
-                          Pre-enrolled by lecturer?{" "}
-                          <button
-                            type="button"
-                            onClick={() => setStep("index")}
-                            className="text-primary font-semibold hover:underline"
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                                New Password (min 6 chars)
+                              </Label>
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="size-3" />
+                                ) : (
+                                  <Eye className="size-3" />
+                                )}
+                                {showPassword ? "Hide" : "Show"}
+                              </button>
+                            </div>
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              placeholder="••••••••"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              minLength={6}
+                              required
+                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                              Confirm New Password
+                            </Label>
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              placeholder="••••••••"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              minLength={6}
+                              required
+                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
+                            />
+                          </div>
+
+                          <Button
+                            type="submit"
+                            className="w-full h-11 rounded-xl bg-gradient-to-r from-[#B8861B] via-[#C99826] to-[#B8861B] hover:brightness-105 text-white font-bold text-sm tracking-wide shadow-[0_4px_16px_rgba(184,134,27,0.30)] hover:shadow-[0_6px_20px_rgba(184,134,27,0.40)] active:scale-[0.98] transition-all cursor-pointer border border-[#B8861B]/60"
+                            disabled={busy}
                           >
-                            Activate Enrolled Account
-                          </button>
-                        </p>
-                      </div>
-                    </form>
-                  </CardContent>
-                </>
-              )}
+                            {busy ? "Verifying & Resetting..." : "Reset Password & Sign In"}
+                          </Button>
 
-              {step === "reset" && (
-                <>
-                  <CardHeader className="text-center pb-4 pt-5 px-4 sm:px-6">
-                    <div className="flex justify-center mb-2 md:hidden">
-                      <div className="size-10 rounded-xl bg-[#D4AF37] flex items-center justify-center shadow-xs">
-                        <QmarkLogo size="xs" variant="icon" />
-                      </div>
-                    </div>
-                    <CardTitle className="text-lg sm:text-xl font-bold">Reset Student Password</CardTitle>
-                    <CardDescription className="text-xs max-w-sm mx-auto">
-                      Provide your registered student email and index number to set a new password.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 px-4 sm:px-6">
-                    <form onSubmit={handleResetPassword} className="space-y-3.5">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold">Student Index Number</Label>
-                        <Input
-                          placeholder="e.g. 2084931"
-                          value={index}
-                          onChange={(e) => setIndex(e.target.value)}
-                          required
-                          autoFocus={!index}
-                          className="h-10 font-mono text-sm uppercase tracking-wide"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold">Registered Email Address</Label>
-                        <Input
-                          type="email"
-                          placeholder="your.email@example.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                          autoFocus={!!index}
-                          className="h-10 text-sm"
-                        />
-                        <p className="text-[11px] text-muted-foreground">
-                          Must match the registered email for this student index number.
-                        </p>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs font-semibold">
-                            New Password (min 6 chars)
-                          </Label>
-                          <button
+                          <Button
                             type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                            variant="ghost"
+                            className="w-full text-xs font-semibold cursor-pointer text-slate-600 dark:text-slate-300 hover:text-foreground"
+                            onClick={() => {
+                              setStep("login");
+                              setPassword("");
+                              setConfirmPassword("");
+                            }}
                           >
-                            {showPassword ? (
-                              <EyeOff className="size-3" />
-                            ) : (
-                              <Eye className="size-3" />
-                            )}
-                            {showPassword ? "Hide" : "Show"}
-                          </button>
-                        </div>
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="••••••••"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          minLength={6}
-                          required
-                          className="h-10"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold">Confirm New Password</Label>
-                        <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="••••••••"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          minLength={6}
-                          required
-                          className="h-10"
-                        />
-                      </div>
-
-                      <Button
-                        type="submit"
-                        className="w-full h-11 bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition cursor-pointer"
-                        disabled={busy}
-                      >
-                        {busy ? "Verifying & Resetting..." : "Reset Password & Sign In"}
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="w-full text-xs"
-                        onClick={() => {
-                          setStep("login");
-                          setPassword("");
-                          setConfirmPassword("");
-                        }}
-                      >
-                        Back to sign in
-                      </Button>
-                    </form>
-                  </CardContent>
-                </>
-              )}
+                            Back to sign in
+                          </Button>
+                        </form>
+                      </CardContent>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
@@ -1803,7 +1892,7 @@ function StudentPortalPage() {
                 {activeLecturerSession && (
                   <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-[#D4AF37] ring-2 ring-background animate-pulse" />
                 )}
-                <div className="size-10 sm:size-12 rounded-full flex items-center justify-center bg-[#D4AF37] text-[#0A1F44] shadow-sm">
+                <div className="size-10 sm:size-12 rounded-full flex items-center justify-center bg-[#B8861B] text-white shadow-sm">
                   <Radio className="size-5 sm:size-6" />
                 </div>
                 <span className="text-[11px] sm:text-xs font-bold text-foreground truncate">Check In</span>
@@ -1814,11 +1903,11 @@ function StudentPortalPage() {
                 onClick={() => setActiveTab("courses")}
                 className={`flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-2xl glass-card transition-all cursor-pointer ${
                   activeTab === "courses"
-                    ? "border-[#D4AF37] shadow-gold bg-[#D4AF37]/15"
-                    : "hover:border-[#D4AF37]/50"
+                    ? "border-[#B8861B] shadow-gold bg-[#B8861B]/15"
+                    : "hover:border-[#B8861B]/50"
                 }`}
               >
-                <div className="size-10 sm:size-12 rounded-full flex items-center justify-center bg-[#0A1F44] text-[#D4AF37] shadow-sm">
+                <div className="size-10 sm:size-12 rounded-full flex items-center justify-center bg-[#0A1F44] text-[#E2BD56] shadow-sm">
                   <BookOpen className="size-5 sm:size-6" />
                 </div>
                 <span className="text-[11px] sm:text-xs font-bold text-foreground truncate">Courses</span>
@@ -1829,11 +1918,11 @@ function StudentPortalPage() {
                 onClick={() => setActiveTab("announcements")}
                 className={`flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-2xl glass-card transition-all cursor-pointer ${
                   activeTab === "announcements"
-                    ? "border-[#D4AF37] shadow-gold bg-[#D4AF37]/15"
-                    : "hover:border-[#D4AF37]/50"
+                    ? "border-[#B8861B] shadow-gold bg-[#B8861B]/15"
+                    : "hover:border-[#B8861B]/50"
                 }`}
               >
-                <div className="size-10 sm:size-12 rounded-full flex items-center justify-center bg-[#0A1F44] text-[#D4AF37] shadow-sm">
+                <div className="size-10 sm:size-12 rounded-full flex items-center justify-center bg-[#0A1F44] text-[#E2BD56] shadow-sm">
                   <Megaphone className="size-5 sm:size-6" />
                 </div>
                 <span className="text-[11px] sm:text-xs font-bold text-foreground truncate">Notices</span>
@@ -1929,16 +2018,16 @@ function StudentPortalPage() {
             {activeLecturerSession && (
               <Link
                 to={`/check-in?session=${activeLecturerSession.id}` as string}
-                className="block p-3.5 sm:p-4 rounded-2xl glass-card border-2 border-[#D4AF37] bg-[#D4AF37]/15 hover:bg-[#D4AF37]/25 transition shadow-sm group"
+                className="block p-3.5 sm:p-4 rounded-2xl glass-card border-2 border-[#B8861B] bg-[#B8861B]/15 hover:bg-[#B8861B]/25 transition shadow-sm group"
               >
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-xl bg-[#0A1F44] text-[#D4AF37] flex items-center justify-center shrink-0 border border-[#D4AF37]/30 shadow-xs">
+                    <div className="size-10 rounded-xl bg-[#0A1F44] text-[#E2BD56] flex items-center justify-center shrink-0 border border-[#B8861B]/35 shadow-xs">
                       <Radio className="size-5 animate-pulse" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <Badge className="bg-[#D4AF37] text-[#0A1F44] border-none text-[10px] px-1.5 py-0 font-bold uppercase">
+                        <Badge className="bg-[#B8861B] text-white border-none text-[10px] px-1.5 py-0 font-bold uppercase">
                           Live Lecture Session
                         </Badge>
                         {activeLecturerSession.courseCode && (
@@ -1954,7 +2043,7 @@ function StudentPortalPage() {
                   </div>
                   <Button
                     size="sm"
-                    className="bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-[#0A1F44] font-bold text-xs h-9 px-4 shrink-0 w-full sm:w-auto gap-1.5 cursor-pointer shadow-xs"
+                    className="bg-[#B8861B] hover:bg-[#B8861B]/90 text-white font-bold text-xs h-9 px-4 shrink-0 w-full sm:w-auto gap-1.5 cursor-pointer shadow-xs"
                   >
                     <span>Check In Now</span>
                     <ArrowRight className="size-3.5" />

@@ -241,10 +241,10 @@ function DeptPage() {
     <AppShell>
       <div className="space-y-6 max-w-6xl mx-auto">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
             Departments & Academic Years
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground font-medium mt-1">
             Configure your faculty departments and active academic years used for course
             organization and enrollment.
           </p>

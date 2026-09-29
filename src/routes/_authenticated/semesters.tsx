@@ -205,11 +205,13 @@ function SemestersPage() {
 
   return (
     <AppShell>
-      <h1 className="text-2xl md:text-3xl font-bold mb-1">Semesters & archive</h1>
-      <p className="text-sm text-muted-foreground mb-5">
-        Group your courses by academic year and semester. Archiving keeps every record permanently
-        and locks the semester from further edits.
-      </p>
+      <div className="mb-5">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight mb-1">Semesters & Archive</h1>
+        <p className="text-sm text-muted-foreground font-medium">
+          Group your courses by academic year and semester. Archiving keeps every record permanently
+          and locks the semester from further edits.
+        </p>
+      </div>
 
       {endedNotArchived.map((t) => (
         <div

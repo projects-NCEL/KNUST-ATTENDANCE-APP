@@ -72,8 +72,8 @@ function FreeAccessPage() {
               <Gift className="size-3.5" />
               100% Free & Open Academic Platform
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">University Access & Plan</h1>
-            <p className="text-muted-foreground text-sm mt-1">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">University Access & Plan</h1>
+            <p className="text-muted-foreground text-sm font-medium mt-1">
               Qmark is completely free for all university faculty, lecturers, and students.
             </p>
           </div>

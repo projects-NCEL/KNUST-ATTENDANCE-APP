@@ -1,38 +1,57 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
-interface BeforeInstallPromptEvent extends Event {
+export interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 }
 
+declare global {
+  interface Window {
+    __pwaInstallPrompt?: BeforeInstallPromptEvent | null;
+  }
+}
+
 export function usePWAInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() => {
+    if (typeof window !== "undefined" && window.__pwaInstallPrompt) {
+      return window.__pwaInstallPrompt;
+    }
+    return null;
+  });
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Detect standalone mode (already installed on homescreen)
+    // Check if already running in standalone display mode
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     setIsInstalled(isStandalone);
 
-    // Detect iOS/iPadOS device
     const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) ||
+    const isIOSDevice =
+      /iphone|ipad|ipod/.test(userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     setIsIOS(isIOSDevice);
 
+    // If prompt was captured before component mount
+    if (window.__pwaInstallPrompt && !deferredPrompt) {
+      setDeferredPrompt(window.__pwaInstallPrompt);
+    }
+
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      const promptEvent = e as BeforeInstallPromptEvent;
+      window.__pwaInstallPrompt = promptEvent;
+      setDeferredPrompt(promptEvent);
     };
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
+      window.__pwaInstallPrompt = null;
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -42,35 +61,40 @@ export function usePWAInstall() {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
-  }, []);
+  }, [deferredPrompt]);
 
-  const install = async (): Promise<"accepted" | "dismissed" | "ios" | "manual"> => {
-    if (isIOS) {
-      return "ios";
-    }
+  // Directly triggers the native browser install dialog
+  const triggerNativeInstall = useCallback(async () => {
+    const promptEvent =
+      deferredPrompt || (typeof window !== "undefined" ? window.__pwaInstallPrompt : null);
 
-    if (!deferredPrompt) {
-      return "manual";
+    if (!promptEvent) {
+      return false;
     }
 
     try {
-      await deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === "accepted") {
+      await promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
+      if (choice.outcome === "accepted") {
         setIsInstalled(true);
         setDeferredPrompt(null);
-        return "accepted";
+        if (typeof window !== "undefined") window.__pwaInstallPrompt = null;
+        return true;
       }
-      return "dismissed";
-    } catch {
-      return "manual";
+      return false;
+    } catch (err) {
+      console.error("Native install trigger error:", err);
+      return false;
     }
-  };
+  }, [deferredPrompt]);
 
   return {
-    isInstallable: !!deferredPrompt,
+    isInstallable: Boolean(
+      deferredPrompt || (typeof window !== "undefined" && window.__pwaInstallPrompt),
+    ),
     isInstalled,
     isIOS,
-    install,
+    triggerNativeInstall,
+    deferredPrompt,
   };
 }

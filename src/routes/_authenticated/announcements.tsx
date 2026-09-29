@@ -359,10 +359,10 @@ export function AnnouncementsAndAssignmentsPage() {
               <Megaphone className="size-6" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
                 Announcements & Assignments
               </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="text-sm text-muted-foreground font-medium mt-0.5">
                 Keep your students informed with broadcasts, urgent notices, homework tasks, and
                 deadlines.
               </p>

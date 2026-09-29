@@ -265,10 +265,10 @@ function CourseDetail() {
       </Link>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">
             {course?.code} — {course?.title}
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground font-medium mt-1">
             Level {course?.level ?? "—"} · {course?.departments?.name || "All Departments"} ·{" "}
             {course?.semester ? `${course.semester} Semester` : "Active"}
           </p>

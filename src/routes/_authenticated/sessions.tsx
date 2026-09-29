@@ -306,8 +306,13 @@ function SessionsPage() {
 
   return (
     <AppShell>
-      <div className="flex justify-between mb-6">
-        <h1 className="text-3xl font-bold">Attendance Sessions</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Attendance Sessions</h1>
+          <p className="text-xs text-muted-foreground font-medium mt-1">
+            Create, schedule, and launch live lecture roll-call sessions
+          </p>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>

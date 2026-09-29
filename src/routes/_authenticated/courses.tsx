@@ -250,9 +250,9 @@ function CoursesPage() {
     <AppShell>
       <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Courses</h1>
-          <p className="text-xs text-muted-foreground mt-1">
-            Capacity: <span className="font-semibold text-foreground">{courses?.length ?? 0}</span>{" "}
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Courses</h1>
+          <p className="text-xs text-muted-foreground font-medium mt-1">
+            Capacity: <span className="font-bold text-foreground">{courses?.length ?? 0}</span>{" "}
             / 10 courses max
           </p>
         </div>

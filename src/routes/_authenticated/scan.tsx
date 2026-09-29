@@ -648,11 +648,13 @@ function ScanPage() {
 
   return (
     <AppShell>
-      <h1 className="text-2xl md:text-3xl font-bold mb-2">Attendance Scanner</h1>
-      <p className="text-sm text-muted-foreground mb-4">
-        Pick a session, tap <strong>Start scanning</strong>, and point QR codes at the camera —
-        scans are recorded automatically for today's date.
-      </p>
+      <div className="mb-4">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight mb-1">Attendance Scanner</h1>
+        <p className="text-sm text-muted-foreground font-medium">
+          Pick a session, tap <strong>Start scanning</strong>, and point QR codes at the camera —
+          scans are recorded automatically for today's date.
+        </p>
+      </div>
 
       {(!online || pending > 0) && (
         <div

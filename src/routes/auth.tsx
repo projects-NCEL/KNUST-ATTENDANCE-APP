@@ -223,7 +223,7 @@ function AuthPage() {
           <ThemeToggle />
           <Link
             to="/"
-            className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:text-[#0A1F44] dark:hover:text-white px-3 py-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100 hover:text-[#0A1F44] dark:hover:text-[#D4AF37] px-3 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
           >
             <ArrowLeft className="size-3.5" />
             <span>Gateway</span>
@@ -246,7 +246,7 @@ function AuthPage() {
             <h1 className="mt-2 text-2xl font-extrabold text-[#0A1F44] dark:text-white">
               {tab === "signin" ? "Lecturer sign in" : "Create lecturer account"}
             </h1>
-            <p className="mt-1 text-xs text-[#8891A4] dark:text-neutral-300">
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-200 font-medium">
               Staff access only. Students use the student portal.
             </p>
           </div>
@@ -384,7 +384,7 @@ function AuthPage() {
           <div className="mt-6 text-center">
             <Link
               to="/student"
-              className="text-xs font-semibold text-slate-600 dark:text-slate-200 hover:text-[#0A1F44] dark:hover:text-[#D4AF37] transition-colors"
+              className="text-xs font-bold text-slate-800 dark:text-[#F5E5A3] hover:text-[#0A1F44] dark:hover:underline transition-colors"
             >
               ← Looking for your Student Pass? Enter Student Portal
             </Link>

@@ -616,7 +616,7 @@ function CheckInPage() {
                 <Button
                   onClick={loadOpenSessions}
                   disabled={openSessionsLoading}
-                  className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-[#0A1F44] font-bold shadow-md h-10 gap-2 cursor-pointer"
+                  className="w-full bg-[#B8861B] hover:bg-[#B8861B]/90 text-white font-bold shadow-md h-10 gap-2 cursor-pointer"
                 >
                   <RefreshCw className={`size-4 ${openSessionsLoading ? "animate-spin" : ""}`} />
                   <span>Check Again / Refresh</span>
@@ -631,7 +631,7 @@ function CheckInPage() {
           ) : (
             <div className="w-full max-w-md space-y-3">
               <div className="text-center mb-3">
-                <Badge className="bg-[#D4AF37]/20 text-[#D4AF37] border-[#D4AF37]/40 text-xs px-2.5 py-0.5 font-bold mb-1">
+                <Badge className="bg-[#B8861B]/15 text-[#B8861B] dark:text-[#E2BD56] border-[#B8861B]/35 text-xs px-2.5 py-0.5 font-bold mb-1">
                   ● Live Classrooms ({openSessions.length})
                 </Badge>
                 <h2 className="text-lg font-bold text-foreground">Lecturer Sessions Open Now</h2>
@@ -642,13 +642,13 @@ function CheckInPage() {
               {openSessions.map((s) => (
                 <Card
                   key={s.id}
-                  className="glass-card border-[#D4AF37]/30 hover:border-[#D4AF37] transition-all p-4 space-y-3 rounded-2xl"
+                  className="glass-card border-[#B8861B]/30 hover:border-[#B8861B] transition-all p-4 space-y-3 rounded-2xl"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-1.5">
                         {s.courseCode && (
-                          <span className="font-mono font-bold text-xs bg-[#D4AF37]/20 text-[#D4AF37] px-2 py-0.5 rounded-md">
+                          <span className="font-mono font-bold text-xs bg-[#B8861B]/15 text-[#B8861B] dark:text-[#E2BD56] px-2 py-0.5 rounded-md">
                             {s.courseCode}
                           </span>
                         )}
@@ -666,7 +666,7 @@ function CheckInPage() {
                   </div>
                   <Button
                     onClick={() => setActiveSessionId(s.id)}
-                    className="w-full bg-[#D4AF37] hover:bg-[#D4AF37]/90 text-[#0A1F44] font-bold text-xs h-9 gap-1.5 cursor-pointer"
+                    className="w-full bg-[#B8861B] hover:bg-[#B8861B]/90 text-white font-bold text-xs h-9 gap-1.5 cursor-pointer"
                   >
                     <span>Check In to this Session</span>
                     <ArrowRight className="size-3.5" />

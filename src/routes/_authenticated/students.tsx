@@ -727,7 +727,12 @@ function StudentsPage() {
   return (
     <AppShell>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="text-3xl font-bold">Students</h1>
+        <div>
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Students</h1>
+          <p className="text-xs text-muted-foreground font-medium mt-1">
+            Student directory, academic standing, and digital QR attendance passes
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={downloadTemplate}>
             Template

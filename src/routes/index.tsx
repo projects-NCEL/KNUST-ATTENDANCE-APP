@@ -278,7 +278,7 @@ function LaunchAndGatewayPage() {
 
             {/* Welcome Heading */}
             <div className="mt-8 sm:mt-12 text-center">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase mb-3 bg-[#D4AF37]/15 dark:bg-[#D4AF37]/25 text-[#0A1F44] dark:text-[#D4AF37] border border-[#D4AF37]/30">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase mb-3 bg-[#B8861B]/15 dark:bg-[#B8861B]/25 text-[#0A1F44] dark:text-[#E2BD56] border border-[#B8861B]/35">
                 SELECT YOUR PORTAL
               </div>
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#0A1F44] dark:text-white">
@@ -296,21 +296,21 @@ function LaunchAndGatewayPage() {
                 whileHover={{ y: -4, scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleSelectRole("student")}
-                className="group relative p-6 sm:p-7 rounded-3xl glass-card border border-[#D4AF37]/30 hover:border-[#D4AF37] hover:shadow-gold transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden"
+                className="group relative p-6 sm:p-7 rounded-3xl glass-card border border-[#B8861B]/30 hover:border-[#B8861B] hover:shadow-gold transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden"
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/10 rounded-full blur-2xl pointer-events-none group-hover:bg-[#D4AF37]/20 transition-all" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#B8861B]/10 rounded-full blur-2xl pointer-events-none group-hover:bg-[#B8861B]/20 transition-all" />
 
                 <div>
                   <div className="flex items-center justify-between">
                     <div
                       className="size-13 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm"
-                      style={{ backgroundColor: "rgba(212, 175, 55, 0.15)", color: "#0A1F44" }}
+                      style={{ backgroundColor: "rgba(184, 134, 27, 0.15)", color: "#0A1F44" }}
                     >
-                      <BookOpen className="size-6 text-[#D4AF37]" />
+                      <BookOpen className="size-6 text-[#B8861B]" />
                     </div>
                     <span
                       className="text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider"
-                      style={{ backgroundColor: "rgba(212, 175, 55, 0.15)", color: "#D4AF37", border: "1px solid rgba(212, 175, 55, 0.3)" }}
+                      style={{ backgroundColor: "rgba(184, 134, 27, 0.15)", color: "#B8861B", border: "1px solid rgba(184, 134, 27, 0.35)" }}
                     >
                       STUDENT
                     </span>
