@@ -157,14 +157,8 @@ const ACCOUNT_SECTIONS = [
   },
   {
     category: "Institutional Info & Documentation",
-    description: "Billing plans, documentation, and user compliance agreements.",
+    description: "Documentation and compliance agreements.",
     items: [
-      {
-        to: "/billing",
-        label: "Billing & Plans",
-        desc: "Subscription status, SMS credit balance, and official payment receipts.",
-        icon: CreditCard,
-      },
       {
         to: "/manual",
         label: "User Manual",

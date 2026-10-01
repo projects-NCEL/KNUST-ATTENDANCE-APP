@@ -1,13 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -16,80 +14,52 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
-  BellRing,
   BookOpen,
   CalendarCheck,
   CheckCircle2,
-  ClipboardList,
   Clock,
-  Download,
   Eye,
   EyeOff,
   GraduationCap,
   KeyRound,
-  Link as LinkIcon,
   Lock,
   LogOut,
   Megaphone,
   QrCode,
-  RefreshCw,
-  ShieldCheck,
   User,
-  AlertCircle,
   ExternalLink,
-  Filter,
-  FileText,
-  Mail,
-  School,
-  BookCheck,
-  Printer,
-  UserPlus,
+  ClipboardList,
+  BellRing,
+  Settings,
   Radio,
-  Sparkles,
+  ArrowRight,
+  ShieldCheck,
+  UserPlus,
+  Key,
+  Shield,
+  ArrowLeft,
+  Check,
 } from "lucide-react";
-import QRCode from "qrcode";
 import { toast } from "sonner";
-import { calculateAttendanceGrade } from "@/lib/grading";
-import { QmarkLogo } from "@/components/QmarkLogo";
 import { StudentQrPassCard } from "@/components/StudentQrPassCard";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { QmarkTitleBar } from "@/components/QmarkTitleBar";
-import {
-  PushNotificationManager,
-  InAppNotificationCenter,
-  StudentPushBanner,
-} from "@/components/PushNotificationManager";
-import { NotificationPermissionModal } from "@/components/NotificationPermissionModal";
+import { PushNotificationManager } from "@/components/PushNotificationManager";
 
 export const Route = createFileRoute("/student")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Student Pass & Portal — Qmark" },
+      { title: "Student Portal & Pass — Qmark" },
       {
         name: "description",
-        content:
-          "Access your personal Qmark digital attendance pass, scan session codes, view enrolled courses, and track attendance streaks.",
+        content: "Access your Qmark digital attendance pass, courses, attendance, and assignments.",
       },
-      { property: "og:title", content: "Student Portal — Qmark" },
-      {
-        property: "og:description",
-        content: "Track your attendance percentage, digital QR pass, and course records on Qmark.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: StudentPortalPage,
 });
 
 const STORE = "qmark.student.session.v1";
-const BRAND_NAVY = "#0A1F44";
-const BRAND_GOLD = "#D4AF37";
-const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
 
 interface StoredStudentSession {
   i: string;
@@ -110,23 +80,11 @@ function saveStudentSession(index: string, pass: string) {
   }
 }
 
-function touchStudentActivity() {
-  try {
-    const raw = localStorage.getItem(STORE);
-    if (raw) {
-      const parsed: StoredStudentSession = JSON.parse(raw);
-      parsed.lastActive = Date.now();
-      localStorage.setItem(STORE, JSON.stringify(parsed));
-    }
-  } catch (e) {
-    console.debug("Activity touch skipped", e);
-  }
-}
-
 function clearStudentSession() {
   try {
     localStorage.removeItem(STORE);
     sessionStorage.removeItem(STORE);
+    localStorage.removeItem("qroll_student_session");
   } catch (e) {
     console.debug("Session clear error", e);
   }
@@ -141,7 +99,6 @@ interface StudentMe {
   department?: string;
   email?: string;
   qr_uuid?: string;
-  lecturers_count?: number;
 }
 
 interface CourseAttendanceRow {
@@ -160,17 +117,14 @@ interface CourseAttendanceRow {
   late: number;
   percentage: number;
   risk_level: "safe" | "warning" | "critical";
-  risk_message: string;
 }
 
 interface HistoryItem {
   id: string;
   session_id: string;
   session_title: string;
-  course_id?: string;
   course_code: string;
   course_title: string;
-  lecturer_name?: string;
   session_date: string;
   check_in_at: string;
   status: string;
@@ -180,11 +134,9 @@ interface NoticeItem {
   id: string;
   title: string;
   body: string;
-  course_id?: string;
   course_code: string | null;
   course_title?: string | null;
   lecturer_name?: string;
-  starts_on: string;
   created_at: string;
 }
 
@@ -195,208 +147,193 @@ interface AssignmentItem {
   course_id: string;
   course_code: string | null;
   course_title?: string | null;
-  lecturer_name?: string;
   due_at: string | null;
   submission_url: string | null;
   created_at: string;
 }
 
-type AuthStep = "login" | "register" | "index" | "create" | "reset";
+type StudentAuthTab = "signin" | "activate" | "reset" | "register";
+type PortalTabType = "qr" | "attendance" | "courses" | "notices" | "notifications" | "settings";
+
+const ACADEMIC_LEVELS = [
+  { value: "100", label: "Level 100 (Freshman)" },
+  { value: "200", label: "Level 200 (Sophomore)" },
+  { value: "300", label: "Level 300 (Junior)" },
+  { value: "400", label: "Level 400 (Senior)" },
+];
+
+const FACULTY_DEPARTMENTS = [
+  "Petroleum Engineering",
+  "Department of Computer Science",
+  "Department of Electrical & Electronic Engineering",
+  "Department of Computer Engineering",
+  "Department of Mechanical Engineering",
+  "Department of Civil Engineering",
+  "Department of Chemical Engineering",
+  "Department of Materials Engineering",
+  "Department of Mathematics",
+  "Department of Physics",
+  "Department of Business Administration",
+  "Faculty of Law",
+  "Department of Architecture",
+  "General Studies",
+];
 
 function StudentPortalPage() {
-  const [step, setStep] = useState<AuthStep>("login");
-  const [index, setIndex] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [hasEmail, setHasEmail] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  // Unauthenticated Auth States matching the 4 screenshots
+  const [activeAuthTab, setActiveAuthTab] = useState<StudentAuthTab>("signin");
 
-  // New Student Self-Registration State
+  // Sign In Form State
+  const [signInIndex, setSignInIndex] = useState("");
+  const [signInPassword, setSignInPassword] = useState("");
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
+  const [signInBusy, setSignInBusy] = useState(false);
+
+  // Register Form State
   const [regFullName, setRegFullName] = useState("");
   const [regIndex, setRegIndex] = useState("");
   const [regLevel, setRegLevel] = useState("100");
-  const [regDepartment, setRegDepartment] = useState("");
+  const [regDepartment, setRegDepartment] = useState("Petroleum Engineering");
   const [regProgram, setRegProgram] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
-  const [departmentsList, setDepartmentsList] = useState<{ id: string; name: string }[]>([]);
+  const [regBusy, setRegBusy] = useState(false);
+
+  // Activate Form State
+  const [actIndex, setActIndex] = useState("");
+  const [actEmail, setActEmail] = useState("");
+  const [actPassword, setActPassword] = useState("");
+  const [actConfirmPassword, setActConfirmPassword] = useState("");
+  const [showActPassword, setShowActPassword] = useState(false);
+  const [actBusy, setActBusy] = useState(false);
+
+  // Reset Form State
+  const [resetIndex, setResetIndex] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
 
   // Authenticated State
   const [me, setMe] = useState<StudentMe | null>(null);
-  const [showNotificationModal, setShowNotificationModal] = useState(false);
-  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [portalTab, setPortalTab] = useState<PortalTabType>("qr");
   const [courses, setCourses] = useState<CourseAttendanceRow[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [announcements, setAnnouncements] = useState<NoticeItem[]>([]);
   const [assignments, setAssignments] = useState<AssignmentItem[]>([]);
-  const [activeTab, setActiveTab] = useState<string>("attendance");
-  const [activeLecturerSession, setActiveLecturerSession] = useState<{
-    id: string;
-    courseCode?: string;
-    title?: string;
-  } | null>(null);
+  const [feedFilter, setFeedFilter] = useState<"all" | "announcements" | "assignments">("all");
+  const [activeSession, setActiveSession] = useState<{ id: string; courseCode?: string; title?: string } | null>(null);
 
-  // Poll / check for any active attendance sessions opened by lecturers
-  useEffect(() => {
-    if (!me) return;
-    const checkSessions = () => {
-      fetch("/api/public/student-auth", {
+  // Settings State
+  const [oldPassword, setOldPassword] = useState("");
+  const [newSettingsPassword, setNewSettingsPassword] = useState("");
+  const [changingPass, setChangingPass] = useState(false);
+
+  const loadStudentData = useCallback(async (userIndex: string, userPass?: string) => {
+    try {
+      const dataRes = await fetch("/api/public/student-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "data", index: userIndex, password: userPass }),
+      });
+      const data = await dataRes.json();
+      if (data.student) {
+        setMe(data.student);
+      }
+      if (Array.isArray(data.courses)) setCourses(data.courses);
+      if (Array.isArray(data.history)) setHistory(data.history);
+      if (Array.isArray(data.announcements)) setAnnouncements(data.announcements);
+      if (Array.isArray(data.assignments)) setAssignments(data.assignments);
+
+      const sessRes = await fetch("/api/public/student-auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "get_active_sessions" }),
-      })
-        .then((r) => r.json())
-        .then((d) => {
-          if (d?.ok && Array.isArray(d.sessions) && d.sessions.length > 0) {
-            setActiveLecturerSession(d.sessions[0]);
-          } else {
-            setActiveLecturerSession(null);
-          }
-        })
-        .catch(() => {});
-    };
-
-    checkSessions();
-    const interval = setInterval(checkSessions, 15000);
-    return () => clearInterval(interval);
-  }, [me]);
-
-  // Notification prompt check: ONLY appears once after initial signup for the first time on this device
-  useEffect(() => {
-    if (!me?.index_number) return;
-    try {
-      const isJustSignedUp = sessionStorage.getItem("qmark_just_signed_up") === "true";
-      const promptShownDevice =
-        localStorage.getItem(`qmark_notification_prompt_shown_${me.index_number}`) ||
-        localStorage.getItem("qmark_notification_prompt_shown_global");
-      const permGranted = typeof Notification !== "undefined" && Notification.permission === "granted";
-
-      // If user just signed up on this device for the very first time and hasn't been shown it yet
-      if (isJustSignedUp && !promptShownDevice && !permGranted) {
-        sessionStorage.removeItem("qmark_just_signed_up");
-        const timer = setTimeout(() => {
-          setShowNotificationModal(true);
-        }, 800);
-        return () => clearTimeout(timer);
-      } else if (isJustSignedUp) {
-        sessionStorage.removeItem("qmark_just_signed_up");
+      });
+      const sessData = await sessRes.json();
+      if (Array.isArray(sessData.sessions) && sessData.sessions.length > 0) {
+        setActiveSession(sessData.sessions[0]);
       }
-    } catch {
-      // Ignore
+    } catch (err) {
+      console.error("Error loading student portal data:", err);
     }
-  }, [me?.index_number]);
+  }, []);
 
-  // Account Settings state
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
-  const [changingPassword, setChangingPassword] = useState(false);
-
-  // QR Code generator matching Qmark brand Navy
-  useEffect(() => {
-    if (me) {
-      const qrPayload = me.qr_uuid || me.index_number;
-      QRCode.toDataURL(qrPayload, {
-        width: 380,
-        margin: 2,
-        color: {
-          dark: BRAND_NAVY,
-          light: "#ffffff",
-        },
-      })
-        .then(setQrUrl)
-        .catch((err) => {
-          console.error("Could not generate student QR code:", err);
-          toast.error("Could not render QR code");
+  const handleLogin = useCallback(
+    async (loginIndex = signInIndex, loginPass = signInPassword) => {
+      const cleanIdx = loginIndex.trim().toUpperCase();
+      if (!cleanIdx || !loginPass) {
+        toast.error("Please enter student index number and password");
+        return;
+      }
+      setSignInBusy(true);
+      try {
+        const res = await fetch("/api/public/student-auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "login",
+            index: cleanIdx,
+            password: loginPass,
+          }),
         });
-    } else {
-      setQrUrl(null);
-    }
-  }, [me]);
+        const data = await res.json();
 
-  const printPass = () => {
-    if (!me || !qrUrl) return;
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.write(
-      `<html><head><title>${me.index_number} - Qmark Universal Student QR Pass</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;text-align:center;padding:40px;color:#0A1F44;background:#f8fafc}.badge{display:inline-block;border:2px solid #D4AF37;border-radius:18px;padding:26px 34px;max-width:360px;background:#ffffff;box-shadow:0 8px 24px rgba(10,31,68,0.1)}.crest{width:56px;height:56px;margin:0 auto 10px;display:block}h1{font-size:11px;letter-spacing:1.5px;color:#D4AF37;margin:0 0 6px;text-transform:uppercase;font-weight:700}h2{margin:0 0 12px;color:#0A1F44;font-size:19px;font-weight:800}h3{margin:12px 0 4px;font-size:18px;color:#0A1F44}p{margin:4px 0;color:#64748b;font-size:13px}.tag{display:inline-block;background:#fef9c3;color:#854d0e;border:1px solid #D4AF37;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;margin-bottom:12px}.qr{width:220px;height:220px;margin:0 auto;display:block;border-radius:12px;border:1px solid #e2e8f0}</style></head><body><div class="badge"><img class="crest" src="/favicon.svg" alt="Qmark" /><h1>Qmark Attendance Network</h1><h2>Universal Student QR Pass</h2><div class="tag">VERIFIED PASS</div><img class="qr" src="${qrUrl}" /><h3>${me.full_name}</h3><p style="font-size:15px;font-weight:bold;color:#0A1F44">Index: ${me.index_number}</p><p>Level ${me.level || "100"} · ${me.program || "Undergraduate Degree"}</p><p style="font-size:11px;color:#94a3b8;margin-top:14px;border-top:1px dashed #cbd5e1;padding-top:10px">Official Academic Pass · Valid for all courses & faculty</p></div></body></html>`,
-    );
-    w.document.close();
-    setTimeout(() => w.print(), 400);
-  };
+        if (data.needs_password_setup) {
+          toast.info("No password set yet. Please activate your account first.");
+          setActIndex(cleanIdx);
+          setActiveAuthTab("activate");
+          return;
+        }
 
-  // Session auto-restore on page load with 14-day inactivity timeout
+        if (!res.ok || !data.ok || !data.student) {
+          toast.error(data.error || "Invalid index number or password");
+          return;
+        }
+
+        saveStudentSession(cleanIdx, loginPass);
+        localStorage.setItem("qroll_student_session", "true");
+        localStorage.setItem("qroll_active_gateway", "student");
+        setMe(data.student);
+        toast.success(`Signed in as ${data.student.full_name || cleanIdx}`);
+        void loadStudentData(cleanIdx, loginPass);
+      } catch {
+        toast.error("Network error. Please try again.");
+      } finally {
+        setSignInBusy(false);
+      }
+    },
+    [signInIndex, signInPassword, loadStudentData],
+  );
+
+  // Restore stored session
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORE) || sessionStorage.getItem(STORE);
-      if (!raw) return;
-
-      const parsed = JSON.parse(raw);
-      const { i, p, lastActive } = parsed;
-
-      if (!i || !p) {
-        clearStudentSession();
-        return;
-      }
-
-      const now = Date.now();
-      // If inactive for more than 14 days, sign out automatically
-      if (lastActive && now - lastActive > FOURTEEN_DAYS_MS) {
-        clearStudentSession();
-        toast.info("Your student session has expired after 14 days of inactivity. Please sign in again.");
-        return;
-      }
-
-      // Valid session: refresh lastActive timestamp in localStorage and execute sign in
-      saveStudentSession(i, p);
-      void executeSignIn(i, p, true);
-    } catch {
-      clearStudentSession();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Fetch available academic departments for new student registration
-  useEffect(() => {
-    fetch("/api/public/student-auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "departments", index: "INIT" }),
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (Array.isArray(d.departments) && d.departments.length > 0) {
-          setDepartmentsList(d.departments);
-          setRegDepartment((prev) => prev || d.departments[0].name);
+      const raw = localStorage.getItem(STORE);
+      if (raw) {
+        const parsed: StoredStudentSession = JSON.parse(raw);
+        if (parsed.i && parsed.p) {
+          setSignInIndex(parsed.i);
+          setSignInPassword(parsed.p);
+          void handleLogin(parsed.i, parsed.p);
         }
-      })
-      .catch(() => {});
-  }, []);
+      }
+    } catch {
+      // ignore
+    }
+  }, [handleLogin]);
 
-  const handleSelfRegistration = async (e: React.FormEvent) => {
+  // Handle Self Registration
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanName = regFullName.trim();
-    const cleanIndex = regIndex.trim().toUpperCase();
-    const cleanEmail = regEmail.trim().toLowerCase();
-    const cleanProg = regProgram.trim() || regDepartment.trim() || "General Studies";
-
-    if (!cleanName) {
-      toast.error("Please enter your full legal name");
+    if (!regFullName.trim() || !regIndex.trim() || !regPassword) {
+      toast.error("Please fill in legal name, index number, and password");
       return;
     }
-    if (!cleanIndex) {
-      toast.error("Please enter your student index number");
-      return;
-    }
-    if (!cleanEmail) {
-      toast.error("Please enter your email address");
-      return;
-    }
-    if (!regPassword || regPassword.length < 6) {
+    if (regPassword.length < 6) {
       toast.error("Password must be at least 6 characters");
       return;
     }
@@ -405,2626 +342,1425 @@ function StudentPortalPage() {
       return;
     }
 
-    setBusy(true);
+    setRegBusy(true);
+    const upperIdx = regIndex.trim().toUpperCase();
     try {
       const res = await fetch("/api/public/student-auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "register_new_student",
-          index: cleanIndex,
-          full_name: cleanName,
-          level: regLevel || "100",
-          program: cleanProg,
-          email: cleanEmail,
+          full_name: regFullName.trim(),
+          index: upperIdx,
+          level: regLevel,
+          program: regProgram.trim() || regDepartment,
+          email: regEmail.trim(),
           password: regPassword,
         }),
       });
-
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Registration failed");
+      if (!res.ok || !data.ok) {
+        toast.error(data.error || "Registration failed");
+        return;
       }
 
-      toast.success("✓ Registration complete! Your personal attendance pass is ready.");
-      saveStudentSession(data.student?.index_number || cleanIndex, regPassword);
-      try {
-        sessionStorage.setItem("qmark_just_signed_up", "true");
-      } catch {
-        // Ignore storage error
-      }
-      setMe(data.student);
-      setStep("login");
-    } catch (err: any) {
-      toast.error(err?.message || "Registration failed. Please try again.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const callApi = async (payload: any) => {
-    const res = await fetch("/api/public/student-auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data.error || "Authentication request failed");
-    }
-    return data;
-  };
-
-  const CACHE_PROFILE_KEY = (idx: string) => `qroll_student_profile_${idx.toUpperCase()}`;
-  const CACHE_DATA_KEY = (idx: string) => `qroll_student_data_${idx.toUpperCase()}`;
-
-  const fetchStudentData = async (indexNum: string, pass: string) => {
-    touchStudentActivity();
-    try {
-      const data = await callApi({ action: "data", index: indexNum, password: pass });
-      if (data.student) {
-        setMe(data.student);
-        localStorage.setItem(CACHE_PROFILE_KEY(indexNum), JSON.stringify(data.student));
-      }
-      setCourses(data.courses || []);
-      setHistory(data.history || []);
-      setAnnouncements(data.announcements || []);
-      setAssignments(data.assignments || []);
-      localStorage.setItem(
-        CACHE_DATA_KEY(indexNum),
-        JSON.stringify({
-          courses: data.courses || [],
-          history: data.history || [],
-          announcements: data.announcements || [],
-          assignments: data.assignments || [],
-        }),
-      );
-    } catch (err: any) {
-      console.warn("Could not load live student data, checking offline cache:", err);
-      const rawCached = localStorage.getItem(CACHE_DATA_KEY(indexNum));
-      if (rawCached) {
-        try {
-          const parsed = JSON.parse(rawCached);
-          if (parsed.courses) setCourses(parsed.courses);
-          if (parsed.history) setHistory(parsed.history);
-          if (parsed.announcements) setAnnouncements(parsed.announcements);
-          if (parsed.assignments) setAssignments(parsed.assignments);
-          return;
-        } catch {
-          // Ignore corrupt cache
-        }
-      }
-      const isQuota = (err?.message || "").toLowerCase().includes("quota");
-      if (isQuota) {
-        toast.error("Database daily read quota reached. Limits reset daily at 00:00 UTC.");
-      } else {
-        toast.error(err?.message || "Failed to load portal data");
-      }
-    }
-  };
-
-  const executeSignIn = async (indexNum: string, pass: string, silent = false) => {
-    try {
-      setBusy(true);
-      const data = await callApi({ action: "login", index: indexNum, password: pass });
-      if (!data.ok || !data.student) {
-        if (data.needs_password_setup) {
-          toast.info(
-            "No password has been set for this index number yet. Please set your password first.",
-          );
-          setStep("create");
-        } else if (!silent) {
-          toast.error("Invalid index number or password");
-        }
-        setBusy(false);
-        return false;
-      }
-
-      if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
-      }
-      if (typeof window !== "undefined") {
-        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-      }
-
-      saveStudentSession(indexNum, pass);
+      toast.success("Account registered successfully! Entering portal...");
+      saveStudentSession(upperIdx, regPassword);
+      localStorage.setItem("qroll_student_session", "true");
       localStorage.setItem("qroll_active_gateway", "student");
-      localStorage.removeItem("qroll_logged_out");
-      setIndex(indexNum);
-      setPassword(pass);
       setMe(data.student);
-      localStorage.setItem(CACHE_PROFILE_KEY(indexNum), JSON.stringify(data.student));
-      await fetchStudentData(indexNum, pass);
-      setBusy(false);
-      return true;
-    } catch (err: any) {
-      setBusy(false);
-      const msg = err?.message || "";
-      const isQuota =
-        msg.toLowerCase().includes("quota") ||
-        msg.toLowerCase().includes("resource_exhausted") ||
-        msg.toLowerCase().includes("read units");
-
-      // Check if we have offline cached profile for this student
-      const rawCachedProfile = localStorage.getItem(CACHE_PROFILE_KEY(indexNum));
-      if (rawCachedProfile) {
-        try {
-          const cachedProfile = JSON.parse(rawCachedProfile);
-          setIndex(indexNum);
-          setPassword(pass);
-          setMe(cachedProfile);
-          // Also load cached portal records
-          const rawCachedData = localStorage.getItem(CACHE_DATA_KEY(indexNum));
-          if (rawCachedData) {
-            const parsedData = JSON.parse(rawCachedData);
-            if (parsedData.courses) setCourses(parsedData.courses);
-            if (parsedData.history) setHistory(parsedData.history);
-            if (parsedData.announcements) setAnnouncements(parsedData.announcements);
-            if (parsedData.assignments) setAssignments(parsedData.assignments);
-          }
-          if (isQuota) {
-            toast.info("Database free daily quota reached for today. Loaded your saved offline pass.");
-          } else {
-            toast.info("Loaded saved student pass from local cache.");
-          }
-          return true;
-        } catch {
-          // Ignore corrupt profile cache
-        }
-      }
-
-      if (msg.includes("No password") || msg.includes("not set yet")) {
-        toast.info("No password set yet. Please set your password first.");
-        setStep("create");
-      } else if (isQuota) {
-        toast.error(
-          "Database free daily read quota reached for today. Resets daily at 00:00 UTC (or upgrade tier in Firebase Console).",
-        );
-      } else if (!silent) {
-        toast.error(msg || "Invalid index number or password");
-      }
-      return false;
+      void loadStudentData(upperIdx, regPassword);
+    } catch {
+      toast.error("Failed to connect. Please try again.");
+    } finally {
+      setRegBusy(false);
     }
   };
 
-  const handleDirectRegister = async (e: React.FormEvent) => {
+  // Handle Account Activation (For pre-enrolled students)
+  const handleActivate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanIndex = index.trim();
-    const cleanEmail = email.trim();
-    if (!cleanIndex) {
-      toast.error("Please enter your index number");
+    if (!actIndex.trim() || !actPassword) {
+      toast.error("Index number and password are required");
       return;
     }
-    if (!cleanEmail) {
-      toast.error("Please enter your registered email address");
-      return;
-    }
-    if (!password || password.length < 6) {
+    if (actPassword.length < 6) {
       toast.error("Password must be at least 6 characters");
       return;
     }
-    if (password !== confirmPassword) {
+    if (actPassword !== actConfirmPassword) {
       toast.error("Passwords do not match");
       return;
     }
 
-    setBusy(true);
+    setActBusy(true);
+    const upperIdx = actIndex.trim().toUpperCase();
     try {
-      // 1. Verify index and email match in system
-      const statusData = await callApi({
-        action: "status",
-        index: cleanIndex,
-        email: cleanEmail,
+      const res = await fetch("/api/public/student-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "set_password",
+          index: upperIdx,
+          email: actEmail.trim(),
+          password: actPassword,
+        }),
       });
-
-      if (statusData.has_password) {
-        setBusy(false);
-        setStep("login");
-        toast.info(
-          "A password is already set for this account. Please enter your password to sign in.",
-        );
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        toast.error(data.error || "Account activation failed");
         return;
       }
 
-      // 2. Set initial password
-      const regData = await callApi({
-        action: "set_password",
-        index: cleanIndex,
-        email: cleanEmail,
-        password,
-      });
-
-      if (!regData.ok) {
-        setBusy(false);
-        toast.error(regData.error || "Could not set password");
-        return;
-      }
-
-      toast.success("Password created successfully! Opening your student portal...");
-      await executeSignIn(cleanIndex, password);
-    } catch (err: any) {
-      setBusy(false);
-      toast.error(err?.message || "Verification or password setup failed");
+      toast.success("Account activated successfully! Entering portal...");
+      saveStudentSession(upperIdx, actPassword);
+      localStorage.setItem("qroll_student_session", "true");
+      localStorage.setItem("qroll_active_gateway", "student");
+      setMe(data.student);
+      void loadStudentData(upperIdx, actPassword);
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setActBusy(false);
     }
   };
 
-  const handleCheckIndex = async (e: React.FormEvent) => {
+  // Handle Password Reset
+  const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanIndex = index.trim();
-    const cleanEmail = email.trim();
-
-    if (!cleanIndex) {
-      toast.error("Please enter your index number");
+    if (!resetIndex.trim() || !resetEmail.trim() || !resetNewPassword) {
+      toast.error("Please fill in index number, registered email, and new password");
       return;
     }
-    if (!cleanEmail) {
-      toast.error("Please enter your registered email address");
-      return;
-    }
-
-    setBusy(true);
-    try {
-      const data = await callApi({
-        action: "status",
-        index: cleanIndex,
-        email: cleanEmail,
-      });
-      setBusy(false);
-      setHasEmail(Boolean(data.has_email));
-
-      if (data.student) {
-        setMe(data.student);
-        if (data.student.email) {
-          setEmail(data.student.email);
-        }
-      }
-
-      if (data.has_password) {
-        setStep("login");
-        toast.info("Credentials verified! Please enter your password to sign in.");
-      } else {
-        setStep("create");
-        toast.success("Identity verified! Please create your portal password.");
-      }
-    } catch (err: any) {
-      setBusy(false);
-      toast.error(
-        err.message ||
-          "Could not verify your student records. Please confirm your index number and registered email address.",
-      );
-    }
-  };
-
-  const handleCreatePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!password || password.length < 6) {
+    if (resetNewPassword.length < 6) {
       toast.error("Password must be at least 6 characters");
       return;
     }
-    if (password !== confirmPassword) {
+    if (resetNewPassword !== resetConfirmPassword) {
       toast.error("Passwords do not match");
       return;
     }
 
-    setBusy(true);
+    setResetBusy(true);
+    const upperIdx = resetIndex.trim().toUpperCase();
     try {
-      const data = await callApi({
-        action: "set_password",
-        index: index.trim(),
-        email: email.trim(),
-        password,
+      const res = await fetch("/api/public/student-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "reset_password",
+          index: upperIdx,
+          email: resetEmail.trim(),
+          password: resetNewPassword,
+        }),
       });
-
-      if (!data.ok) {
-        setBusy(false);
-        toast.error(data.error || "Could not set password");
-        return;
-      }
-
-      toast.success("Password created successfully! Opening your student portal...");
-      await executeSignIn(index.trim(), password);
-    } catch (err: any) {
-      setBusy(false);
-      toast.error(err.message || "Could not create password");
-    }
-  };
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanIdx = index.trim();
-    const cleanMail = email.trim();
-    if (!cleanIdx) {
-      toast.error("Please enter your student index number");
-      return;
-    }
-    if (!cleanMail) {
-      toast.error("Please enter your registered email address");
-      return;
-    }
-    if (!password || password.length < 6) {
-      toast.error("New password must be at least 6 characters");
-      return;
-    }
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
-    setBusy(true);
-    try {
-      const data = await callApi({
-        action: "reset_password",
-        index: cleanIdx,
-        email: cleanMail,
-        password,
-      });
-
-      if (!data.ok) {
-        setBusy(false);
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
         toast.error(data.error || "Password reset failed");
         return;
       }
 
       toast.success("Password reset successfully! Logging you in...");
-      await executeSignIn(cleanIdx, password);
-    } catch (err: any) {
-      setBusy(false);
-      toast.error(err.message || "Password reset failed");
-    }
-  };
-
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanIdx = index.trim();
-    if (!cleanIdx) {
-      toast.error("Please enter your student index number");
-      return;
-    }
-    if (!password) {
-      toast.error("Please enter your password");
-      return;
-    }
-    await executeSignIn(cleanIdx, password);
-  };
-
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentPassword) {
-      toast.error("Please enter your current password");
-      return;
-    }
-    if (!newPassword || newPassword.length < 6) {
-      toast.error("New password must be at least 6 characters");
-      return;
-    }
-    if (newPassword !== confirmNewPassword) {
-      toast.error("New passwords do not match");
-      return;
-    }
-
-    setChangingPassword(true);
-    try {
-      const data = await callApi({
-        action: "change_password",
-        index: index.trim(),
-        password: currentPassword,
-        new_password: newPassword,
-      });
-
-      setChangingPassword(false);
-      if (!data.ok) {
-        toast.error(data.error || "Password change failed");
-        return;
-      }
-
-      toast.success("Password changed successfully!");
-      // Update persistent session with new password
-      saveStudentSession(index.trim(), newPassword);
-      setPassword(newPassword);
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmNewPassword("");
-    } catch (err: any) {
-      setChangingPassword(false);
-      toast.error(err.message || "Could not change password");
+      saveStudentSession(upperIdx, resetNewPassword);
+      localStorage.setItem("qroll_student_session", "true");
+      localStorage.setItem("qroll_active_gateway", "student");
+      setMe(data.student);
+      void loadStudentData(upperIdx, resetNewPassword);
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setResetBusy(false);
     }
   };
 
   const handleSignOut = () => {
     clearStudentSession();
-    localStorage.removeItem("qroll_active_gateway");
-    localStorage.setItem("qroll_logged_out", "true");
     setMe(null);
-    setPassword("");
-    setConfirmPassword("");
-    setStep("index");
     setCourses([]);
     setHistory([]);
     setAnnouncements([]);
     setAssignments([]);
-    toast.info("Signed out from student portal");
+    toast.success("Signed out of Student Portal");
   };
 
-  // Multi-Lecturer Course Filter State
-  const [selectedCourseFilter, setSelectedCourseFilter] = useState<string>("all");
-
-  const filteredCourses = useMemo(() => {
-    if (selectedCourseFilter === "all") return courses;
-    return courses.filter((c) => c.course_id === selectedCourseFilter);
-  }, [courses, selectedCourseFilter]);
-
-  const filteredAnnouncements = useMemo(() => {
-    if (selectedCourseFilter === "all") return announcements;
-    return announcements.filter((a) => !a.course_id || a.course_id === selectedCourseFilter);
-  }, [announcements, selectedCourseFilter]);
-
-  const filteredAssignments = useMemo(() => {
-    if (selectedCourseFilter === "all") return assignments;
-    return assignments.filter((a) => !a.course_id || a.course_id === selectedCourseFilter);
-  }, [assignments, selectedCourseFilter]);
-
-  const filteredHistory = useMemo(() => {
-    if (selectedCourseFilter === "all") return history;
-    return history.filter((h) => h.course_id === selectedCourseFilter);
-  }, [history, selectedCourseFilter]);
-
-  // Lecturer summary across courses
-  const uniqueLecturers = useMemo(() => {
-    const map = new Map<string, { name: string; email?: string | null; courses: string[] }>();
-    courses.forEach((c) => {
-      const name = c.lecturer_name || "Academic Department";
-      if (!map.has(name)) {
-        map.set(name, { name, email: c.lecturer_email, courses: [c.code] });
-      } else {
-        const entry = map.get(name)!;
-        if (!entry.courses.includes(c.code)) {
-          entry.courses.push(c.code);
-        }
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!me || !oldPassword || !newSettingsPassword) {
+      toast.error("Enter current and new password");
+      return;
+    }
+    if (newSettingsPassword.length < 6) {
+      toast.error("New password must be at least 6 characters");
+      return;
+    }
+    setChangingPass(true);
+    try {
+      const res = await fetch("/api/public/student-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "change_password",
+          index: me.index_number,
+          oldPassword,
+          newPassword: newSettingsPassword,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.error || "Failed to update password");
+        return;
       }
-    });
-    return Array.from(map.values());
+      toast.success("Password updated successfully");
+      saveStudentSession(me.index_number, newSettingsPassword);
+      setSignInPassword(newSettingsPassword);
+      setOldPassword("");
+      setNewSettingsPassword("");
+    } catch {
+      toast.error("Network error while updating password");
+    } finally {
+      setChangingPass(false);
+    }
+  };
+
+  const overallRate = useMemo(() => {
+    if (!courses.length) return 0;
+    const total = courses.reduce((acc, c) => acc + (c.sessions_total || 0), 0);
+    const attended = courses.reduce((acc, c) => acc + (c.attended || 0), 0);
+    if (total === 0) return 100;
+    return Math.round((attended / total) * 100);
   }, [courses]);
 
-  // Overall Running Attendance Calculation
-  const totalAttendedSessions = courses.reduce((acc, c) => acc + c.attended, 0);
-  const totalHeldSessions = courses.reduce((acc, c) => acc + c.sessions_total, 0);
-  const overallPercentage =
-    totalHeldSessions > 0 ? Math.round((totalAttendedSessions / totalHeldSessions) * 100) : 100;
+  const combinedFeed = useMemo(() => {
+    const list: Array<{
+      id: string;
+      type: "announcement" | "assignment";
+      title: string;
+      body: string;
+      courseCode: string | null;
+      date: string;
+      dueDate?: string | null;
+      link?: string | null;
+    }> = [];
 
-  // Courses at risk (below 75% threshold)
-  const atRiskCourses = courses.filter((c) => c.sessions_total > 0 && c.percentage < 75);
-  const warningCourses = courses.filter(
-    (c) => c.sessions_total > 0 && c.percentage >= 75 && c.missed >= 3,
-  );
+    announcements.forEach((a) => {
+      list.push({
+        id: `ann-${a.id}`,
+        type: "announcement",
+        title: a.title,
+        body: a.body,
+        courseCode: a.course_code,
+        date: a.created_at,
+      });
+    });
 
-  return (
-    <div className="min-h-screen bg-transparent flex flex-col">
-      {/* First-login Notification Permission Modal (Rebranded from Square Go iOS 13) */}
-      {me && (
-        <NotificationPermissionModal
-          open={showNotificationModal}
-          onClose={() => setShowNotificationModal(false)}
-          userContext={{
-            userId: me.index_number,
-            userRole: "student",
-            studentId: me.id,
-          }}
-        />
-      )}
+    assignments.forEach((asg) => {
+      list.push({
+        id: `asg-${asg.id}`,
+        type: "assignment",
+        title: asg.title,
+        body: asg.details,
+        courseCode: asg.course_code,
+        date: asg.created_at,
+        dueDate: asg.due_at,
+        link: asg.submission_url,
+      });
+    });
 
-      {/* Title Bar matching exact image design */}
-      <QmarkTitleBar
-        tag="GH"
-        user={
-          me
-            ? {
-                name: me.full_name,
-                role: me.index_number,
-              }
-            : null
-        }
-        notificationUserId={me?.index_number}
-        onSignOut={me ? handleSignOut : undefined}
-        showBack={true}
-        backTo="/"
-      />
+    list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-      {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-3.5 sm:py-6 md:py-8 min-w-0 overflow-x-clip">
-        {!me ? (
-          /* ========================================================================= */
-          /* AUTHENTICATION SCREENS (INDEX CHECK, FIRST-TIME PASSWORD, LOGIN, RESET)   */
-          /* ========================================================================= */
-          <div className="w-full max-w-sm sm:max-w-md md:max-w-4xl mx-auto py-1 sm:py-6 px-1 sm:px-2 min-w-0">
-            <div className="rounded-2xl glass-card shadow-xl overflow-hidden grid md:grid-cols-12 min-w-0">
-              {/* Left Column / Qmark Student Presentation */}
-              <div className="relative md:col-span-5 hidden md:flex flex-col justify-between p-6 sm:p-8 text-white overflow-hidden bg-[#0A1F44] border-r border-[#D4AF37]/20">
-                {/* Ambient Glow */}
-                <div className="absolute top-0 left-0 w-full h-40 bg-[#D4AF37]/10 blur-2xl pointer-events-none" />
+    if (feedFilter === "announcements") return list.filter((i) => i.type === "announcement");
+    if (feedFilter === "assignments") return list.filter((i) => i.type === "assignment");
+    return list;
+  }, [announcements, assignments, feedFilter]);
 
-                {/* Top Branding inside Image Panel */}
-                <div className="relative z-10 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <QmarkLogo size="md" variant="full" theme="dark" subtitle="Student Pass" />
+  // =========================================================================
+  // UNAUTHENTICATED STATE: EXACT REPRODUCTION OF THE 4 ATTACHED SCREENSHOTS
+  // =========================================================================
+  if (!me) {
+    return (
+      <div className="min-h-screen w-full flex flex-col bg-[#F7F9FC] dark:bg-[#07152A] text-foreground">
+        {/* Top Minimal Navigation Bar */}
+        <header className="w-full px-4 sm:px-8 py-3.5 flex items-center justify-between border-b border-border/60 bg-white/80 dark:bg-[#0A1F44]/80 backdrop-blur-md">
+          <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition text-xs font-semibold">
+            <ArrowLeft className="size-4" />
+            <span>Back to Portal Home</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider hidden sm:inline">
+              KNUST / University Attendance Gateway
+            </span>
+          </div>
+        </header>
+
+        {/* Main Split-Card Container (Matching Attached Screenshots) */}
+        <div className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-10 my-auto">
+          <div className="w-full max-w-5xl rounded-[28px] sm:rounded-[32px] border border-[#D4AF37]/35 shadow-2xl bg-card overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[640px]">
+            {/* ------------------------------------------------------------- */}
+            {/* LEFT COLUMN: Deep Navy #0A1F44 with Black Students Hero Image */}
+            {/* ------------------------------------------------------------- */}
+            <div className="md:col-span-5 bg-[#0A1F44] text-white p-7 sm:p-10 flex flex-col justify-between relative overflow-hidden select-none">
+              {/* Strategic Black Students Campus Hero Image Background */}
+              <img
+                src="/knust-students-hero.jpg"
+                alt="University Students on Campus"
+                className="absolute inset-0 size-full object-cover object-center filter brightness-[0.36] contrast-[1.08]"
+              />
+              {/* Rich Deep Navy Gradient Overlay for crystal-clear readability */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44] via-[#0A1F44]/85 to-[#0A1F44]/65" />
+              <div className="absolute inset-0 bg-[#0A1F44]/40 mix-blend-multiply" />
+
+              {/* Top Logo & Status Capsule */}
+              <div className="relative z-10 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="size-11 rounded-xl bg-black/50 border border-[#D4AF37]/50 flex items-center justify-center p-1.5 shadow-sm backdrop-blur-xs">
+                    <img src="/qmark_icon_standalone.png" alt="Qmark" className="size-full object-contain" />
                   </div>
-                  <Badge className="bg-[#D4AF37]/20 text-[#D4AF37] border-[#D4AF37]/40 text-[10px] px-2 py-0.5 font-bold">
-                    Official Student Pass
-                  </Badge>
-                </div>
-
-                {/* Bottom Value Props */}
-                <div className="relative z-10 space-y-4 pt-10">
-                  <div className="space-y-1.5">
-                    <h3 className="font-bold text-lg text-white leading-snug">
-                      Your Personal Digital QR Pass
-                    </h3>
-                    <p className="text-xs text-white/90 leading-relaxed font-normal">
-                      Instant classroom check-ins, Apple Wallet-style dynamic QR badges, assignments, and real-time push alerts on your phone.
+                  <div>
+                    <h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-0.5 leading-none">
+                      Q<span className="text-[#D4AF37]">mark</span>
+                    </h1>
+                    <p className="text-[10px] font-bold tracking-widest text-[#D4AF37] uppercase mt-1">
+                      Student Pass
                     </p>
                   </div>
+                </div>
 
-                  <div className="space-y-2 pt-2 border-t border-white/15 text-xs text-white/95 font-medium">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-3.5 text-[#D4AF37] shrink-0" />
-                      <span>Apple Wallet style digital QR pass</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-3.5 text-[#D4AF37] shrink-0" />
-                      <span>Instant geofenced lecture check-in</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-3.5 text-[#D4AF37] shrink-0" />
-                      <span>Real-time attendance & 75% exam cutoff monitor</span>
-                    </div>
-                  </div>
+                <div className="inline-block">
+                  <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-[#D4AF37] bg-[#D4AF37]/20 border border-[#D4AF37]/40 px-3 py-1 rounded-full backdrop-blur-xs">
+                    Official Student Pass
+                  </span>
                 </div>
               </div>
 
-              {/* Right Column / Auth Form Area (Redesigned: Slick, Minimalist, Animated UI/UX) */}
-              <div className="md:col-span-7 flex flex-col justify-between bg-white/95 dark:bg-[#0B1E3D]/95 backdrop-blur-2xl transition-all duration-300 relative overflow-hidden border-t md:border-t-0 md:border-l border-slate-200/60 dark:border-white/10 min-w-0">
-                {/* Subtle Ambient Gold Radiance Accent */}
-                <div className="pointer-events-none absolute -top-24 -right-24 size-64 rounded-full bg-[#B8861B]/15 blur-3xl" />
-                <div className="pointer-events-none absolute -bottom-24 -left-24 size-56 rounded-full bg-[#0A1F44]/10 dark:bg-[#123164]/40 blur-3xl" />
-                <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-[#B8861B] to-transparent opacity-90 relative z-10" />
+              {/* Bottom Feature Highlights */}
+              <div className="relative z-10 pt-10 md:pt-0 space-y-4">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white leading-tight">
+                    Your Personal Digital QR Pass
+                  </h2>
+                  <p className="text-xs text-white/80 mt-2 leading-relaxed">
+                    Instant classroom check-ins, Apple Wallet-style dynamic QR badges, assignments, and real-time push alerts on your phone.
+                  </p>
+                </div>
 
-                {/* Ultra-slick Minimalist Segmented Navigation */}
-                <div className="p-1 sm:p-1.5 m-3 sm:m-5 mb-1.5 rounded-2xl bg-slate-100/90 dark:bg-[#07152B]/90 border border-slate-200/80 dark:border-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)] grid grid-cols-4 gap-1 text-[11px] sm:text-xs relative z-10">
+                <div className="space-y-2.5 pt-2 border-t border-white/15 text-xs">
+                  <div className="flex items-center gap-2.5 text-white/95">
+                    <div className="size-4.5 rounded-full border border-[#D4AF37] flex items-center justify-center shrink-0 bg-[#D4AF37]/20">
+                      <Check className="size-2.5 text-[#D4AF37] stroke-[3]" />
+                    </div>
+                    <span>Apple Wallet style digital QR pass</span>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 text-white/95">
+                    <div className="size-4.5 rounded-full border border-[#D4AF37] flex items-center justify-center shrink-0 bg-[#D4AF37]/20">
+                      <Check className="size-2.5 text-[#D4AF37] stroke-[3]" />
+                    </div>
+                    <span>Instant geofenced lecture check-in</span>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 text-white/95">
+                    <div className="size-4.5 rounded-full border border-[#D4AF37] flex items-center justify-center shrink-0 bg-[#D4AF37]/20">
+                      <Check className="size-2.5 text-[#D4AF37] stroke-[3]" />
+                    </div>
+                    <span>Real-time attendance & 75% exam cutoff monitor</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ------------------------------------------------------------- */}
+            {/* RIGHT COLUMN: Form Panel with the 4 Top Tabs                */}
+            {/* ------------------------------------------------------------- */}
+            <div className="md:col-span-7 bg-[#FAF8F5] dark:bg-[#0A1F44]/90 p-6 sm:p-8 lg:p-10 flex flex-col justify-between">
+              <div>
+                {/* 4 Tabs Segmented Capsule in requested order: Sign In -> Activate -> Reset -> Register */}
+                <div className="p-1 bg-[#ECEAE4] dark:bg-muted/80 rounded-full flex items-center justify-between text-xs font-semibold select-none border border-border/50">
                   <button
                     type="button"
-                    onClick={() => {
-                      setStep("login");
-                      setPassword("");
-                      setConfirmPassword("");
-                    }}
-                    className={`relative py-2 sm:py-2.5 px-1 rounded-xl font-bold transition-all text-center truncate cursor-pointer z-10 flex items-center justify-center gap-1 ${
-                      step === "login"
-                        ? "text-[#0A1F44] dark:text-[#E2BD56]"
-                        : "text-slate-500 dark:text-slate-400 hover:text-foreground"
+                    onClick={() => setActiveAuthTab("signin")}
+                    className={`flex-1 py-2 rounded-full transition-all text-center cursor-pointer ${
+                      activeAuthTab === "signin"
+                        ? "bg-white dark:bg-card text-foreground font-bold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {step === "login" && (
-                      <motion.div
-                        layoutId="studentAuthSegmentActive"
-                        className="absolute inset-0 rounded-xl bg-white dark:bg-[#143160] shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-slate-200/80 dark:border-[#B8861B]/35 -z-10"
-                        transition={{ type: "spring", stiffness: 450, damping: 35 }}
-                      />
-                    )}
                     Sign In
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setStep("register");
-                      setRegPassword("");
-                      setRegConfirmPassword("");
-                    }}
-                    className={`relative py-2 sm:py-2.5 px-1 rounded-xl font-bold transition-all text-center truncate cursor-pointer z-10 flex items-center justify-center gap-1 ${
-                      step === "register"
-                        ? "text-[#0A1F44] dark:text-[#E2BD56]"
-                        : "text-slate-500 dark:text-slate-400 hover:text-foreground"
+                    onClick={() => setActiveAuthTab("activate")}
+                    className={`flex-1 py-2 rounded-full transition-all text-center cursor-pointer ${
+                      activeAuthTab === "activate"
+                        ? "bg-white dark:bg-card text-foreground font-bold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {step === "register" && (
-                      <motion.div
-                        layoutId="studentAuthSegmentActive"
-                        className="absolute inset-0 rounded-xl bg-white dark:bg-[#143160] shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-slate-200/80 dark:border-[#B8861B]/35 -z-10"
-                        transition={{ type: "spring", stiffness: 450, damping: 35 }}
-                      />
-                    )}
-                    <UserPlus className="size-3.5 shrink-0" />
-                    <span>Register</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStep("index");
-                      setPassword("");
-                      setConfirmPassword("");
-                    }}
-                    className={`relative py-2 sm:py-2.5 px-1 rounded-xl font-bold transition-all text-center truncate cursor-pointer z-10 flex items-center justify-center gap-1 ${
-                      step === "index" || step === "create"
-                        ? "text-[#0A1F44] dark:text-[#E2BD56]"
-                        : "text-slate-500 dark:text-slate-400 hover:text-foreground"
-                    }`}
-                  >
-                    {(step === "index" || step === "create") && (
-                      <motion.div
-                        layoutId="studentAuthSegmentActive"
-                        className="absolute inset-0 rounded-xl bg-white dark:bg-[#143160] shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-slate-200/80 dark:border-[#B8861B]/35 -z-10"
-                        transition={{ type: "spring", stiffness: 450, damping: 35 }}
-                      />
-                    )}
                     Activate
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setStep("reset");
-                      setPassword("");
-                      setConfirmPassword("");
-                    }}
-                    className={`relative py-2 sm:py-2.5 px-1 rounded-xl font-bold transition-all text-center truncate cursor-pointer z-10 flex items-center justify-center gap-1 ${
-                      step === "reset"
-                        ? "text-[#0A1F44] dark:text-[#E2BD56]"
-                        : "text-slate-500 dark:text-slate-400 hover:text-foreground"
+                    onClick={() => setActiveAuthTab("reset")}
+                    className={`flex-1 py-2 rounded-full transition-all text-center cursor-pointer ${
+                      activeAuthTab === "reset"
+                        ? "bg-white dark:bg-card text-foreground font-bold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {step === "reset" && (
-                      <motion.div
-                        layoutId="studentAuthSegmentActive"
-                        className="absolute inset-0 rounded-xl bg-white dark:bg-[#143160] shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-slate-200/80 dark:border-[#B8861B]/35 -z-10"
-                        transition={{ type: "spring", stiffness: 450, damping: 35 }}
-                      />
-                    )}
                     Reset
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveAuthTab("register")}
+                    className={`flex-1 py-2 rounded-full transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${
+                      activeAuthTab === "register"
+                        ? "bg-white dark:bg-card text-foreground font-bold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <UserPlus className="size-3.5" />
+                    <span>Register</span>
                   </button>
                 </div>
 
-                <AnimatePresence mode="wait">
-                  {/* Distinct New Student Registration Screen */}
-                  {step === "register" && (
-                    <motion.div
-                      key="register"
-                      initial={{ opacity: 0, y: 10, scale: 0.985 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.985 }}
-                      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                      className="flex-1 flex flex-col justify-center relative z-10"
+                {/* --------------------------------------------------------- */}
+                {/* SCREENSHOT 1: SIGN IN VIEW                                */}
+                {/* --------------------------------------------------------- */}
+                {activeAuthTab === "signin" && (
+                  <div className="mt-6 space-y-5">
+                    {/* Header */}
+                    <div className="text-center space-y-1.5">
+                      <div className="size-11 rounded-2xl bg-[#0A1F44] text-[#D4AF37] border border-[#D4AF37]/40 flex items-center justify-center mx-auto shadow-xs">
+                        <img src="/qmark_icon_standalone.png" alt="Qmark" className="size-5 object-contain" />
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">
+                        Student Portal Sign In
+                      </h3>
+                      <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                        Enter your student index number and portal password to view your pass.
+                      </p>
+                    </div>
+
+                    {/* First Time Student Banner */}
+                    <div className="p-3.5 rounded-2xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="size-9 rounded-full bg-[#0A1F44] text-[#D4AF37] flex items-center justify-center shrink-0">
+                          <UserPlus className="size-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-foreground">First time student?</p>
+                          <p className="text-[11px] text-muted-foreground truncate">Register to get your digital QR pass</p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveAuthTab("register")}
+                        className="px-3.5 py-1.5 rounded-full border border-border bg-white dark:bg-card text-foreground font-bold text-xs shadow-xs hover:bg-muted transition flex items-center gap-1 shrink-0 cursor-pointer"
+                      >
+                        <span>Register</span>
+                        <ArrowRight className="size-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Sign In Form */}
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void handleLogin();
+                      }}
+                      className="space-y-4"
                     >
-                      <CardHeader className="text-center pb-2 pt-1 px-4 sm:px-6">
-                        <div className="mx-auto size-11 rounded-2xl ring-2 ring-[#D4AF37]/40 bg-[#0A1F44] p-1 flex items-center justify-center mb-1.5 shadow-sm">
-                          <UserPlus className="size-5 text-[#D4AF37]" />
-                        </div>
-                        <CardTitle className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground">
-                          New Student Registration
-                        </CardTitle>
-                        <CardDescription className="text-xs text-slate-500 dark:text-slate-300 max-w-sm mx-auto">
-                          Qmark Academic Network. Register once to create your student account and get your digital QR pass.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-3.5 px-4 sm:px-6 pb-5">
-                        <form onSubmit={handleSelfRegistration} className="space-y-3">
-                          <div className="space-y-1">
-                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                              Full Legal Name
-                            </Label>
-                            <Input
-                              placeholder="e.g. Kwame Mensah"
-                              value={regFullName}
-                              onChange={(e) => setRegFullName(e.target.value)}
-                              required
-                              className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                          </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                          Student Index Number
+                        </Label>
+                        <Input
+                          placeholder="E.G. 2084931"
+                          value={signInIndex}
+                          onChange={(e) => setSignInIndex(e.target.value.toUpperCase())}
+                          className="h-11 rounded-xl border-2 border-[#D4AF37]/60 bg-white dark:bg-background font-mono text-sm tracking-wider uppercase focus:border-[#D4AF37]"
+                          required
+                          autoFocus
+                        />
+                      </div>
 
-                          <div className="space-y-1">
-                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                              Student Index Number
-                            </Label>
-                            <Input
-                              placeholder="e.g. 2084931"
-                              value={regIndex}
-                              onChange={(e) => setRegIndex(e.target.value)}
-                              required
-                              className="h-11 font-mono text-sm uppercase tracking-wide rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                          </div>
-
-                          {/* Stacked Vertically for Portrait Mobile Compatibility */}
-                          <div className="space-y-2.5">
-                            <div className="space-y-1">
-                              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                                Academic Level
-                              </Label>
-                              <Select value={regLevel} onValueChange={setRegLevel}>
-                                <SelectTrigger className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus:ring-2 focus:ring-[#D4AF37]/40 focus:border-[#D4AF37]">
-                                  <SelectValue placeholder="Select level" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="100">Level 100 (Freshman)</SelectItem>
-                                  <SelectItem value="200">Level 200 (Sophomore)</SelectItem>
-                                  <SelectItem value="300">Level 300 (Junior)</SelectItem>
-                                  <SelectItem value="400">Level 400 (Senior)</SelectItem>
-                                  <SelectItem value="500">Level 500 (Final Year / Eng)</SelectItem>
-                                  <SelectItem value="600">Level 600 (Clinical / Pharm)</SelectItem>
-                                  <SelectItem value="Postgraduate">Postgraduate</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-1">
-                              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                                Department / Faculty
-                              </Label>
-                              {departmentsList.length > 0 ? (
-                                <Select value={regDepartment} onValueChange={setRegDepartment}>
-                                  <SelectTrigger className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus:ring-2 focus:ring-[#D4AF37]/40 focus:border-[#D4AF37]">
-                                    <SelectValue placeholder="Select Department" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {departmentsList.map((d) => (
-                                      <SelectItem key={d.id} value={d.name}>
-                                        {d.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <Input
-                                  placeholder="e.g. Computer Science"
-                                  value={regDepartment}
-                                  onChange={(e) => setRegDepartment(e.target.value)}
-                                  className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                                />
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                              Program of Study (Major)
-                            </Label>
-                            <Input
-                              placeholder="e.g. BSc Computer Science"
-                              value={regProgram}
-                              onChange={(e) => setRegProgram(e.target.value)}
-                              className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                          </div>
-
-                          <div className="space-y-1">
-                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                              Email Address
-                            </Label>
-                            <Input
-                              type="email"
-                              placeholder="student@example.com"
-                              value={regEmail}
-                              onChange={(e) => setRegEmail(e.target.value)}
-                              required
-                              className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                          </div>
-
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                                Create Password
-                              </Label>
-                              <button
-                                type="button"
-                                onClick={() => setShowRegPassword(!showRegPassword)}
-                                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                {showRegPassword ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
-                                {showRegPassword ? "Hide" : "Show"}
-                              </button>
-                            </div>
-                            <Input
-                              type={showRegPassword ? "text" : "password"}
-                              placeholder="Minimum 6 characters"
-                              value={regPassword}
-                              onChange={(e) => setRegPassword(e.target.value)}
-                              minLength={6}
-                              required
-                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                          </div>
-
-                          <div className="space-y-1">
-                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                              Confirm Password
-                            </Label>
-                            <Input
-                              type={showRegPassword ? "text" : "password"}
-                              placeholder="Re-enter password"
-                              value={regConfirmPassword}
-                              onChange={(e) => setRegConfirmPassword(e.target.value)}
-                              minLength={6}
-                              required
-                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                          </div>
-
-                          <div className="rounded-xl border border-[#B8861B]/30 bg-[#B8861B]/10 p-3 text-[11px] text-slate-700 dark:text-slate-200 flex items-start gap-2.5">
-                            <CheckCircle2 className="size-4 shrink-0 text-[#B8861B] mt-0.5" />
-                            <span>
-                              Upon registration, your personal QR attendance pass will be generated instantly for all enrolled courses.
-                            </span>
-                          </div>
-
-                          <Button
-                            type="submit"
-                            className="w-full h-11 rounded-xl bg-gradient-to-r from-[#B8861B] via-[#C99826] to-[#B8861B] hover:brightness-105 text-white font-bold text-sm tracking-wide shadow-[0_4px_16px_rgba(184,134,27,0.30)] hover:shadow-[0_6px_20px_rgba(184,134,27,0.40)] active:scale-[0.98] transition-all cursor-pointer border border-[#B8861B]/60"
-                            disabled={busy}
-                          >
-                            {busy ? (
-                              <span className="flex items-center gap-2">
-                                <RefreshCw className="size-4 animate-spin" /> Registering Student...
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-2">
-                                <UserPlus className="size-4" /> Register & Generate QR Pass
-                              </span>
-                            )}
-                          </Button>
-
-                          <div className="pt-1 text-center">
-                            <p className="text-xs text-muted-foreground">
-                              Already registered?{" "}
-                              <button
-                                type="button"
-                                onClick={() => setStep("login")}
-                                className="text-primary font-bold hover:underline cursor-pointer"
-                              >
-                                Sign In
-                              </button>
-                            </p>
-                          </div>
-                        </form>
-                      </CardContent>
-                    </motion.div>
-                  )}
-
-                  {step === "index" && (
-                    <motion.div
-                      key="index"
-                      initial={{ opacity: 0, y: 10, scale: 0.985 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.985 }}
-                      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                      className="flex-1 flex flex-col justify-center relative z-10"
-                    >
-                      <CardHeader className="text-center pb-2 pt-1 px-4 sm:px-6">
-                        <div className="mx-auto size-11 rounded-2xl ring-2 ring-[#D4AF37]/40 bg-[#0A1F44] p-1 flex items-center justify-center mb-1.5 shadow-sm">
-                          <KeyRound className="size-5 text-[#D4AF37]" />
-                        </div>
-                        <CardTitle className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground">
-                          Account Activation
-                        </CardTitle>
-                        <CardDescription className="text-xs text-slate-500 dark:text-slate-300 max-w-sm mx-auto">
-                          For students pre-enrolled by their lecturer. Enter your index number and email to set up your password.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
-                        <form onSubmit={handleDirectRegister} className="space-y-3.5">
-                          <div className="space-y-1.5">
-                            <Label htmlFor="index-num" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                              Index Number
-                            </Label>
-                            <Input
-                              id="index-num"
-                              placeholder="e.g. 2084931"
-                              value={index}
-                              onChange={(e) => setIndex(e.target.value)}
-                              autoFocus
-                              required
-                              className="h-11 font-mono text-sm tracking-wide uppercase rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <Label htmlFor="student-email" className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                              Registered Email Address
-                            </Label>
-                            <Input
-                              id="student-email"
-                              type="email"
-                              placeholder="e.g. student@example.com"
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              required
-                              className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                            <p className="text-[11px] text-slate-500 dark:text-slate-300 font-medium">
-                              Must match the email recorded in the system by your instructor.
-                            </p>
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                                Create Password
-                              </Label>
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                {showPassword ? (
-                                  <EyeOff className="size-3" />
-                                ) : (
-                                  <Eye className="size-3" />
-                                )}
-                                {showPassword ? "Hide" : "Show"}
-                              </button>
-                            </div>
-                            <Input
-                              type={showPassword ? "text" : "password"}
-                              placeholder="At least 6 characters"
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              minLength={6}
-                              required
-                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                              Confirm Password
-                            </Label>
-                            <Input
-                              type={showPassword ? "text" : "password"}
-                              placeholder="Re-enter password"
-                              value={confirmPassword}
-                              onChange={(e) => setConfirmPassword(e.target.value)}
-                              minLength={6}
-                              required
-                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                          </div>
-
-                          <Button
-                            type="submit"
-                            id="student-verify-continue-btn"
-                            className="w-full h-11 rounded-xl bg-gradient-to-r from-[#B8861B] via-[#C99826] to-[#B8861B] hover:brightness-105 text-white font-bold text-sm tracking-wide shadow-[0_4px_16px_rgba(184,134,27,0.30)] hover:shadow-[0_6px_20px_rgba(184,134,27,0.40)] active:scale-[0.98] transition-all cursor-pointer border border-[#B8861B]/60"
-                            disabled={busy}
-                          >
-                            {busy ? (
-                              <span className="flex items-center gap-2">
-                                <RefreshCw className="size-4 animate-spin" /> Verifying & Saving...
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-2">
-                                <UserPlus className="size-4" /> Activate & Enter Portal
-                              </span>
-                            )}
-                          </Button>
-                        </form>
-
-                        <div className="pt-2 text-center space-y-1.5">
-                          <p className="text-xs text-muted-foreground">
-                            Already have an account?{" "}
-                            <button
-                              type="button"
-                              onClick={() => setStep("login")}
-                              className="text-primary font-bold hover:underline cursor-pointer"
-                            >
-                              Sign In
-                            </button>
-                          </p>
-                        </div>
-                      </CardContent>
-                    </motion.div>
-                  )}
-
-                  {step === "create" && (
-                    <motion.div
-                      key="create"
-                      initial={{ opacity: 0, y: 10, scale: 0.985 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.985 }}
-                      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                      className="flex-1 flex flex-col justify-center relative z-10"
-                    >
-                      <CardHeader className="text-center pb-2 pt-1 px-4 sm:px-6">
-                        <div className="mx-auto size-11 rounded-2xl ring-2 ring-[#D4AF37]/40 bg-[#0A1F44] p-1 flex items-center justify-center mb-1.5 shadow-sm">
-                          <Lock className="size-5 text-[#D4AF37]" />
-                        </div>
-                        <CardTitle className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground">Create Your Password</CardTitle>
-                        <CardDescription className="text-xs text-slate-500 dark:text-slate-300">
-                          First time accessing your portal! Create a secure password to protect your account.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
-                        <div className="p-3 bg-slate-50 dark:bg-[#07162E]/90 rounded-xl border border-slate-200/80 dark:border-white/10 text-xs space-y-1.5">
-                          {me?.full_name && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-muted-foreground">Student:</span>
-                              <span className="font-semibold text-foreground">{me.full_name}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Index Number:</span>
-                            <span className="font-mono font-semibold text-foreground">{index}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Verified Email:</span>
-                            <span className="font-medium text-[#D4AF37] flex items-center gap-1">
-                              <CheckCircle2 className="size-3.5" /> {email}
-                            </span>
-                          </div>
-                        </div>
-
-                        <form onSubmit={handleCreatePassword} className="space-y-3.5">
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                                Password
-                              </Label>
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                {showPassword ? (
-                                  <EyeOff className="size-3" />
-                                ) : (
-                                  <Eye className="size-3" />
-                                )}
-                                {showPassword ? "Hide" : "Show"}
-                              </button>
-                            </div>
-                            <Input
-                              type={showPassword ? "text" : "password"}
-                              placeholder="At least 6 characters"
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              minLength={6}
-                              required
-                              autoFocus
-                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                              Confirm Password
-                            </Label>
-                            <Input
-                              type={showPassword ? "text" : "password"}
-                              placeholder="Re-enter password"
-                              value={confirmPassword}
-                              onChange={(e) => setConfirmPassword(e.target.value)}
-                              minLength={6}
-                              required
-                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                          </div>
-
-                          <Button
-                            type="submit"
-                            className="w-full h-11 rounded-xl bg-gradient-to-r from-[#B8861B] via-[#C99826] to-[#B8861B] hover:brightness-105 text-white font-bold text-sm tracking-wide shadow-[0_4px_16px_rgba(184,134,27,0.30)] hover:shadow-[0_6px_20px_rgba(184,134,27,0.40)] active:scale-[0.98] transition-all cursor-pointer border border-[#B8861B]/60"
-                            disabled={busy}
-                          >
-                            {busy ? (
-                              <span className="flex items-center gap-2">
-                                <RefreshCw className="size-4 animate-spin" /> Saving Password...
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-2">
-                                <Lock className="size-4" /> Save Password & Enter Portal
-                              </span>
-                            )}
-                          </Button>
-
-                          <Button
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                            Password
+                          </Label>
+                          <button
                             type="button"
-                            variant="ghost"
-                            className="w-full text-xs font-semibold cursor-pointer text-slate-600 dark:text-slate-300 hover:text-foreground"
                             onClick={() => {
-                              setStep("index");
-                              setPassword("");
-                              setConfirmPassword("");
+                              setResetIndex(signInIndex);
+                              setActiveAuthTab("reset");
                             }}
+                            className="text-xs font-semibold text-foreground hover:underline cursor-pointer"
                           >
-                            Back to Sign Up
-                          </Button>
-                        </form>
-                      </CardContent>
-                    </motion.div>
-                  )}
-
-                  {step === "login" && (
-                    <motion.div
-                      key="login"
-                      initial={{ opacity: 0, y: 10, scale: 0.985 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.985 }}
-                      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                      className="flex-1 flex flex-col justify-center relative z-10"
-                    >
-                      <CardHeader className="text-center pb-2 pt-1 px-4 sm:px-6">
-                        <div className="mx-auto size-11 rounded-2xl ring-2 ring-[#D4AF37]/50 bg-[#0A1F44] p-1 flex items-center justify-center mb-1.5 shadow-sm">
-                          <QmarkLogo size="xs" variant="icon" />
+                            Forgot password?
+                          </button>
                         </div>
-                        <CardTitle className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground">
-                          Student Portal Sign In
-                        </CardTitle>
-                        <CardDescription className="text-xs text-slate-500 dark:text-slate-300 max-w-xs mx-auto">
-                          Enter your student index number and portal password to view your pass.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
-                        {/* Slick Minimalist Registration Invitation Ribbon */}
-                        <div className="rounded-2xl border border-[#B8861B]/35 bg-gradient-to-r from-[#B8861B]/15 via-[#B8861B]/5 to-transparent p-3 sm:p-3.5 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="p-2 rounded-xl bg-[#0A1F44] text-[#E2BD56] shadow-sm shrink-0">
-                              <UserPlus className="size-4 text-[#E2BD56]" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-foreground truncate">First time student?</p>
-                              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
-                                Register to get your digital QR pass
-                              </p>
-                            </div>
-                          </div>
-                          <Button
+                        <div className="relative">
+                          <Input
+                            type={showSignInPassword ? "text" : "password"}
+                            placeholder="Enter your password"
+                            value={signInPassword}
+                            onChange={(e) => setSignInPassword(e.target.value)}
+                            className="h-11 rounded-xl border border-border bg-white dark:bg-background text-sm pr-10"
+                            required
+                          />
+                          <button
                             type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setStep("register");
-                              setRegPassword("");
-                              setRegConfirmPassword("");
-                            }}
-                            className="h-8 text-xs font-bold text-[#0A1F44] dark:text-[#E2BD56] bg-white/80 dark:bg-[#132C57] border-[#B8861B]/40 hover:bg-[#B8861B]/15 rounded-xl cursor-pointer shrink-0 shadow-sm"
+                            onClick={() => setShowSignInPassword(!showSignInPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                           >
-                            <span>Register</span>
-                            <ArrowRight className="size-3 ml-1" />
-                          </Button>
+                            {showSignInPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                          </button>
                         </div>
+                      </div>
 
-                        <form onSubmit={handleLoginSubmit} className="space-y-3.5">
-                          <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                              Student Index Number
-                            </Label>
-                            <Input
-                              placeholder="e.g. 2084931"
-                              value={index}
-                              onChange={(e) => setIndex(e.target.value)}
-                              required
-                              autoFocus={!index}
-                              className="h-11 font-mono text-sm uppercase tracking-wide rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#B8861B]/40 focus-visible:border-[#B8861B]"
-                            />
-                          </div>
+                      <Button
+                        type="submit"
+                        disabled={signInBusy}
+                        className="w-full h-12 rounded-2xl bg-[#B8861B] hover:bg-[#A37415] text-white font-bold text-sm shadow-md cursor-pointer transition-all mt-2"
+                      >
+                        {signInBusy ? "Signing In..." : "Sign In to Portal"}
+                      </Button>
 
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                                Password
-                              </Label>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPassword("");
-                                  setConfirmPassword("");
-                                  setStep("reset");
-                                }}
-                                className="text-xs text-primary hover:underline font-bold cursor-pointer"
-                              >
-                                Forgot password?
-                              </button>
-                            </div>
-                            <div className="relative">
-                              <Input
-                                type={showPassword ? "text" : "password"}
-                                placeholder="Enter your password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                autoFocus={!!index}
-                                required
-                                className="h-11 pr-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#B8861B]/40 focus-visible:border-[#B8861B]"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer transition-colors p-1"
-                              >
-                                {showPassword ? (
-                                  <EyeOff className="size-4" />
-                                ) : (
-                                  <Eye className="size-4" />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-
-                          <Button
-                            type="submit"
-                            className="w-full h-11 rounded-xl bg-gradient-to-r from-[#B8861B] via-[#C99826] to-[#B8861B] hover:brightness-105 text-white font-bold text-sm tracking-wide shadow-[0_4px_16px_rgba(184,134,27,0.30)] hover:shadow-[0_6px_20px_rgba(184,134,27,0.40)] active:scale-[0.98] transition-all cursor-pointer border border-[#B8861B]/60"
-                            disabled={busy}
-                          >
-                            {busy ? (
-                              <span className="flex items-center gap-2">
-                                <RefreshCw className="size-4 animate-spin" /> Signing In...
-                              </span>
-                            ) : (
-                              "Sign In to Portal"
-                            )}
-                          </Button>
-
-                          <div className="pt-2 text-center space-y-2 border-t border-slate-200/80 dark:border-white/10 mt-3">
-                            <p className="text-xs text-muted-foreground">
-                              Pre-enrolled by lecturer?{" "}
-                              <button
-                                type="button"
-                                onClick={() => setStep("index")}
-                                className="text-primary font-bold hover:underline cursor-pointer"
-                              >
-                                Activate Enrolled Account
-                              </button>
-                            </p>
-                          </div>
-                        </form>
-                      </CardContent>
-                    </motion.div>
-                  )}
-
-                  {step === "reset" && (
-                    <motion.div
-                      key="reset"
-                      initial={{ opacity: 0, y: 10, scale: 0.985 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -10, scale: 0.985 }}
-                      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                      className="flex-1 flex flex-col justify-center relative z-10"
-                    >
-                      <CardHeader className="text-center pb-2 pt-1 px-4 sm:px-6">
-                        <div className="mx-auto size-11 rounded-2xl ring-2 ring-[#D4AF37]/40 bg-[#0A1F44] p-1 flex items-center justify-center mb-1.5 shadow-sm">
-                          <ShieldCheck className="size-5 text-[#D4AF37]" />
-                        </div>
-                        <CardTitle className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground">
-                          Reset Student Password
-                        </CardTitle>
-                        <CardDescription className="text-xs text-slate-500 dark:text-slate-300 max-w-sm mx-auto">
-                          Provide your registered student email and index number to set a new password.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
-                        <form onSubmit={handleResetPassword} className="space-y-3.5">
-                          <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                              Student Index Number
-                            </Label>
-                            <Input
-                              placeholder="e.g. 2084931"
-                              value={index}
-                              onChange={(e) => setIndex(e.target.value)}
-                              required
-                              autoFocus={!index}
-                              className="h-11 font-mono text-sm uppercase tracking-wide rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                              Registered Email Address
-                            </Label>
-                            <Input
-                              type="email"
-                              placeholder="your.email@example.com"
-                              value={email}
-                              onChange={(e) => setEmail(e.target.value)}
-                              required
-                              autoFocus={!!index}
-                              className="h-11 text-sm rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                            <p className="text-[11px] text-slate-500 dark:text-slate-300 font-medium">
-                              Must match the registered email for this student index number.
-                            </p>
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                                New Password (min 6 chars)
-                              </Label>
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                {showPassword ? (
-                                  <EyeOff className="size-3" />
-                                ) : (
-                                  <Eye className="size-3" />
-                                )}
-                                {showPassword ? "Hide" : "Show"}
-                              </button>
-                            </div>
-                            <Input
-                              type={showPassword ? "text" : "password"}
-                              placeholder="••••••••"
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              minLength={6}
-                              required
-                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                              Confirm New Password
-                            </Label>
-                            <Input
-                              type={showPassword ? "text" : "password"}
-                              placeholder="••••••••"
-                              value={confirmPassword}
-                              onChange={(e) => setConfirmPassword(e.target.value)}
-                              minLength={6}
-                              required
-                              className="h-11 rounded-xl bg-slate-50/90 dark:bg-[#07162E]/80 border-slate-200/90 dark:border-white/10 focus-visible:ring-2 focus-visible:ring-[#D4AF37]/40 focus-visible:border-[#D4AF37]"
-                            />
-                          </div>
-
-                          <Button
-                            type="submit"
-                            className="w-full h-11 rounded-xl bg-gradient-to-r from-[#B8861B] via-[#C99826] to-[#B8861B] hover:brightness-105 text-white font-bold text-sm tracking-wide shadow-[0_4px_16px_rgba(184,134,27,0.30)] hover:shadow-[0_6px_20px_rgba(184,134,27,0.40)] active:scale-[0.98] transition-all cursor-pointer border border-[#B8861B]/60"
-                            disabled={busy}
-                          >
-                            {busy ? "Verifying & Resetting..." : "Reset Password & Sign In"}
-                          </Button>
-
-                          <Button
+                      <div className="text-center pt-2">
+                        <p className="text-xs text-muted-foreground">
+                          Pre-enrolled by lecturer?{" "}
+                          <button
                             type="button"
-                            variant="ghost"
-                            className="w-full text-xs font-semibold cursor-pointer text-slate-600 dark:text-slate-300 hover:text-foreground"
                             onClick={() => {
-                              setStep("login");
-                              setPassword("");
-                              setConfirmPassword("");
+                              setActIndex(signInIndex);
+                              setActiveAuthTab("activate");
                             }}
+                            className="text-foreground font-bold hover:underline cursor-pointer ml-1"
                           >
-                            Back to sign in
-                          </Button>
-                        </form>
-                      </CardContent>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                            Activate Enrolled Account
+                          </button>
+                        </p>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* --------------------------------------------------------- */}
+                {/* SCREENSHOT 2: ACTIVATE VIEW                               */}
+                {/* --------------------------------------------------------- */}
+                {activeAuthTab === "activate" && (
+                  <div className="mt-6 space-y-4">
+                    <div className="text-center space-y-1.5">
+                      <div className="size-11 rounded-2xl bg-[#0A1F44] text-[#D4AF37] border border-[#D4AF37]/40 flex items-center justify-center mx-auto shadow-xs">
+                        <Key className="size-5" />
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">
+                        Account Activation
+                      </h3>
+                      <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                        For students pre-enrolled by their lecturer. Enter your index number and email to set up your password.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleActivate} className="space-y-3 pt-2">
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                          Index Number
+                        </Label>
+                        <Input
+                          placeholder="E.G. 2084931"
+                          value={actIndex}
+                          onChange={(e) => setActIndex(e.target.value.toUpperCase())}
+                          className="h-10.5 rounded-xl border-2 border-[#D4AF37]/60 bg-white dark:bg-background font-mono text-sm uppercase"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                          Registered Email Address
+                        </Label>
+                        <Input
+                          type="email"
+                          placeholder="e.g. student@example.com"
+                          value={actEmail}
+                          onChange={(e) => setActEmail(e.target.value)}
+                          className="h-10.5 rounded-xl border border-border bg-white dark:bg-background text-sm"
+                          required
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          Must match the email recorded in the system by your instructor.
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                            Create Password
+                          </Label>
+                          <button
+                            type="button"
+                            onClick={() => setShowActPassword(!showActPassword)}
+                            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
+                          >
+                            <Eye className="size-3" />
+                            <span>{showActPassword ? "Hide" : "Show"}</span>
+                          </button>
+                        </div>
+                        <Input
+                          type={showActPassword ? "text" : "password"}
+                          placeholder="At least 6 characters"
+                          value={actPassword}
+                          onChange={(e) => setActPassword(e.target.value)}
+                          className="h-10.5 rounded-xl border border-border bg-white dark:bg-background text-sm"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                          Confirm Password
+                        </Label>
+                        <Input
+                          type="password"
+                          placeholder="Re-enter password"
+                          value={actConfirmPassword}
+                          onChange={(e) => setActConfirmPassword(e.target.value)}
+                          className="h-10.5 rounded-xl border border-border bg-white dark:bg-background text-sm"
+                          required
+                        />
+                      </div>
+
+                      <Button
+                        type="submit"
+                        disabled={actBusy}
+                        className="w-full h-12 rounded-2xl bg-[#B8861B] hover:bg-[#A37415] text-white font-bold text-sm shadow-md cursor-pointer flex items-center justify-center gap-2 mt-4"
+                      >
+                        <UserPlus className="size-4" />
+                        <span>{actBusy ? "Activating..." : "Activate & Enter Portal"}</span>
+                      </Button>
+
+                      <div className="text-center pt-2">
+                        <p className="text-xs text-muted-foreground">
+                          Already have an account?{" "}
+                          <button
+                            type="button"
+                            onClick={() => setActiveAuthTab("signin")}
+                            className="text-foreground font-bold hover:underline cursor-pointer ml-1"
+                          >
+                            Sign In
+                          </button>
+                        </p>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* --------------------------------------------------------- */}
+                {/* SCREENSHOT 3: RESET VIEW                                  */}
+                {/* --------------------------------------------------------- */}
+                {activeAuthTab === "reset" && (
+                  <div className="mt-6 space-y-4">
+                    <div className="text-center space-y-1.5">
+                      <div className="size-11 rounded-2xl bg-[#0A1F44] text-[#D4AF37] border border-[#D4AF37]/40 flex items-center justify-center mx-auto shadow-xs">
+                        <Shield className="size-5" />
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">
+                        Reset Student Password
+                      </h3>
+                      <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                        Provide your registered student email and index number to set a new password.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleReset} className="space-y-3 pt-2">
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                          Student Index Number
+                        </Label>
+                        <Input
+                          placeholder="E.G. 2084931"
+                          value={resetIndex}
+                          onChange={(e) => setResetIndex(e.target.value.toUpperCase())}
+                          className="h-10.5 rounded-xl border-2 border-[#D4AF37]/60 bg-white dark:bg-background font-mono text-sm uppercase"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                          Registered Email Address
+                        </Label>
+                        <Input
+                          type="email"
+                          placeholder="your.email@example.com"
+                          value={resetEmail}
+                          onChange={(e) => setResetEmail(e.target.value)}
+                          className="h-10.5 rounded-xl border border-border bg-white dark:bg-background text-sm"
+                          required
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          Must match the registered email for this student index number.
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                            New Password (Min 6 Chars)
+                          </Label>
+                          <button
+                            type="button"
+                            onClick={() => setShowResetPassword(!showResetPassword)}
+                            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
+                          >
+                            <Eye className="size-3" />
+                            <span>{showResetPassword ? "Hide" : "Show"}</span>
+                          </button>
+                        </div>
+                        <Input
+                          type={showResetPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={resetNewPassword}
+                          onChange={(e) => setResetNewPassword(e.target.value)}
+                          className="h-10.5 rounded-xl border border-border bg-white dark:bg-background text-sm"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+                          Confirm New Password
+                        </Label>
+                        <Input
+                          type="password"
+                          placeholder="••••••••"
+                          value={resetConfirmPassword}
+                          onChange={(e) => setResetConfirmPassword(e.target.value)}
+                          className="h-10.5 rounded-xl border border-border bg-white dark:bg-background text-sm"
+                          required
+                        />
+                      </div>
+
+                      <Button
+                        type="submit"
+                        disabled={resetBusy}
+                        className="w-full h-12 rounded-2xl bg-[#B8861B] hover:bg-[#A37415] text-white font-bold text-sm shadow-md cursor-pointer mt-4"
+                      >
+                        {resetBusy ? "Resetting..." : "Reset Password & Sign In"}
+                      </Button>
+
+                      <div className="text-center pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setActiveAuthTab("signin")}
+                          className="text-xs text-foreground font-semibold hover:underline cursor-pointer"
+                        >
+                          Back to sign in
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* --------------------------------------------------------- */}
+                {/* SCREENSHOT 4: REGISTER VIEW                               */}
+                {/* --------------------------------------------------------- */}
+                {activeAuthTab === "register" && (
+                  <div className="mt-5 space-y-3.5">
+                    <div className="text-center space-y-1">
+                      <div className="size-10 rounded-2xl bg-[#0A1F44] text-[#D4AF37] border border-[#D4AF37]/40 flex items-center justify-center mx-auto shadow-xs">
+                        <UserPlus className="size-4.5" />
+                      </div>
+                      <h3 className="text-lg sm:text-xl font-extrabold text-foreground tracking-tight">
+                        New Student Registration
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground max-w-sm mx-auto leading-relaxed">
+                        Qmark Academic Network. Register once to create your student account and get your digital QR pass.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleRegister} className="space-y-2.5">
+                      <div className="space-y-0.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+                          Full Legal Name
+                        </Label>
+                        <Input
+                          placeholder="e.g. Kwame Mensah"
+                          value={regFullName}
+                          onChange={(e) => setRegFullName(e.target.value)}
+                          className="h-9.5 rounded-xl border border-border bg-white dark:bg-background text-xs"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+                          Student Index Number
+                        </Label>
+                        <Input
+                          placeholder="E.G. 2084931"
+                          value={regIndex}
+                          onChange={(e) => setRegIndex(e.target.value.toUpperCase())}
+                          className="h-9.5 rounded-xl border border-border bg-white dark:bg-background font-mono text-xs uppercase"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+                          Academic Level
+                        </Label>
+                        <Select value={regLevel} onValueChange={setRegLevel}>
+                          <SelectTrigger className="h-9.5 rounded-xl border border-border bg-white dark:bg-background text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ACADEMIC_LEVELS.map((lvl) => (
+                              <SelectItem key={lvl.value} value={lvl.value} className="text-xs">
+                                {lvl.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+                          Department / Faculty
+                        </Label>
+                        <Select value={regDepartment} onValueChange={setRegDepartment}>
+                          <SelectTrigger className="h-9.5 rounded-xl border border-border bg-white dark:bg-background text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {FACULTY_DEPARTMENTS.map((dept) => (
+                              <SelectItem key={dept} value={dept} className="text-xs">
+                                {dept}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+                          Program of Study (Major)
+                        </Label>
+                        <Input
+                          placeholder="e.g. BSc Computer Science"
+                          value={regProgram}
+                          onChange={(e) => setRegProgram(e.target.value)}
+                          className="h-9.5 rounded-xl border border-border bg-white dark:bg-background text-xs"
+                        />
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+                          Email Address
+                        </Label>
+                        <Input
+                          type="email"
+                          placeholder="student@example.com"
+                          value={regEmail}
+                          onChange={(e) => setRegEmail(e.target.value)}
+                          className="h-9.5 rounded-xl border border-border bg-white dark:bg-background text-xs"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+                            Create Password
+                          </Label>
+                          <button
+                            type="button"
+                            onClick={() => setShowRegPassword(!showRegPassword)}
+                            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
+                          >
+                            <Eye className="size-3" />
+                            <span>{showRegPassword ? "Hide" : "Show"}</span>
+                          </button>
+                        </div>
+                        <Input
+                          type={showRegPassword ? "text" : "password"}
+                          placeholder="Minimum 6 characters"
+                          value={regPassword}
+                          onChange={(e) => setRegPassword(e.target.value)}
+                          className="h-9.5 rounded-xl border border-border bg-white dark:bg-background text-xs"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+                          Confirm Password
+                        </Label>
+                        <Input
+                          type="password"
+                          placeholder="Re-enter password"
+                          value={regConfirmPassword}
+                          onChange={(e) => setRegConfirmPassword(e.target.value)}
+                          className="h-9.5 rounded-xl border border-border bg-white dark:bg-background text-xs"
+                          required
+                        />
+                      </div>
+
+                      {/* Notice Pill matching Screenshot */}
+                      <div className="p-2.5 rounded-xl border border-[#D4AF37]/35 bg-[#D4AF37]/10 flex items-start gap-2 text-[11px] text-foreground">
+                        <div className="size-4 rounded-full border border-[#D4AF37] flex items-center justify-center shrink-0 mt-0.5">
+                          <Check className="size-2 text-[#D4AF37] stroke-[3]" />
+                        </div>
+                        <p className="leading-tight">
+                          Upon registration, your personal QR attendance pass will be generated instantly for all enrolled courses.
+                        </p>
+                      </div>
+
+                      <Button
+                        type="submit"
+                        disabled={regBusy}
+                        className="w-full h-11 rounded-2xl bg-[#B8861B] hover:bg-[#A37415] text-white font-bold text-xs shadow-md cursor-pointer flex items-center justify-center gap-2 mt-2"
+                      >
+                        <UserPlus className="size-4" />
+                        <span>{regBusy ? "Generating Pass..." : "Register & Generate QR Pass"}</span>
+                      </Button>
+
+                      <div className="text-center pt-1">
+                        <p className="text-xs text-muted-foreground">
+                          Already registered?{" "}
+                          <button
+                            type="button"
+                            onClick={() => setActiveAuthTab("signin")}
+                            className="text-foreground font-bold hover:underline cursor-pointer ml-1"
+                          >
+                            Sign In
+                          </button>
+                        </p>
+                      </div>
+                    </form>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        ) : (
-          /* ========================================================================= */
-          /* AUTHENTICATED STUDENT PORTAL DASHBOARD                                     */
-          /* ========================================================================= */
-          <div className="space-y-4 sm:space-y-6 w-full min-w-0 max-w-full">
-            {/* Student Header Card - Glassmorphism & Gold Glow */}
-            <div className="rounded-3xl glass-card border border-[#D4AF37]/35 shadow-card overflow-hidden w-full min-w-0 relative">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-[#D4AF37]/15 rounded-full blur-3xl pointer-events-none" />
-              <div className="bg-gradient-to-br from-[#0A1F44] via-[#0D2554] to-[#0A1F44] p-4 sm:p-6 text-white relative z-10">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
-                  <div className="space-y-1.5 min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-2.5 py-0.5 rounded-full bg-white/15 text-white text-[11px] font-mono border border-white/20">
-                        {me.index_number}
-                      </span>
-                      <span className="px-2.5 py-0.5 rounded-full bg-[#D4AF37]/20 text-[#D4AF37] text-[11px] font-bold border border-[#D4AF37]/40 tracking-wider">
-                        ACTIVE PASS
-                      </span>
-                    </div>
-                    <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-white truncate">
-                      {me.full_name}
-                    </h1>
-                    <p className="text-xs sm:text-sm text-white/80 truncate">
-                      {me.program || "Undergraduate Program"} · Level {me.level || "200"}
-                      {me.email && ` · ${me.email}`}
-                    </p>
-                  </div>
+        </div>
+      </div>
+    );
+  }
 
-                  {/* Attendance Grade Stat Box (Afterpay / Revolut KPI styling) */}
-                  <div className="rounded-2xl p-3.5 sm:p-4 bg-white/10 dark:bg-[#0A1F44]/50 backdrop-blur-md border border-[#D4AF37]/30 w-full sm:w-auto text-left sm:text-right min-w-0">
-                    <div className="flex flex-col items-start sm:items-end gap-1 min-w-0">
-                      <div className="text-[10px] sm:text-xs text-[#D4AF37] font-bold tracking-wider uppercase">
-                        Running Attendance
+  // =========================================================================
+  // AUTHENTICATED STATE: 5 SIMPLIFIED TABS REQUESTED BY USER
+  // =========================================================================
+  return (
+    <div className="min-h-screen w-full flex flex-col bg-background text-foreground">
+      {/* Title Bar matching faculty standard */}
+      <QmarkTitleBar
+        tag="STUDENT"
+        user={{
+          name: me.full_name,
+          role: `${me.department ? me.department + " • " : ""}L${me.level}`,
+          email: me.index_number,
+        }}
+        showBack={false}
+        onSignOut={handleSignOut}
+      />
+
+      <div className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Active Live Session Alert */}
+        {activeSession && (
+          <div className="p-3.5 rounded-xl border border-[#B8861B]/40 bg-[#B8861B]/10 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <Radio className="size-4 text-[#B8861B] animate-pulse shrink-0" />
+              <div>
+                <p className="font-bold text-foreground">
+                  Live Attendance Open: {activeSession.courseCode || activeSession.title || "Class Session"}
+                </p>
+                <p className="text-muted-foreground text-[11px]">Show your QR pass below to check in.</p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setPortalTab("qr")}
+              className="h-8 text-xs font-bold bg-[#B8861B] hover:bg-[#A37315] text-white shrink-0 cursor-pointer"
+            >
+              Show QR Pass
+            </Button>
+          </div>
+        )}
+
+        {/* 5 Straightforward Nav Tabs */}
+        <div className="flex items-center gap-1.5 p-1 bg-muted rounded-xl overflow-x-auto text-xs font-semibold select-none border border-border">
+          <button
+            type="button"
+            onClick={() => setPortalTab("qr")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all shrink-0 cursor-pointer ${
+              portalTab === "qr"
+                ? "bg-card text-foreground shadow-xs font-bold border border-border"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <QrCode className="size-4" />
+            <span>My QR Code</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPortalTab("attendance")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all shrink-0 cursor-pointer ${
+              portalTab === "attendance"
+                ? "bg-card text-foreground shadow-xs font-bold border border-border"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CalendarCheck className="size-4" />
+            <span>Attendance</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPortalTab("courses")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all shrink-0 cursor-pointer ${
+              portalTab === "courses"
+                ? "bg-card text-foreground shadow-xs font-bold border border-border"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <BookOpen className="size-4" />
+            <span>Courses</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPortalTab("notices")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all shrink-0 cursor-pointer ${
+              portalTab === "notices"
+                ? "bg-card text-foreground shadow-xs font-bold border border-border"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Megaphone className="size-4" />
+            <span>Notices & Tasks</span>
+            {combinedFeed.length > 0 && (
+              <span className="size-4 rounded-full bg-primary text-primary-foreground text-[10px] grid place-items-center">
+                {combinedFeed.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPortalTab("notifications")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all shrink-0 cursor-pointer ${
+              portalTab === "notifications"
+                ? "bg-card text-foreground shadow-xs font-bold border border-border"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <BellRing className="size-4" />
+            <span>Notifications</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPortalTab("settings")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all shrink-0 cursor-pointer ${
+              portalTab === "settings"
+                ? "bg-card text-foreground shadow-xs font-bold border border-border"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Settings className="size-4" />
+            <span>Settings</span>
+          </button>
+        </div>
+
+        {/* TAB 1: MY QR CODE */}
+        {portalTab === "qr" && (
+          <div className="flex flex-col items-center justify-center py-4">
+            <StudentQrPassCard
+              student={{
+                indexNumber: me.index_number,
+                fullName: me.full_name,
+                department: me.department,
+                level: me.level,
+                attendanceRate: overallRate,
+                qrPayload: me.index_number,
+              }}
+              className="max-w-md w-full"
+            />
+            <p className="mt-4 text-xs text-muted-foreground text-center max-w-sm">
+              Present this QR code to your lecturer's scanner or kiosk camera to record your attendance.
+            </p>
+          </div>
+        )}
+
+        {/* TAB 2: ATTENDANCE */}
+        {portalTab === "attendance" && (
+          <div className="space-y-6">
+            <Card className="border border-border bg-card rounded-2xl shadow-xs">
+              <CardContent className="p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Overall Standing</p>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-3xl font-extrabold text-foreground">{overallRate}%</span>
+                    <span className="text-xs font-semibold text-muted-foreground">Attendance Average</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {overallRate >= 75
+                      ? "✓ Eligible for end-of-semester examinations."
+                      : "⚠ At risk: Attendance is currently below the 75% examination threshold."}
+                  </p>
+                </div>
+                <div className="w-full sm:w-48">
+                  <Progress value={overallRate} className="h-2.5" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-foreground">Course Standing</h3>
+              {courses.length === 0 ? (
+                <Card className="p-6 text-center text-xs text-muted-foreground border-dashed border-border rounded-xl">
+                  No registered courses found for this semester.
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {courses.map((c) => (
+                    <Card key={c.course_id} className="p-4 border border-border bg-card rounded-xl space-y-2 shadow-xs">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <Badge variant="outline" className="text-[10px] font-mono font-bold mb-1">
+                            {c.code}
+                          </Badge>
+                          <p className="text-xs font-bold text-foreground line-clamp-1">{c.title}</p>
+                        </div>
+                        <span className="text-base font-extrabold text-foreground">{c.percentage}%</span>
                       </div>
-                      <div className="text-3xl sm:text-4xl font-black text-white tracking-tight flex items-baseline gap-1">
-                        <span>{overallPercentage}</span>
-                        <span className="text-xl sm:text-2xl text-[#D4AF37]">%</span>
-                      </div>
-                      <div className="text-left sm:text-right text-[11px] text-white/85">
-                        <span>{totalAttendedSessions} of {totalHeldSessions} sessions attended</span>
-                        <span className="text-[#D4AF37] font-bold block">
-                          {calculateAttendanceGrade(overallPercentage).label} Standing
+                      <Progress value={c.percentage} className="h-1.5" />
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
+                        <span>
+                          {c.attended} of {c.sessions_total} sessions attended
+                        </span>
+                        <span
+                          className={`font-semibold ${
+                            c.percentage >= 75 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                          }`}
+                        >
+                          {c.percentage >= 75 ? "Eligible" : "Warning"}
                         </span>
                       </div>
-                    </div>
-                  </div>
+                    </Card>
+                  ))}
                 </div>
-
-                <div className="mt-4 pt-3 border-t border-white/15">
-                  <div className="flex justify-between items-center text-[10px] sm:text-xs text-white/80 mb-1.5 font-medium">
-                    <span>Overall Semester Attendance Standing</span>
-                    <span className="text-[#D4AF37] font-bold">
-                      {calculateAttendanceGrade(overallPercentage).label} Grade
-                    </span>
-                  </div>
-                  <div className="h-2 w-full bg-white/20 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-[#D4AF37] via-[#F3E5AB] to-[#D4AF37] rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(overallPercentage, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Quick Actions Row (Inspired by Afterpay iOS 40 & Revolut iOS 56) */}
-            <div className="grid grid-cols-4 gap-2 sm:gap-3 max-w-lg mx-auto w-full">
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-foreground">Recent Check-In History</h3>
+              {history.length === 0 ? (
+                <Card className="p-6 text-center text-xs text-muted-foreground border-dashed border-border rounded-xl">
+                  No attendance records recorded yet.
+                </Card>
+              ) : (
+                <Card className="border border-border bg-card rounded-xl divide-y divide-border overflow-hidden">
+                  {history.slice(0, 8).map((h) => (
+                    <div key={h.id} className="p-3.5 flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <div>
+                          <p className="font-semibold text-foreground">{h.course_code || h.session_title}</p>
+                          <p className="text-[11px] text-muted-foreground">{h.session_date}</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-none text-[10px]">
+                        PRESENT
+                      </Badge>
+                    </div>
+                  ))}
+                </Card>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: COURSES */}
+        {portalTab === "courses" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-foreground">Enrolled Courses ({courses.length})</h3>
+              <Badge variant="outline" className="text-xs">
+                Level {me.level}
+              </Badge>
+            </div>
+
+            {courses.length === 0 ? (
+              <Card className="p-8 text-center text-xs text-muted-foreground border-dashed border-border rounded-xl">
+                No enrolled courses for your level currently.
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {courses.map((c) => (
+                  <Card key={c.course_id} className="p-4 border border-border bg-card rounded-xl space-y-3 shadow-xs">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-muted text-foreground">
+                          {c.code}
+                        </span>
+                        <h4 className="text-sm font-bold text-foreground line-clamp-1">{c.title}</h4>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">
+                        {c.credit_hours} Credits
+                      </Badge>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground space-y-1 pt-1 border-t border-border">
+                      <p>Lecturer: {c.lecturer_name || "Faculty Staff"}</p>
+                      <p>Semester: {c.semester || "Current"}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1">
+                      <span className="text-muted-foreground">Attendance:</span>
+                      <span className="font-bold text-foreground">{c.percentage}%</span>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 4: NOTICES & TASKS */}
+        {portalTab === "notices" && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setActiveTab("qr")}
-                className={`flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-2xl glass-card transition-all cursor-pointer ${
-                  activeTab === "qr"
-                    ? "border-[#D4AF37] shadow-gold bg-[#D4AF37]/15"
-                    : "hover:border-[#D4AF37]/50"
+                onClick={() => setFeedFilter("all")}
+                className={`px-3 py-1 rounded-full text-xs font-semibold cursor-pointer ${
+                  feedFilter === "all" ? "bg-primary text-primary-foreground font-bold" : "bg-muted text-muted-foreground"
                 }`}
               >
-                <div className="size-10 sm:size-12 rounded-full flex items-center justify-center bg-[#0A1F44] text-[#D4AF37] shadow-sm">
-                  <QrCode className="size-5 sm:size-6" />
-                </div>
-                <span className="text-[11px] sm:text-xs font-bold text-foreground truncate">My Pass</span>
+                All Updates
               </button>
-
-              <Link
-                to={activeLecturerSession ? (`/check-in?session=${activeLecturerSession.id}` as string) : ("/check-in" as string)}
-                className="relative flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-2xl glass-card transition-all cursor-pointer hover:border-[#D4AF37]/50"
-              >
-                {activeLecturerSession && (
-                  <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-[#D4AF37] ring-2 ring-background animate-pulse" />
-                )}
-                <div className="size-10 sm:size-12 rounded-full flex items-center justify-center bg-[#B8861B] text-white shadow-sm">
-                  <Radio className="size-5 sm:size-6" />
-                </div>
-                <span className="text-[11px] sm:text-xs font-bold text-foreground truncate">Check In</span>
-              </Link>
-
               <button
                 type="button"
-                onClick={() => setActiveTab("courses")}
-                className={`flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-2xl glass-card transition-all cursor-pointer ${
-                  activeTab === "courses"
-                    ? "border-[#B8861B] shadow-gold bg-[#B8861B]/15"
-                    : "hover:border-[#B8861B]/50"
+                onClick={() => setFeedFilter("announcements")}
+                className={`px-3 py-1 rounded-full text-xs font-semibold cursor-pointer ${
+                  feedFilter === "announcements" ? "bg-primary text-primary-foreground font-bold" : "bg-muted text-muted-foreground"
                 }`}
               >
-                <div className="size-10 sm:size-12 rounded-full flex items-center justify-center bg-[#0A1F44] text-[#E2BD56] shadow-sm">
-                  <BookOpen className="size-5 sm:size-6" />
-                </div>
-                <span className="text-[11px] sm:text-xs font-bold text-foreground truncate">Courses</span>
+                Announcements ({announcements.length})
               </button>
-
               <button
                 type="button"
-                onClick={() => setActiveTab("announcements")}
-                className={`flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-2xl glass-card transition-all cursor-pointer ${
-                  activeTab === "announcements"
-                    ? "border-[#B8861B] shadow-gold bg-[#B8861B]/15"
-                    : "hover:border-[#B8861B]/50"
+                onClick={() => setFeedFilter("assignments")}
+                className={`px-3 py-1 rounded-full text-xs font-semibold cursor-pointer ${
+                  feedFilter === "assignments" ? "bg-primary text-primary-foreground font-bold" : "bg-muted text-muted-foreground"
                 }`}
               >
-                <div className="size-10 sm:size-12 rounded-full flex items-center justify-center bg-[#0A1F44] text-[#E2BD56] shadow-sm">
-                  <Megaphone className="size-5 sm:size-6" />
-                </div>
-                <span className="text-[11px] sm:text-xs font-bold text-foreground truncate">Notices</span>
+                Assignments ({assignments.length})
               </button>
             </div>
 
-            {/* Attendance Risk Banner (If applicable) */}
-            {atRiskCourses.length > 0 && (
-              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 sm:p-4 flex items-start gap-2.5 text-destructive animate-in fade-in min-w-0">
-                <AlertTriangle className="size-4 sm:size-5 shrink-0 mt-0.5" />
-                <div className="space-y-1 text-xs sm:text-sm min-w-0 flex-1">
-                  <div className="font-bold text-destructive flex items-center gap-1.5">
-                    Attendance Risk Warning — Exam Eligibility at Risk
-                  </div>
-                  <p className="text-destructive/90 leading-relaxed text-xs">
-                    You have fallen below the mandatory <b>75% attendance cutoff</b> in:{" "}
-                    <b>
-                      {atRiskCourses
-                        .map((c) => `${c.code} (${c.percentage}% - Missed ${c.missed} sessions)`)
-                        .join(", ")}
-                    </b>
-                    . University regulations require minimum 75% attendance to sit for final
-                    examinations.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {warningCourses.length > 0 && atRiskCourses.length === 0 && (
-              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 sm:p-4 flex items-start gap-2.5 text-amber-900 animate-in fade-in min-w-0">
-                <AlertCircle className="size-4 sm:size-5 shrink-0 mt-0.5 text-amber-600" />
-                <div className="space-y-1 text-xs min-w-0 flex-1">
-                  <div className="font-bold text-amber-900">Attendance Caution</div>
-                  <p className="text-amber-800 leading-relaxed text-xs">
-                    You have missed 3 or more sessions in:{" "}
-                    <b>{warningCourses.map((c) => `${c.code} (${c.missed} missed)`).join(", ")}</b>.
-                    Maintain regular attendance to keep your standing safe.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Multi-Lecturer Course & Faculty Filter Bar */}
-            {courses.length > 0 && (
-              <div className="rounded-xl border bg-card p-2.5 sm:p-3.5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 w-full min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="size-7 sm:size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <Filter className="size-3.5 sm:size-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="text-xs font-bold text-foreground block truncate">
-                      Multi-Lecturer Scope
-                    </span>
-                    <span className="text-[10px] sm:text-[11px] text-muted-foreground block truncate">
-                      {courses.length} enrolled course{courses.length === 1 ? "" : "s"} across{" "}
-                      <span className="font-semibold text-foreground">
-                        {uniqueLecturers.length} lecturer{uniqueLecturers.length === 1 ? "" : "s"}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto min-w-0">
-                  <select
-                    id="student-course-lecturer-filter"
-                    value={selectedCourseFilter}
-                    onChange={(e) => setSelectedCourseFilter(e.target.value)}
-                    className="text-xs bg-background border rounded-lg px-2.5 py-1.5 font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto min-w-0 max-w-full truncate"
-                  >
-                    <option value="all">All Courses & Lecturers ({courses.length})</option>
-                    {courses.map((c) => (
-                      <option key={c.course_id} value={c.course_id}>
-                        {c.code} — {c.title}{" "}
-                        {c.lecturer_name ? `(Lecturer: ${c.lecturer_name})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedCourseFilter !== "all" && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedCourseFilter("all")}
-                      className="text-xs h-7 px-2 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer"
-                    >
-                      Reset
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Live Lecturer Active Session Announcement Banner */}
-            {activeLecturerSession && (
-              <Link
-                to={`/check-in?session=${activeLecturerSession.id}` as string}
-                className="block p-3.5 sm:p-4 rounded-2xl glass-card border-2 border-[#B8861B] bg-[#B8861B]/15 hover:bg-[#B8861B]/25 transition shadow-sm group"
-              >
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-xl bg-[#0A1F44] text-[#E2BD56] flex items-center justify-center shrink-0 border border-[#B8861B]/35 shadow-xs">
-                      <Radio className="size-5 animate-pulse" />
-                    </div>
-                    <div>
+            {combinedFeed.length === 0 ? (
+              <Card className="p-8 text-center text-xs text-muted-foreground border-dashed border-border rounded-xl">
+                No announcements or assignments posted yet.
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {combinedFeed.map((item) => (
+                  <Card key={item.id} className="p-4 border border-border bg-card rounded-xl space-y-2 shadow-xs">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <Badge className="bg-[#B8861B] text-white border-none text-[10px] px-1.5 py-0 font-bold uppercase">
-                          Live Lecture Session
-                        </Badge>
-                        {activeLecturerSession.courseCode && (
-                          <span className="font-mono text-xs font-bold text-foreground">
-                            · {activeLecturerSession.courseCode}
+                        {item.type === "assignment" ? (
+                          <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-none text-[10px] gap-1">
+                            <ClipboardList className="size-3" /> Assignment
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border-none text-[10px] gap-1">
+                            <Megaphone className="size-3" /> Announcement
+                          </Badge>
+                        )}
+                        {item.courseCode && (
+                          <span className="font-mono text-[11px] font-bold text-muted-foreground">
+                            {item.courseCode}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs font-bold text-foreground mt-0.5">
-                        {activeLecturerSession.title || "Your lecturer has opened attendance check-in"}
-                      </p>
+                      <span className="text-[11px] text-muted-foreground">
+                        {new Date(item.date).toLocaleDateString()}
+                      </span>
                     </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="bg-[#B8861B] hover:bg-[#B8861B]/90 text-white font-bold text-xs h-9 px-4 shrink-0 w-full sm:w-auto gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <span>Check In Now</span>
-                    <ArrowRight className="size-3.5" />
-                  </Button>
-                </div>
-              </Link>
-            )}
 
-            {/* Mobile Push Notification Activation Banner (Compact & Dismissable) */}
-            <StudentPushBanner
-              userContext={{
-                userId: me.index_number,
-                userRole: "student",
-                studentId: me.id,
-                indexNumber: me.index_number,
-              }}
-              onOpenNotificationsTab={() => setActiveTab("notifications")}
-            />
+                    <h4 className="text-sm font-bold text-foreground">{item.title}</h4>
+                    <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">{item.body}</p>
 
-            {/* Navigation Tabs */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 w-full min-w-0 max-w-full">
-              <div className="overflow-x-auto no-scrollbar w-full max-w-full min-w-0 py-0.5">
-                <TabsList className="inline-flex w-max min-w-full sm:w-full sm:grid sm:grid-cols-4 lg:grid-cols-8 h-auto p-1 bg-muted/60 rounded-xl gap-1">
-                  <TabsTrigger
-                    value="qr"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
-                  >
-                    <QrCode className="size-3.5 shrink-0 text-primary" />
-                    My QR Pass
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="attendance"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
-                  >
-                    <CalendarCheck className="size-3.5 shrink-0" />
-                    Attendance
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="records"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
-                  >
-                    <FileText className="size-3.5 shrink-0" />
-                    Personal Records
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="courses"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
-                  >
-                    <BookOpen className="size-3.5 shrink-0" />
-                    Courses ({courses.length})
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="announcements"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
-                  >
-                    <Megaphone className="size-3.5 shrink-0" />
-                    Announcements
-                    {announcements.length > 0 && (
-                      <span className="size-2 rounded-full bg-primary ml-0.5 shrink-0" />
+                    {item.dueDate && (
+                      <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-semibold pt-1">
+                        <Clock className="size-3.5" />
+                        <span>Due: {new Date(item.dueDate).toLocaleString()}</span>
+                      </div>
                     )}
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="assignments"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
-                  >
-                    <ClipboardList className="size-3.5 shrink-0" />
-                    Assignments
-                    {assignments.length > 0 && (
-                      <span className="size-2 rounded-full bg-primary ml-0.5 shrink-0" />
+
+                    {item.link && (
+                      <div className="pt-2">
+                        <a
+                          href={item.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+                        >
+                          <span>Open Submission Link</span>
+                          <ExternalLink className="size-3" />
+                        </a>
+                      </div>
                     )}
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="notifications"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
-                  >
-                    <BellRing className="size-3.5 shrink-0" />
-                    Notifications
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="settings"
-                    className="text-xs py-2 px-2.5 sm:px-2 data-[state=active]:bg-card data-[state=active]:shadow-xs gap-1.5 shrink-0 whitespace-nowrap font-medium cursor-pointer"
-                  >
-                    <KeyRound className="size-3.5 shrink-0" />
-                    Settings
-                  </TabsTrigger>
-                </TabsList>
+                  </Card>
+                ))}
               </div>
-
-              {/* ------------------------------------------------------------- */}
-              {/* TAB 1: ATTENDANCE RECORD (CORE PER-COURSE METRICS)             */}
-              {/* ------------------------------------------------------------- */}
-              <TabsContent value="attendance" className="space-y-5">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {filteredCourses.length === 0 ? (
-                    <Card className="sm:col-span-2 p-8 text-center text-muted-foreground">
-                      <GraduationCap className="size-8 mx-auto mb-2 opacity-40" />
-                      <p className="font-semibold">
-                        {selectedCourseFilter === "all"
-                          ? "No registered courses found"
-                          : "No matching course found for this filter"}
-                      </p>
-                      <p className="text-xs mt-1">
-                        When your lecturers add you to course rosters, your attendance records will
-                        appear here.
-                      </p>
-                    </Card>
-                  ) : (
-                    filteredCourses.map((course) => {
-                      const isPassing = course.percentage >= 75;
-                      return (
-                        <Card
-                          key={course.course_id}
-                          className={`border transition shadow-xs ${
-                            course.risk_level === "critical"
-                              ? "border-destructive/40 bg-destructive/5"
-                              : "border-border/80 hover:border-primary/40"
-                          }`}
-                        >
-                          <CardHeader className="p-3.5 sm:p-5 pb-2.5">
-                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 sm:gap-3">
-                              <div className="space-y-1 min-w-0">
-                                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                                  <Badge variant="outline" className="font-mono text-[10px] sm:text-xs font-bold">
-                                    {course.code}
-                                  </Badge>
-                                  {course.level && (
-                                    <Badge
-                                      variant="secondary"
-                                      className="font-semibold text-[10px] sm:text-[11px] bg-primary/10 text-primary"
-                                    >
-                                      {course.level.toUpperCase().startsWith("L")
-                                        ? course.level
-                                        : `L${course.level}`}
-                                    </Badge>
-                                  )}
-                                  <span className="text-[11px] sm:text-xs text-muted-foreground">
-                                    {course.department ? `${course.department} · ` : ""}
-                                    {course.semester || "Semester"} · {course.credit_hours} cr
-                                  </span>
-                                </div>
-                                <CardTitle className="text-sm sm:text-base font-bold text-foreground">
-                                  {course.title}
-                                </CardTitle>
-                                {course.lecturer_name && (
-                                  <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
-                                    <User className="size-3.5 shrink-0" />
-                                    <span className="truncate">Lecturer: {course.lecturer_name}</span>
-                                    {course.lecturer_email && (
-                                      <a
-                                        href={`mailto:${course.lecturer_email}`}
-                                        className="text-muted-foreground hover:text-primary transition shrink-0"
-                                        title={`Contact ${course.lecturer_email}`}
-                                      >
-                                        <Mail className="size-3 ml-0.5" />
-                                      </a>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-1 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0">
-                                <div
-                                  className={`text-xl sm:text-2xl font-black ${
-                                    isPassing ? "text-[#D4AF37]" : "text-destructive"
-                                  }`}
-                                >
-                                  {course.percentage}%
-                                </div>
-                                <Badge
-                                  variant={isPassing ? "secondary" : "destructive"}
-                                  className="text-[10px]"
-                                >
-                                  {isPassing ? "Eligible" : "At Risk (<75%)"}
-                                </Badge>
-                              </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="p-3.5 sm:p-5 space-y-3 pt-0">
-                            {/* Running progress bar */}
-                            <Progress
-                              value={course.percentage}
-                              className={`h-2 ${!isPassing ? "bg-destructive/20" : ""}`}
-                            />
-
-                            {/* Attended, Missed, Late metrics */}
-                            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1 text-center">
-                              <div className="p-1.5 sm:p-2 rounded-lg bg-[#D4AF37]/10 border border-[#D4AF37]/20">
-                                <div className="text-[10px] sm:text-xs text-[#0A1F44] font-medium">Attended</div>
-                                <div className="text-base sm:text-lg font-bold text-[#AA820A]">
-                                  {course.attended}
-                                </div>
-                              </div>
-                              <div className="p-1.5 sm:p-2 rounded-lg bg-rose-50 border border-rose-100">
-                                <div className="text-[10px] sm:text-xs text-rose-800 font-medium">Missed</div>
-                                <div className="text-base sm:text-lg font-bold text-rose-700">
-                                  {course.missed}
-                                </div>
-                              </div>
-                              <div className="p-1.5 sm:p-2 rounded-lg bg-amber-50 border border-amber-100">
-                                <div className="text-[10px] sm:text-xs text-amber-800 font-medium">Late</div>
-                                <div className="text-base sm:text-lg font-bold text-amber-700">
-                                  {course.late}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="text-[10px] sm:text-[11px] text-muted-foreground flex flex-col xs:flex-row xs:items-center justify-between gap-1 pt-1">
-                              <span>Total Sessions Held: {course.sessions_total}</span>
-                              <span className="font-medium text-foreground/80">{course.risk_message}</span>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Session-by-Session History Log */}
-                <Card className="border shadow-xs">
-                  <CardHeader className="pb-3 border-b px-3.5 sm:px-6">
-                    <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
-                      <Clock className="size-4 text-primary" />
-                      Session Attendance History
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      Timestamped log of sessions scanned and recorded.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {filteredHistory.length === 0 ? (
-                      <div className="p-8 text-center text-xs text-muted-foreground">
-                        No individual attendance check-ins logged yet.
-                      </div>
-                    ) : (
-                      <div className="divide-y">
-                        {filteredHistory.map((record) => {
-                          const isLate = record.status === "LATE";
-                          const isPresent =
-                            record.status === "PRESENT" || record.status === "ON_TIME";
-                          return (
-                            <div
-                              key={record.id}
-                              className="px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2 text-xs sm:text-sm hover:bg-muted/30 transition"
-                            >
-                              <div className="space-y-0.5 min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                                  <span className="font-bold font-mono text-primary text-xs">
-                                    {record.course_code || "CLASS"}
-                                  </span>
-                                  <span className="text-foreground font-medium truncate text-xs sm:text-sm">
-                                    {record.session_title || record.course_title}
-                                  </span>
-                                  {record.lecturer_name && (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-[9px] sm:text-[10px] text-muted-foreground"
-                                    >
-                                      Lecturer: {record.lecturer_name}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="text-[10px] sm:text-[11px] text-muted-foreground flex items-center gap-1.5 sm:gap-2">
-                                  <span>{record.session_date}</span>
-                                  {record.check_in_at && (
-                                    <span>
-                                      · {new Date(record.check_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              <Badge
-                                variant={isPresent ? "default" : isLate ? "secondary" : "outline"}
-                                className={`text-[10px] sm:text-[11px] font-mono shrink-0 ${
-                                  isPresent
-                                    ? "bg-[#D4AF37] text-white"
-                                    : isLate
-                                      ? "bg-amber-100 text-amber-800"
-                                      : ""
-                                }`}
-                              >
-                                {record.status}
-                              </Badge>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* ------------------------------------------------------------- */}
-              {/* TAB: PERSONAL & MULTI-LECTURER ACADEMIC RECORDS               */}
-              {/* ------------------------------------------------------------- */}
-              <TabsContent value="records" className="space-y-4 sm:space-y-5">
-                {/* Academic Identity & Stats */}
-                <div className="grid gap-2.5 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-                  <Card className="p-3 sm:p-4 border shadow-xs space-y-1">
-                    <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">Student Index</span>
-                    <div className="font-mono text-base sm:text-lg font-bold text-primary truncate">
-                      {me.index_number}
-                    </div>
-                    <span className="text-[10px] sm:text-[11px] text-muted-foreground block truncate">
-                      Verified Record
-                    </span>
-                  </Card>
-                  <Card className="p-3 sm:p-4 border shadow-xs space-y-1">
-                    <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">
-                      Enrolled Courses
-                    </span>
-                    <div className="text-base sm:text-lg font-bold text-foreground">
-                      {courses.length} Courses
-                    </div>
-                    <span className="text-[10px] sm:text-[11px] text-muted-foreground block truncate">
-                      All semesters
-                    </span>
-                  </Card>
-                  <Card className="p-3 sm:p-4 border shadow-xs space-y-1">
-                    <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">
-                      Assigned Lecturers
-                    </span>
-                    <div className="text-base sm:text-lg font-bold text-foreground">
-                      {uniqueLecturers.length} Faculty
-                    </div>
-                    <span className="text-[10px] sm:text-[11px] text-muted-foreground block truncate">
-                      Instructors on record
-                    </span>
-                  </Card>
-                  <Card className="p-3 sm:p-4 border shadow-xs space-y-1">
-                    <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">
-                      Overall Attendance
-                    </span>
-                    <div className="text-base sm:text-lg font-bold text-[#D4AF37]">
-                      {overallPercentage}%
-                    </div>
-                    <span className="text-[10px] sm:text-[11px] text-muted-foreground block truncate">
-                      {calculateAttendanceGrade(overallPercentage).label} Standing
-                    </span>
-                  </Card>
-                </div>
-
-                {/* Comprehensive Multi-Lecturer Course Breakdown Table */}
-                <Card className="border shadow-xs overflow-hidden">
-                  <CardHeader className="p-3.5 sm:p-5 pb-3 border-b bg-muted/20">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
-                          <BookCheck className="size-4 text-primary shrink-0" />
-                          Multi-Lecturer Academic Record & Course Standing
-                        </CardTitle>
-                        <CardDescription className="text-xs">
-                          Complete consolidated overview of all courses assigned to you by your
-                          lecturers.
-                        </CardDescription>
-                      </div>
-                      <Badge variant="outline" className="w-fit text-xs font-mono">
-                        {courses.length} Course{courses.length === 1 ? "" : "s"} Total
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {courses.length === 0 ? (
-                      <div className="p-8 text-center text-xs text-muted-foreground">
-                        No course records found across any lecturers.
-                      </div>
-                    ) : (
-                      <>
-                        {/* Mobile portrait list view */}
-                        <div className="sm:hidden divide-y divide-border">
-                          {courses.map((c) => {
-                            const isPassing = c.percentage >= 75;
-                            return (
-                              <div key={c.course_id} className="p-3.5 space-y-2.5 hover:bg-muted/20 transition">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="font-mono font-bold text-primary text-xs">{c.code}</span>
-                                      <span className="text-[10px] text-muted-foreground">· {c.credit_hours} cr</span>
-                                      {c.semester && (
-                                        <span className="text-[10px] text-muted-foreground">· {c.semester}</span>
-                                      )}
-                                    </div>
-                                    <h4 className="font-semibold text-xs text-foreground truncate mt-0.5">{c.title}</h4>
-                                  </div>
-                                  <div className="text-right shrink-0">
-                                    <div className={`font-black text-sm ${isPassing ? "text-[#D4AF37]" : "text-destructive"}`}>
-                                      {c.percentage}%
-                                    </div>
-                                    <Badge
-                                      variant={isPassing ? "default" : "destructive"}
-                                      className="text-[9px] px-1.5 py-0"
-                                    >
-                                      {isPassing ? "Eligible" : "At Risk"}
-                                    </Badge>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center justify-between text-[11px] bg-muted/40 p-2 rounded-lg gap-2">
-                                  <div className="text-muted-foreground truncate">
-                                    <span>Lec: </span>
-                                    <span className="font-medium text-foreground">{c.lecturer_name || "Department"}</span>
-                                  </div>
-                                  <div className="text-right shrink-0 font-medium text-foreground">
-                                    <span>{c.attended}</span>
-                                    <span className="text-muted-foreground">/{c.sessions_total} sessions</span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Desktop / tablet table view */}
-                        <div className="hidden sm:block overflow-x-auto">
-                          <table className="w-full text-xs text-left">
-                            <thead className="bg-muted/40 text-muted-foreground border-b uppercase text-[10px] font-semibold tracking-wider">
-                              <tr>
-                                <th className="px-4 py-3">Course</th>
-                                <th className="px-4 py-3">Assigned Lecturer</th>
-                                <th className="px-4 py-3">Credits & Term</th>
-                                <th className="px-4 py-3 text-center">Sessions (Held/Attended)</th>
-                                <th className="px-4 py-3 text-center">Attendance %</th>
-                                <th className="px-4 py-3 text-right">Exam Status</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                              {courses.map((c) => {
-                                const isPassing = c.percentage >= 75;
-                                return (
-                                  <tr key={c.course_id} className="hover:bg-muted/25 transition">
-                                    <td className="px-4 py-3 font-medium">
-                                      <div className="font-mono font-bold text-primary">{c.code}</div>
-                                      <div className="text-foreground text-xs">{c.title}</div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <div className="font-semibold text-foreground">
-                                        {c.lecturer_name || "Academic Department"}
-                                      </div>
-                                      {c.lecturer_email && (
-                                        <a
-                                          href={`mailto:${c.lecturer_email}`}
-                                          className="text-[11px] text-muted-foreground hover:text-primary transition flex items-center gap-1"
-                                        >
-                                          <Mail className="size-2.5" />
-                                          {c.lecturer_email}
-                                        </a>
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-3 text-muted-foreground">
-                                      <div>{c.credit_hours} Credit Hours</div>
-                                      <div className="text-[11px]">{c.semester}</div>
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                      <span className="font-semibold text-foreground">
-                                        {c.attended}
-                                      </span>
-                                      <span className="text-muted-foreground">
-                                        {" "}
-                                        / {c.sessions_total}
-                                      </span>
-                                      <div className="text-[10px] text-muted-foreground">
-                                        {c.missed} missed · {c.late} late
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                      <div
-                                        className={`font-extrabold text-sm ${
-                                          isPassing ? "text-[#D4AF37]" : "text-destructive"
-                                        }`}
-                                      >
-                                        {c.percentage}%
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                      <Badge
-                                        variant={isPassing ? "default" : "destructive"}
-                                        className="text-[10px]"
-                                      >
-                                        {isPassing ? "Eligible" : "At Risk"}
-                                      </Badge>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Assigned Faculty Summary Cards */}
-                {uniqueLecturers.length > 0 && (
-                  <Card className="border shadow-xs">
-                    <CardHeader className="p-3.5 sm:p-5 pb-3 border-b">
-                      <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
-                        <School className="size-4 text-primary shrink-0" />
-                        My Assigned Lecturers & Instructors
-                      </CardTitle>
-                      <CardDescription className="text-xs">
-                        Direct instructors managing your registered courses.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-3.5 sm:p-4">
-                      <div className="grid gap-2.5 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                        {uniqueLecturers.map((lec, idx) => (
-                          <div
-                            key={idx}
-                            className="p-3 rounded-lg border bg-muted/30 space-y-1.5 hover:bg-muted/50 transition text-xs"
-                          >
-                            <div className="flex items-center gap-2">
-                              <div className="size-7 rounded-full bg-primary/10 text-primary grid place-items-center font-bold text-xs shrink-0">
-                                {lec.name.charAt(0).toUpperCase()}
-                              </div>
-                              <span className="font-bold text-foreground truncate">{lec.name}</span>
-                            </div>
-                            {lec.email && (
-                              <a
-                                href={`mailto:${lec.email}`}
-                                className="text-[11px] text-primary hover:underline flex items-center gap-1 truncate"
-                              >
-                                <Mail className="size-3 shrink-0" />
-                                <span className="truncate">{lec.email}</span>
-                              </a>
-                            )}
-                            <div className="pt-1 flex items-center gap-1 flex-wrap">
-                              <span className="text-[10px] text-muted-foreground">Courses:</span>
-                              {lec.courses.map((code) => (
-                                <Badge
-                                  key={code}
-                                  variant="secondary"
-                                  className="text-[10px] font-mono py-0"
-                                >
-                                  {code}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-
-              {/* ------------------------------------------------------------- */}
-              {/* TAB 3: ENROLLED COURSES                                       */}
-              {/* ------------------------------------------------------------- */}
-              <TabsContent value="courses" className="space-y-4">
-                <Card className="border shadow-xs">
-                  <CardHeader className="pb-3 border-b">
-                    <CardTitle className="text-base font-bold flex items-center gap-2">
-                      <BookOpen className="size-4 text-primary" />
-                      My Enrolled Courses ({filteredCourses.length})
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      Official courses you are registered for across your lecturers.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {filteredCourses.length === 0 ? (
-                      <div className="p-8 text-center text-xs text-muted-foreground">
-                        {selectedCourseFilter === "all"
-                          ? "No enrolled courses found for this student record."
-                          : "No matching course found for this filter."}
-                      </div>
-                    ) : (
-                      <div className="divide-y">
-                        {filteredCourses.map((c) => (
-                          <div
-                            key={c.course_id}
-                            className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/25 transition"
-                          >
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Badge variant="outline" className="font-mono text-xs font-bold">
-                                  {c.code}
-                                </Badge>
-                                {c.level && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="font-semibold text-[11px] bg-primary/10 text-primary"
-                                  >
-                                    {c.level.toUpperCase().startsWith("L")
-                                      ? c.level
-                                      : `L${c.level}`}
-                                  </Badge>
-                                )}
-                                <span className="text-xs text-muted-foreground">
-                                  {c.department ? `${c.department} · ` : ""}
-                                  {c.semester || "Semester"} · {c.credit_hours} credits
-                                </span>
-                              </div>
-                              <h4 className="font-bold text-sm text-foreground">{c.title}</h4>
-                              {c.lecturer_name && (
-                                <div className="flex items-center gap-1.5 text-xs text-primary font-medium flex-wrap">
-                                  <User className="size-3.5 shrink-0" />
-                                  <span>Lecturer: {c.lecturer_name}</span>
-                                  {c.lecturer_email && (
-                                    <a
-                                      href={`mailto:${c.lecturer_email}`}
-                                      className="text-muted-foreground hover:text-primary transition inline-flex items-center"
-                                      title={`Contact ${c.lecturer_email}`}
-                                    >
-                                      <Mail className="size-3 ml-0.5" />
-                                    </a>
-                                  )}
-                                </div>
-                              )}
-                              <p className="text-xs text-muted-foreground">
-                                {c.sessions_total} total session(s) conducted to date.
-                              </p>
-                            </div>
-
-                            <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0">
-                              <div className="text-left sm:text-right">
-                                <div className="text-sm font-bold">{c.percentage}% Attendance</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {c.attended} Attended · {c.missed} Missed
-                                </div>
-                              </div>
-                              <Badge
-                                variant={c.percentage >= 75 ? "default" : "destructive"}
-                                className="text-xs shrink-0"
-                              >
-                                {c.percentage >= 75 ? "Good Standing" : "Risk"}
-                              </Badge>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* ------------------------------------------------------------- */}
-              {/* TAB 4: ANNOUNCEMENTS (FILTERED TO ENROLLED COURSES)          */}
-              {/* ------------------------------------------------------------- */}
-              <TabsContent value="announcements" className="space-y-4">
-                <Card className="border shadow-xs">
-                  <CardHeader className="pb-3 border-b">
-                    <CardTitle className="text-base font-bold flex items-center gap-2">
-                      <Megaphone className="size-4 text-primary" />
-                      Announcements ({filteredAnnouncements.length})
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      Notices from your lecturers for your enrolled courses, sorted most recent
-                      first.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-4 sm:p-6 space-y-4">
-                    {filteredAnnouncements.length === 0 ? (
-                      <div className="text-center py-8 text-xs text-muted-foreground">
-                        {selectedCourseFilter === "all"
-                          ? "No announcements posted for your enrolled courses yet."
-                          : "No announcements found matching this course/lecturer filter."}
-                      </div>
-                    ) : (
-                      filteredAnnouncements.map((notice) => (
-                        <div
-                          key={notice.id}
-                          className="rounded-xl border border-border p-4 space-y-2 bg-card hover:border-primary/30 transition shadow-xs"
-                        >
-                          <div className="flex items-start justify-between gap-2 flex-wrap">
-                            <h4 className="font-bold text-sm text-foreground">{notice.title}</h4>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {notice.course_code ? (
-                                <Badge variant="secondary" className="font-mono text-[10px]">
-                                  {notice.course_code}
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-[10px]">
-                                  General
-                                </Badge>
-                              )}
-                              {notice.lecturer_name && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] text-primary border-primary/20"
-                                >
-                                  By: {notice.lecturer_name}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                            {notice.body}
-                          </p>
-                          <div className="text-[11px] text-muted-foreground/80 pt-1 flex items-center justify-between gap-2 flex-wrap">
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="size-3" />
-                              {notice.starts_on
-                                ? new Date(notice.starts_on).toLocaleDateString(undefined, {
-                                    dateStyle: "medium",
-                                  })
-                                : "Recent"}
-                            </div>
-                            {notice.lecturer_name && (
-                              <span className="text-[10px] text-muted-foreground">
-                                Instructor: {notice.lecturer_name}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* ------------------------------------------------------------- */}
-              {/* TAB 5: ASSIGNMENTS (SORTED BY UPCOMING DUE DATES)             */}
-              {/* ------------------------------------------------------------- */}
-              <TabsContent value="assignments" className="space-y-4">
-                <Card className="border shadow-xs">
-                  <CardHeader className="pb-3 border-b">
-                    <CardTitle className="text-base font-bold flex items-center gap-2">
-                      <ClipboardList className="size-4 text-primary" />
-                      Course Assignments & Deadlines ({filteredAssignments.length})
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      Tasks from your instructors for your enrolled courses, sorted with upcoming
-                      due dates first.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-4 sm:p-6 space-y-4">
-                    {filteredAssignments.length === 0 ? (
-                      <div className="text-center py-8 text-xs text-muted-foreground">
-                        {selectedCourseFilter === "all"
-                          ? "No assignments listed for your enrolled courses right now."
-                          : "No assignments found matching this course/lecturer filter."}
-                      </div>
-                    ) : (
-                      filteredAssignments.map((assign) => {
-                        const due = assign.due_at ? new Date(assign.due_at) : null;
-                        const isOverdue = due ? due.getTime() < Date.now() : false;
-                        return (
-                          <div
-                            key={assign.id}
-                            className={`rounded-xl border p-4 space-y-3 transition shadow-xs ${
-                              isOverdue
-                                ? "border-muted bg-muted/10 opacity-75"
-                                : "border-border bg-card hover:border-primary/40"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                  {assign.course_code && (
-                                    <Badge
-                                      variant="outline"
-                                      className="font-mono text-xs font-semibold"
-                                    >
-                                      {assign.course_code}
-                                    </Badge>
-                                  )}
-                                  {assign.lecturer_name && (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-[10px] text-primary border-primary/20"
-                                    >
-                                      Lecturer: {assign.lecturer_name}
-                                    </Badge>
-                                  )}
-                                  <Badge
-                                    variant={isOverdue ? "destructive" : "default"}
-                                    className="text-[10px]"
-                                  >
-                                    {due
-                                      ? isOverdue
-                                        ? "Closed"
-                                        : `Due: ${due.toLocaleDateString()} ${due.toLocaleTimeString(
-                                            [],
-                                            { hour: "2-digit", minute: "2-digit" },
-                                          )}`
-                                      : "No deadline specified"}
-                                  </Badge>
-                                </div>
-                                <h4 className="font-bold text-sm sm:text-base text-foreground">
-                                  {assign.title}
-                                </h4>
-                              </div>
-                            </div>
-
-                            {assign.details && (
-                              <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                                {assign.details}
-                              </p>
-                            )}
-
-                            {assign.submission_url && (
-                              <div className="pt-1">
-                                <a
-                                  href={assign.submission_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline bg-primary/10 px-3 py-1.5 rounded-md"
-                                >
-                                  <ExternalLink className="size-3.5" /> Submit Assignment Online
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* ------------------------------------------------------------- */}
-              {/* TAB: DIGITAL QR PASS (APPLE WALLET STYLE)                     */}
-              {/* ------------------------------------------------------------- */}
-              <TabsContent value="qr" className="space-y-4">
-                <div className="max-w-md mx-auto">
-                  <StudentQrPassCard
-                    student={{
-                      indexNumber: me.index_number,
-                      fullName: me.full_name,
-                      level: me.level,
-                      department: me.program || me.department,
-                      attendanceRate: overallPercentage,
-                      token: me.qr_uuid || me.index_number,
-                      qrPayload: me.qr_uuid || me.index_number,
-                      qrDataUrl: qrUrl || undefined,
-                    }}
-                  />
-                  <div className="flex justify-center pt-3">
-                    <Button
-                      onClick={printPass}
-                      variant="outline"
-                      size="sm"
-                      className="text-xs h-8 px-4 text-muted-foreground hover:text-foreground cursor-pointer"
-                    >
-                      <Printer className="size-3.5 mr-1.5 shrink-0" />
-                      <span>Print Physical Pass Card</span>
-                    </Button>
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* ------------------------------------------------------------- */}
-              {/* TAB: NOTIFICATIONS & WEB PUSH PREFERENCES                      */}
-              {/* ------------------------------------------------------------- */}
-              <TabsContent value="notifications" className="space-y-4">
-                <PushNotificationManager
-                  userContext={{
-                    userId: me.index_number,
-                    userRole: "student",
-                    studentId: me.id,
-                    indexNumber: me.index_number,
-                  }}
-                  showCard={true}
-                />
-              </TabsContent>
-
-              {/* ------------------------------------------------------------- */}
-              {/* TAB 7: PASSWORD & ACCOUNT SETTINGS                            */}
-              {/* ------------------------------------------------------------- */}
-              <TabsContent value="settings" className="space-y-4">
-                <div className="grid gap-6 sm:grid-cols-2">
-                  {/* Change Password Form */}
-                  <Card className="border shadow-xs">
-                    <CardHeader className="pb-3 border-b">
-                      <CardTitle className="text-base font-bold flex items-center gap-2">
-                        <KeyRound className="size-4 text-primary" />
-                        Change Password
-                      </CardTitle>
-                      <CardDescription className="text-xs">
-                        Update your portal password anytime.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-4 sm:p-6">
-                      <form onSubmit={handleChangePassword} className="space-y-3.5">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold">Current Password</Label>
-                          <Input
-                            type="password"
-                            placeholder="Current password"
-                            value={currentPassword}
-                            onChange={(e) => setCurrentPassword(e.target.value)}
-                            required
-                            className="h-10 text-sm"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold">
-                            New Password (min 6 chars)
-                          </Label>
-                          <Input
-                            type="password"
-                            placeholder="New password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            minLength={6}
-                            required
-                            className="h-10 text-sm"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold">Confirm New Password</Label>
-                          <Input
-                            type="password"
-                            placeholder="Confirm new password"
-                            value={confirmNewPassword}
-                            onChange={(e) => setConfirmNewPassword(e.target.value)}
-                            minLength={6}
-                            required
-                            className="h-10 text-sm"
-                          />
-                        </div>
-
-                        <Button
-                          type="submit"
-                          className="w-full bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
-                          disabled={changingPassword}
-                        >
-                          {changingPassword ? "Updating Password..." : "Update Password"}
-                        </Button>
-                      </form>
-                    </CardContent>
-                  </Card>
-
-                  {/* Student Account Summary Card */}
-                  <Card className="border shadow-xs">
-                    <CardHeader className="pb-3 border-b">
-                      <CardTitle className="text-base font-bold flex items-center gap-2">
-                        <User className="size-4 text-primary" />
-                        Student Account Profile
-                      </CardTitle>
-                      <CardDescription className="text-xs">
-                        University record credentials on file.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-4 sm:p-6 space-y-4 text-xs sm:text-sm">
-                      <div className="space-y-2.5">
-                        <div>
-                          <div className="text-xs text-muted-foreground">Full Name</div>
-                          <div className="font-semibold text-foreground">{me.full_name}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Index Number</div>
-                          <div className="font-mono font-bold text-primary">{me.index_number}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Registered Email</div>
-                          <div className="font-medium text-foreground">
-                            {me.email || "No email on record"}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Academic Level</div>
-                          <div className="font-medium text-foreground">Level {me.level}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs text-muted-foreground">Degree Program</div>
-                          <div className="font-medium text-foreground">
-                            {me.program || "Not specified"}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-3 border-t text-xs text-muted-foreground flex items-center gap-2">
-                        <ShieldCheck className="size-4 text-[#D4AF37] shrink-0" />
-                        <span>
-                          Protected by student-only authenticated access and PBKDF2 encryption.
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-            </Tabs>
+            )}
           </div>
         )}
-      </main>
+
+        {/* TAB 5: NOTIFICATION HISTORY (DEDICATED NOTIFICATION TAB AS REQUESTED) */}
+        {portalTab === "notifications" && (
+          <div className="space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
+                  <BellRing className="size-4.5 text-primary" />
+                  <span>Notification History & Alerts</span>
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Real-time push notifications, class session alerts, announcements, and task updates for {me.index_number}.
+                </p>
+              </div>
+            </div>
+
+            <Card className="border border-border bg-card rounded-2xl shadow-xs overflow-hidden">
+              <CardContent className="p-4 sm:p-6">
+                <PushNotificationManager
+                  userContext={{
+                    userId: me.id,
+                    userRole: "student",
+                    studentIndex: me.index_number,
+                  }}
+                  showCard={false}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* TAB 6: SETTINGS */}
+        {portalTab === "settings" && (
+          <div className="space-y-6">
+            <Card className="border border-border bg-card rounded-2xl shadow-xs">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <User className="size-4 text-primary" /> Profile Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-xs">
+                <div className="flex justify-between py-1 border-b border-border">
+                  <span className="text-muted-foreground">Full Name</span>
+                  <span className="font-bold text-foreground">{me.full_name}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border">
+                  <span className="text-muted-foreground">Index Number</span>
+                  <span className="font-mono font-bold text-foreground">{me.index_number}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border">
+                  <span className="text-muted-foreground">Department</span>
+                  <span className="text-foreground">{me.department || "General Studies"}</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-muted-foreground">Academic Level</span>
+                  <span className="text-foreground">Level {me.level}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-border bg-card rounded-2xl shadow-xs">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <BellRing className="size-4 text-primary" /> Notification Preferences
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Manage push alerts and live session notifications on this device.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-2">
+                <PushNotificationManager
+                  userContext={{
+                    userId: me.id,
+                    userRole: "student",
+                    studentIndex: me.index_number,
+                  }}
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="border border-border bg-card rounded-2xl shadow-xs">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <Lock className="size-4 text-primary" /> Change Passcode
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleChangePassword} className="space-y-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Current Password</Label>
+                    <Input
+                      type="password"
+                      placeholder="••••••••"
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      className="h-9 text-xs"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">New Password</Label>
+                    <Input
+                      type="password"
+                      placeholder="At least 6 characters"
+                      value={newSettingsPassword}
+                      onChange={(e) => setNewSettingsPassword(e.target.value)}
+                      className="h-9 text-xs"
+                      required
+                    />
+                  </div>
+                  <Button type="submit" size="sm" disabled={changingPass} className="h-8 text-xs font-bold cursor-pointer">
+                    {changingPass ? "Updating..." : "Update Password"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card className="border border-destructive/20 bg-destructive/5 rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-destructive">Sign Out of Student Portal</p>
+                <p className="text-[11px] text-muted-foreground">Clear your saved session on this device.</p>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleSignOut}
+                className="h-8 text-xs font-bold cursor-pointer"
+              >
+                <LogOut className="size-3.5 mr-1" />
+                Sign Out
+              </Button>
+            </Card>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

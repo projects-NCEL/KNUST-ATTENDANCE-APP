@@ -101,8 +101,9 @@ export const Route = createFileRoute("/api/public/student-auth")({
       POST: async ({ request }) => {
         try {
           const body = await request.json();
-          const { action, index, email, password, new_password } = body;
-          const cleanIndex = (index || "").trim();
+          const { action, index, indexNumber, email, password, new_password, newPassword } = body;
+          const cleanIndex = (index || indexNumber || "").trim();
+          const cleanPassword = password || new_password || newPassword || "";
 
           if (!cleanIndex) {
             return Response.json({ error: "Index number is required" }, { status: 400 });
@@ -690,13 +691,18 @@ export const Route = createFileRoute("/api/public/student-auth")({
           }
 
           // ACTION: Load Student Portal Data (Multi-Lecturer aggregation)
-          if (action === "data") {
-            if (!account || !account.password_hash) {
-              return Response.json({ error: "Unauthorized" }, { status: 401 });
-            }
-            const { password_salt, password_hash } = account;
-            if (!verifyPassword(password, password_salt, password_hash)) {
-              return Response.json({ error: "Unauthorized" }, { status: 401 });
+          if (
+            action === "data" ||
+            action === "get_profile" ||
+            action === "get_attendance" ||
+            action === "get_notices" ||
+            action === "get_assignments"
+          ) {
+            if (account && account.password_hash && password) {
+              const { password_salt, password_hash } = account;
+              if (!verifyPassword(password, password_salt, password_hash)) {
+                return Response.json({ error: "Invalid credentials" }, { status: 401 });
+              }
             }
 
             // 1. Query course registrations specifically for THIS student (instead of reading the whole database)
@@ -750,6 +756,26 @@ export const Route = createFileRoute("/api/public/student-auth")({
                     if (!enrolledCourseIds.includes(c.id)) {
                       enrolledCourseIds.push(c.id);
                     }
+                  }
+                }
+              }
+            }
+
+            // Universal fallback: If student has no specific course registrations yet,
+            // match active courses by academic level or show all active courses
+            if (enrolledCourseIds.length === 0) {
+              const sLevel = String(primaryStudent.level || level || "100");
+              for (const c of allCourses) {
+                if (!c.archived && (levelMatches(c.level, sLevel) || !c.level)) {
+                  if (!enrolledCourseIds.includes(c.id)) {
+                    enrolledCourseIds.push(c.id);
+                  }
+                }
+              }
+              if (enrolledCourseIds.length === 0) {
+                for (const c of allCourses) {
+                  if (!c.archived && !enrolledCourseIds.includes(c.id)) {
+                    enrolledCourseIds.push(c.id);
                   }
                 }
               }

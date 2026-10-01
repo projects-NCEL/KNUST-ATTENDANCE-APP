@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, User, LogOut } from "lucide-react";
+import { ChevronLeft, User, LogOut, Menu } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect, type ReactNode } from "react";
@@ -18,6 +18,8 @@ export interface QmarkTitleBarProps {
   onSignOut?: () => void;
   extraActions?: ReactNode;
   showBack?: boolean;
+  showMenuButton?: boolean;
+  onToggleSidebar?: () => void;
 }
 
 export function QmarkTitleBar({
@@ -29,6 +31,8 @@ export function QmarkTitleBar({
   onSignOut,
   extraActions,
   showBack = true,
+  showMenuButton = false,
+  onToggleSidebar,
 }: QmarkTitleBarProps) {
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -79,8 +83,20 @@ export function QmarkTitleBar({
   return (
     <header className="sticky top-0 mt-0 pt-0 z-40 w-full bg-white/95 dark:bg-[#0A1F44]/95 backdrop-blur-md rounded-b-[28px] sm:rounded-b-[36px] border-b-2 border-[#D4AF37]/40 shadow-[0_4px_24px_-4px_rgba(10,31,68,0.08),0_1px_2px_rgba(212,175,55,0.12)] transition-all">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2.5 sm:gap-3 min-w-0">
-        {/* Left Side: Circular Back Button & Emblem + App Name + Tag */}
+        {/* Left Side: Menu Toggle, Circular Back Button & Emblem + App Name + Tag */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          {showMenuButton && (
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              aria-label="Toggle navigation menu"
+              className="size-9 sm:size-10 rounded-full bg-[#F0F4F8] hover:bg-[#E2E8F0] dark:bg-slate-800/90 dark:hover:bg-slate-700/90 border border-slate-200/90 dark:border-slate-700/80 flex items-center justify-center text-[#0A1F44] dark:text-slate-100 shadow-2xs transition-all cursor-pointer shrink-0"
+              title="Menu"
+            >
+              <Menu className="size-5 shrink-0" />
+            </button>
+          )}
+
           {showBack && (
             <button
               type="button"
@@ -168,19 +184,6 @@ export function QmarkTitleBar({
           )}
 
           <ThemeToggle className="h-8 w-8" />
-
-          {onSignOut && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onSignOut}
-              aria-label="Sign out"
-              className="text-xs h-8 px-2.5 sm:px-3 font-semibold rounded-full border-border/80 hover:bg-muted cursor-pointer"
-            >
-              <LogOut className="size-3.5 sm:mr-1 text-[#D4AF37]" />
-              <span className="hidden sm:inline">Exit</span>
-            </Button>
-          )}
         </div>
       </div>
     </header>

@@ -39,53 +39,53 @@
 }
 
 :root {
-  --radius: 1rem;
-  /* Qmark Light Theme: Pure White (#FFFFFF), Crisp Slate-White (#F8FAFC), Deep Royal Navy (#0A1F44), Warm Regal Antique Gold (#B8861B) */
+  --radius: 0.85rem;
+  /* Qmark Clean Minimal Theme */
   --background: #f8fafc;
   --foreground: #0a1f44;
-  --card: rgba(255, 255, 255, 0.88);
+  --card: #ffffff;
   --card-foreground: #0a1f44;
   --popover: #ffffff;
   --popover-foreground: #0a1f44;
   --primary: #0a1f44;
   --primary-foreground: #ffffff;
-  --secondary: #fdfaf0;
+  --secondary: #f1f5f9;
   --secondary-foreground: #0a1f44;
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
-  --accent: #fbf5df;
+  --accent: #f8fafc;
   --accent-foreground: #0a1f44;
   --gold: #b8861b;
   --gold-foreground: #ffffff;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --border: rgba(184, 134, 27, 0.28);
-  --input: rgba(184, 134, 27, 0.28);
-  --ring: #b8861b;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #0a1f44;
 }
 
 .dark {
-  /* Qmark Dark Theme: Deep Midnight Navy (#0B1D3A), Dark Navy Glass (#0D234A), Warm Darker Gold (#C29524), Crisp White Text (#FFFFFF) */
-  --background: #0b1d3a;
+  /* Qmark Dark Theme: Deep Minimal Navy */
+  --background: #09172e;
   --foreground: #f8fafc;
-  --card: rgba(13, 35, 74, 0.82);
+  --card: #0d2140;
   --card-foreground: #ffffff;
-  --popover: #0e2347;
+  --popover: #0d2140;
   --popover-foreground: #ffffff;
-  --primary: #c29524;
-  --primary-foreground: #0a1f44;
-  --secondary: #132d56;
+  --primary: #f8fafc;
+  --primary-foreground: #09172e;
+  --secondary: #132a4e;
   --secondary-foreground: #ffffff;
-  --muted: #132d56;
-  --muted-foreground: #cbd5e1;
-  --accent: #173868;
-  --accent-foreground: #c29524;
+  --muted: #132a4e;
+  --muted-foreground: #94a3b8;
+  --accent: #132a4e;
+  --accent-foreground: #ffffff;
   --gold: #c29524;
-  --gold-foreground: #0a1f44;
+  --gold-foreground: #09172e;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: rgba(194, 149, 36, 0.36);
-  --input: rgba(194, 149, 36, 0.36);
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.12);
   --ring: #c29524;
 }
 
@@ -246,18 +246,14 @@
 /* ========================================================================= */
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(184, 134, 27, 0.30);
-  box-shadow: 0 12px 32px -6px rgba(10, 31, 68, 0.07), 0 0 0 1px rgba(184, 134, 27, 0.15);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 .dark .glass-card {
-  background: rgba(13, 35, 74, 0.78);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
-  border: 1px solid rgba(194, 149, 36, 0.35);
-  box-shadow: 0 16px 45px -8px rgba(10, 31, 68, 0.45), 0 0 0 1px rgba(194, 149, 36, 0.20);
+  background: #0d2140;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 .glass-pill {

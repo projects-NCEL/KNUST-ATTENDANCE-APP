@@ -319,19 +319,14 @@ function CoursesPage() {
                 </div>
 
                 <div>
-                  <Label>Semester</Label>
-                  <Select
-                    value={form.semester}
-                    onValueChange={(v) => setForm({ ...form, semester: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="First">First</SelectItem>
-                      <SelectItem value="Second">Second</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>Credit Units / Hours</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={form.credit_hours}
+                    onChange={(e) => setForm({ ...form, credit_hours: Number(e.target.value) })}
+                  />
                 </div>
               </div>
               <div>
@@ -400,10 +395,10 @@ function CoursesPage() {
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground space-y-1">
                 <div>
-                  {c.departments?.name ?? "No department"} · {c.semester} Sem
+                  {c.departments?.name ?? "General Studies"}
                 </div>
                 <div>
-                  {c.academic_years?.name ?? "—"} · {c.credit_hours} credits
+                  {c.credit_hours} credits
                 </div>
                 <div className="text-xs text-foreground font-medium flex items-center gap-1.5 pt-1">
                   <Users className="size-3.5 text-primary" />
@@ -518,19 +513,14 @@ function CoursesPage() {
                 </div>
 
                 <div>
-                  <Label>Semester</Label>
-                  <Select
-                    value={editing.semester}
-                    onValueChange={(v) => setEditing({ ...editing, semester: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="First">First</SelectItem>
-                      <SelectItem value="Second">Second</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>Credit Units / Hours</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={editing.credit_hours}
+                    onChange={(e) => setEditing({ ...editing, credit_hours: Number(e.target.value) })}
+                  />
                 </div>
               </div>
               <div>
