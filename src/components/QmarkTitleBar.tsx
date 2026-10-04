@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ChevronLeft, User, LogOut, Menu } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -71,17 +71,13 @@ export function QmarkTitleBar({
     "P"
   ).toUpperCase();
 
+  const routerState = useRouterState();
+  const isStudentPath = routerState.location.pathname.startsWith("/student");
   // Clicking Qmark logo/emblem returns to active dashboard (lecturer dashboard or student pass)
-  const dashboardTarget =
-    user?.role === "student" ||
-    (typeof window !== "undefined" &&
-      (window.location.pathname.startsWith("/student") ||
-        localStorage.getItem("qroll_active_gateway") === "student"))
-      ? "/student"
-      : "/dashboard";
+  const dashboardTarget = user?.role === "student" || isStudentPath ? "/student" : "/dashboard";
 
   return (
-    <header className="sticky top-0 mt-0 pt-0 z-40 w-full bg-white/95 dark:bg-[#0A1F44]/95 backdrop-blur-md rounded-b-[28px] sm:rounded-b-[36px] border-b-2 border-[#D4AF37]/40 shadow-[0_4px_24px_-4px_rgba(10,31,68,0.08),0_1px_2px_rgba(212,175,55,0.12)] transition-all">
+    <header className="sticky top-0 mt-0 pt-0 z-40 w-full bg-white/80 dark:bg-[#07162b]/80 backdrop-blur-2xl rounded-b-[24px] sm:rounded-b-[28px] border-b border-white/50 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.06)] transition-all">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2.5 sm:gap-3 min-w-0">
         {/* Left Side: Menu Toggle, Circular Back Button & Emblem + App Name + Tag */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -90,7 +86,7 @@ export function QmarkTitleBar({
               type="button"
               onClick={onToggleSidebar}
               aria-label="Toggle navigation menu"
-              className="size-9 sm:size-10 rounded-full bg-[#F0F4F8] hover:bg-[#E2E8F0] dark:bg-slate-800/90 dark:hover:bg-slate-700/90 border border-slate-200/90 dark:border-slate-700/80 flex items-center justify-center text-[#0A1F44] dark:text-slate-100 shadow-2xs transition-all cursor-pointer shrink-0"
+              className="size-9 sm:size-10 rounded-full bg-white/70 hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-700/80 border border-white/60 dark:border-white/10 flex items-center justify-center text-foreground shadow-2xs transition-all cursor-pointer shrink-0 backdrop-blur-md"
               title="Menu"
             >
               <Menu className="size-5 shrink-0" />
@@ -102,7 +98,7 @@ export function QmarkTitleBar({
               type="button"
               onClick={handleBack}
               aria-label="Go back"
-              className="size-9 sm:size-10 rounded-full bg-[#F0F4F8] hover:bg-[#E2E8F0] dark:bg-slate-800/90 dark:hover:bg-slate-700/90 border border-slate-200/90 dark:border-slate-700/80 flex items-center justify-center text-[#0A1F44] dark:text-slate-100 shadow-2xs transition-all cursor-pointer shrink-0"
+              className="size-9 sm:size-10 rounded-full bg-white/70 hover:bg-white dark:bg-slate-800/80 dark:hover:bg-slate-700/80 border border-white/60 dark:border-white/10 flex items-center justify-center text-foreground shadow-2xs transition-all cursor-pointer shrink-0 backdrop-blur-md"
               title="Go back"
             >
               <ChevronLeft className="size-5 shrink-0 stroke-[2.5]" />
@@ -115,37 +111,37 @@ export function QmarkTitleBar({
             className="flex items-center gap-2 sm:gap-2.5 hover:opacity-95 transition group min-w-0 cursor-pointer"
             title="Return to Dashboard"
           >
-            <div className="relative size-9 sm:size-10 rounded-full p-0.5 ring-2 ring-[#D4AF37] bg-white dark:bg-[#0A1F44] flex items-center justify-center shadow-xs shrink-0">
+            <div className="relative size-9 sm:size-10 rounded-full p-0.5 ring-1 ring-border/80 bg-white dark:bg-slate-900 flex items-center justify-center shadow-xs shrink-0">
               <img
                 src="/qmark_icon_standalone.png"
                 alt="Qmark"
                 className="size-full rounded-full object-contain p-0.5"
               />
-              <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-[#10B981] ring-2 ring-white dark:ring-[#0A1F44]" />
+              <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
             </div>
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-base sm:text-lg font-extrabold text-[#0A1F44] dark:text-white tracking-tight">
+              <span className="text-base sm:text-lg font-extrabold text-foreground tracking-tight">
                 Qmark
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-[#FEF08A]/70 dark:bg-[#D4AF37]/25 text-[#854d0e] dark:text-[#D4AF37] border border-[#D4AF37]/40 shadow-2xs shrink-0">
+              <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-muted/80 text-foreground border border-border/70 shadow-2xs shrink-0">
                 {tag}
               </span>
             </div>
           </Link>
         </div>
 
-        {/* Right Side: Extra Actions, User Capsule, Notifications, Theme, Exit */}
+        {/* Right Side: Extra Actions, User Capsule, Notifications, Sign Out, Theme */}
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
           {extraActions}
 
-          {/* Pill Capsule with Circular Gold-Ringed Avatar & First Name (Collapsed by default to show only photo/initial, fully opens on hover or click) */}
+          {/* Pill Capsule with Circular Avatar & First Name */}
           {user && (
             <div
               ref={userPillRef}
               onClick={() => setIsExpanded((prev) => !prev)}
               onMouseEnter={() => setIsExpanded(true)}
               onMouseLeave={() => setIsExpanded(false)}
-              className={`group/userpill cursor-pointer rounded-full border border-[#D4AF37]/50 dark:border-[#D4AF37]/60 bg-white/95 dark:bg-[#0A1F44]/95 p-1 flex items-center transition-all duration-300 ease-out shadow-xs select-none ${
+              className={`group/userpill cursor-pointer rounded-full border border-border/80 bg-white/80 dark:bg-card/80 backdrop-blur-md p-1 flex items-center transition-all duration-300 ease-out shadow-xs select-none ${
                 isExpanded ? "pr-3 sm:pr-4 gap-2" : "hover:pr-3 hover:sm:pr-4 hover:gap-2"
               }`}
               title={displayName || user.role || user.email || "Account Profile"}
@@ -158,7 +154,7 @@ export function QmarkTitleBar({
                 }
               }}
             >
-              <div className="size-7 sm:size-8 rounded-full ring-2 ring-[#D4AF37] overflow-hidden bg-[#0A1F44] text-[#D4AF37] flex items-center justify-center shrink-0 shadow-2xs font-bold text-xs uppercase transition-transform duration-300 group-hover/userpill:scale-105">
+              <div className="size-7 sm:size-8 rounded-full ring-1 ring-border/80 overflow-hidden bg-primary text-primary-foreground flex items-center justify-center shrink-0 shadow-2xs font-bold text-xs uppercase transition-transform duration-300 group-hover/userpill:scale-105">
                 {user.avatarUrl ? (
                   <img
                     src={user.avatarUrl}
@@ -176,11 +172,25 @@ export function QmarkTitleBar({
                     : "max-w-0 opacity-0 group-hover/userpill:max-w-[160px] group-hover/userpill:opacity-100 group-hover/userpill:ml-1"
                 }`}
               >
-                <span className="font-bold text-xs sm:text-sm text-[#0A1F44] dark:text-white whitespace-nowrap truncate max-w-[85px] sm:max-w-[140px]">
+                <span className="font-bold text-xs sm:text-sm text-foreground whitespace-nowrap truncate max-w-[85px] sm:max-w-[140px]">
                   {displayName || user.role || "User"}
                 </span>
               </div>
             </div>
+          )}
+
+          {/* Prominent Sign Out Button with Icon in Title Bar */}
+          {onSignOut && (
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-destructive/10 hover:bg-destructive hover:text-white text-destructive border border-destructive/25 text-xs font-bold transition-all cursor-pointer shadow-xs shrink-0"
+              title="Sign Out of Portal"
+              aria-label="Sign Out"
+            >
+              <LogOut className="size-3.5 stroke-[2.5]" />
+              <span className="hidden xs:inline">Sign Out</span>
+            </button>
           )}
 
           <ThemeToggle className="h-8 w-8" />

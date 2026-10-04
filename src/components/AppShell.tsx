@@ -22,8 +22,8 @@ import { clearUserAppCache } from "@/lib/query-client";
 import { Badge } from "@/components/ui/badge";
 
 /* ========================================================================= */
-/* ULTRA-TRANSPARENT, GLASS-LIKE FLOATING NAVBAR                             */
-/* (Students Directory removed, simple short terms)                          */
+/* ULTRA-TRANSPARENT, WHITE GLASS-LIKE FLOATING NAVBAR                       */
+/* (Home button always stands out, larger, animated, with gold edge linings) */
 /* ========================================================================= */
 function TutorFloatingNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -40,12 +40,14 @@ function TutorFloatingNav() {
   return (
     <nav
       className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[94vw] pointer-events-auto select-none"
-      aria-label="Tutor Navigation"
+      aria-label="Faculty Navigation"
     >
-      {/* Ultra-transparent Frosted Glass Container */}
-      <div className="relative flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-full backdrop-blur-3xl bg-white/45 dark:bg-[#07162b]/55 border border-white/50 dark:border-white/15 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.15),0_1px_2px_rgba(255,255,255,0.4)_inset]">
-        {/* Subtle interior light reflection sheen */}
-        <div className="pointer-events-none absolute inset-x-8 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 dark:via-white/20 to-transparent" />
+      {/* Container with refined Gold Edge Linings */}
+      <div className="relative flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-full backdrop-blur-3xl bg-white/85 dark:bg-[#0A1F44]/90 border-2 border-[#D4AF37]/75 dark:border-[#D4AF37]/65 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18),0_0_24px_rgba(212,175,55,0.22),0_1px_2px_rgba(255,255,255,0.9)_inset]">
+        {/* Top gold edge lining shimmer */}
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent opacity-90" />
+        {/* Bottom gold edge lining highlight */}
+        <div className="pointer-events-none absolute inset-x-12 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
 
         {navItems.map((item) => {
           const isActive =
@@ -56,19 +58,23 @@ function TutorFloatingNav() {
 
           if (item.isCenter) {
             return (
-              <Link key={item.to} to={item.to as string} className="relative group mx-1">
+              <Link key={item.to} to={item.to as string} className="relative group mx-1.5 sm:mx-2 -my-2.5">
                 <motion.div
-                  whileHover={{ scale: 1.09 }}
-                  whileTap={{ scale: 0.93 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                  className={`size-11 sm:size-12 rounded-full flex flex-col items-center justify-center transition-all cursor-pointer relative shadow-sm ${
-                    isActive
-                      ? "bg-[#0A1F44] text-[#E2BD56] dark:bg-[#E2BD56] dark:text-[#0A1F44] ring-2 ring-[#B8861B]/40"
-                      : "bg-muted/70 backdrop-blur-md text-foreground hover:bg-muted"
-                  }`}
+                  whileHover={{ scale: 1.14, y: -4 }}
+                  whileTap={{ scale: 0.94 }}
+                  animate={{
+                    y: [-2, -5, -2],
+                  }}
+                  transition={{
+                    y: { repeat: Infinity, duration: 3, ease: "easeInOut" },
+                    type: "spring",
+                    stiffness: 400,
+                    damping: 25,
+                  }}
+                  className="size-12 sm:size-14 rounded-full flex flex-col items-center justify-center transition-all cursor-pointer relative shadow-[0_10px_28px_rgba(212,175,55,0.45),0_4px_12px_rgba(0,0,0,0.15)] bg-white text-[#0A1F44] dark:bg-[#07162b] dark:text-[#E2BD56] border-2 border-[#D4AF37] ring-4 ring-[#D4AF37]/30 backdrop-blur-2xl"
                 >
-                  <Icon className="size-5" />
-                  <span className="text-[9px] font-bold uppercase leading-none mt-0.5">Home</span>
+                  <Icon className="size-5 sm:size-5.5 stroke-[2.5]" />
+                  <span className="text-[9px] font-extrabold uppercase leading-none mt-0.5 tracking-tight text-[#0A1F44] dark:text-[#E2BD56]">Home</span>
                 </motion.div>
               </Link>
             );
@@ -82,14 +88,14 @@ function TutorFloatingNav() {
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={`relative flex flex-col items-center justify-center px-3 sm:px-4 py-1.5 rounded-full transition-colors cursor-pointer ${
                   isActive
-                    ? "text-[#0A1F44] dark:text-white font-bold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                    ? "text-[#0A1F44] dark:text-[#E2BD56] font-bold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-[#D4AF37]/10"
                 }`}
               >
                 {isActive && (
                   <motion.div
                     layoutId="glass-nav-pill"
-                    className="absolute inset-0 rounded-full bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/10"
+                    className="absolute inset-0 rounded-full bg-[#D4AF37]/15 dark:bg-[#D4AF37]/25 border border-[#D4AF37]/60 shadow-xs"
                     transition={{ type: "spring", stiffness: 350, damping: 30 }}
                   />
                 )}
@@ -132,31 +138,31 @@ function FacultySidebar({ isOpen, onClose, signOut }: FacultySidebarProps) {
   ];
 
   const sidebarContent = (
-    <div className="flex flex-col h-full backdrop-blur-3xl bg-white/50 dark:bg-[#07162b]/60 text-foreground border-r border-white/30 dark:border-white/10 shadow-2xl select-none">
+    <div className="flex flex-col h-full backdrop-blur-3xl bg-white/80 dark:bg-[#07162b]/85 text-foreground border-r border-white/50 dark:border-white/15 shadow-2xl select-none">
       {/* Brand Header */}
       <div className="p-4 sm:p-5 flex items-center justify-between border-b border-border/40">
         <Link to="/dashboard" onClick={onClose} className="flex items-center gap-2.5">
-          <div className="size-9 rounded-xl bg-[#0A1F44] p-1 flex items-center justify-center ring-1 ring-[#B8861B]/40 shadow-xs">
+          <div className="size-9 rounded-xl bg-white/90 dark:bg-white/10 p-1 flex items-center justify-center ring-1 ring-border shadow-xs">
             <img src="/qmark_icon_standalone.png" alt="Qmark" className="size-full object-contain" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
               <span className="font-extrabold text-base tracking-tight text-foreground">
-                Q<span className="text-[#B8861B]">mark</span>
+                Qmark
               </span>
-              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-[#B8861B]/15 text-[#B8861B]">
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                 FACULTY
               </span>
             </div>
-            <p className="text-[10px] text-muted-foreground">Attendance</p>
+            <p className="text-[10px] text-muted-foreground font-medium">Attendance & Records</p>
           </div>
         </Link>
 
-        {/* Close button on mobile */}
+        {/* Close button visible whenever drawer is open */}
         <button
           type="button"
           onClick={onClose}
-          className="size-8 rounded-lg bg-muted/60 text-muted-foreground hover:text-foreground flex items-center justify-center lg:hidden cursor-pointer"
+          className="size-8 rounded-full bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer"
           aria-label="Close Sidebar"
         >
           <X className="size-4" />
@@ -230,39 +236,31 @@ function FacultySidebar({ isOpen, onClose, signOut }: FacultySidebarProps) {
   );
 
   return (
-    <>
-      {/* Desktop Persistent Sidebar */}
-      <aside className="hidden lg:block fixed inset-y-0 left-0 z-30 w-60 h-screen">
-        {sidebarContent}
-      </aside>
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50">
+          {/* Backdrop for all screen sizes */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+          />
 
-      {/* Mobile Drawer Backdrop & Sheet */}
-      <AnimatePresence>
-        {isOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={onClose}
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs"
-            />
-
-            {/* Slide-over Panel */}
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 280 }}
-              className="fixed inset-y-0 left-0 w-68 max-w-[85vw] h-full shadow-2xl z-10"
-            >
-              {sidebarContent}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </>
+          {/* Slide-over Panel that pops out on click */}
+          <motion.div
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 280 }}
+            className="fixed inset-y-0 left-0 w-72 max-w-[85vw] h-full shadow-2xl z-10"
+          >
+            {sidebarContent}
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -324,15 +322,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         />
       )}
 
-      {/* The Transparent Glass Sidebar */}
+      {/* The Transparent Glass Sidebar - pops out only on button click for all screen sizes */}
       <FacultySidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         signOut={signOut}
       />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 lg:pl-60">
+      {/* Main Content Area - Full width on all screen sizes */}
+      <div className="flex-1 flex flex-col min-w-0">
         <QmarkTitleBar
           tag="GH"
           user={
@@ -358,7 +356,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           }}
         />
 
-        <main className="flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 pb-28 sm:pb-32 min-w-0">
+        <main className="flex-1 w-full max-w-5xl lg:max-w-[97vw] xl:max-w-[98vw] 2xl:max-w-[1920px] mx-auto p-4 sm:p-6 lg:p-8 xl:px-10 pb-28 sm:pb-32 min-w-0">
           {children}
         </main>
 

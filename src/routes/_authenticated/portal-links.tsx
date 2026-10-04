@@ -51,7 +51,7 @@ function StudentPortalLinksPage() {
 
   return (
     <AppShell>
-      <div className="max-w-3xl mx-auto space-y-4 pb-12">
+      <div className="max-w-3xl lg:max-w-none mx-auto space-y-4 pb-12 w-full">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">Student Portal & Links</h1>
           <p className="text-sm text-muted-foreground font-medium mt-1">

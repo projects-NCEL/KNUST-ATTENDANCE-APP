@@ -26,7 +26,7 @@ function SettingsPage() {
 
   return (
     <AppShell>
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-2xl lg:max-w-none mx-auto space-y-6 w-full">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Settings</h1>
           <p className="text-xs text-muted-foreground mt-0.5">

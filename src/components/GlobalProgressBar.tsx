@@ -10,11 +10,14 @@ import { useIsFetching, useIsMutating } from "@tanstack/react-query";
  */
 export function GlobalProgressBar() {
   const routerState = useRouterState();
+  const pathname = routerState.location.pathname;
+
   const isNavigating = routerState.status === "pending";
   const isFetching = useIsFetching();
   const isMutating = useIsMutating();
 
-  const isBusy = isNavigating || isFetching > 0 || isMutating > 0;
+  const isScannerPage = pathname.startsWith("/scan");
+  const isBusy = !isScannerPage && (isNavigating || isFetching > 0 || isMutating > 0);
 
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -50,6 +53,11 @@ export function GlobalProgressBar() {
       clearTimeout(finishTimer);
     };
   }, [isBusy, visible]);
+
+  // Never render on scanner page
+  if (isScannerPage) {
+    return null;
+  }
 
   if (!visible) return null;
 

@@ -103,17 +103,26 @@ export function detectBrowserAndOS(): BrowserDetection {
   };
 }
 
+export const DEFAULT_BROWSER_DETECTION: BrowserDetection = {
+  browser: "Browser",
+  os: "Unknown",
+  isIOS: false,
+  isAndroid: false,
+  isMobile: false,
+  isDesktop: true,
+  supportsNativePrompt: false,
+  displayName: "Browser",
+};
+
 export function usePWAInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() => {
-    if (typeof window !== "undefined" && window.__pwaInstallPrompt) {
-      return window.__pwaInstallPrompt;
-    }
-    return null;
-  });
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [browserInfo, setBrowserInfo] = useState<BrowserDetection>(() => detectBrowserAndOS());
+  const [browserInfo, setBrowserInfo] = useState<BrowserDetection>(DEFAULT_BROWSER_DETECTION);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+
     if (typeof window === "undefined") return;
 
     // Detect standalone mode
@@ -186,5 +195,6 @@ export function usePWAInstall() {
     browserInfo,
     triggerNativeInstall,
     deferredPrompt,
+    isMounted,
   };
 }

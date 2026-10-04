@@ -45,9 +45,10 @@ export function StudentFloatingNav({
       className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[96vw] pointer-events-auto select-none"
       aria-label="Student Floating Navigation"
     >
-      <div className="relative flex items-center gap-1.5 sm:gap-3 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full backdrop-blur-2xl bg-white/90 dark:bg-[#0A1F44]/90 border border-slate-200/90 dark:border-white/10 shadow-[0_12px_36px_-6px_rgba(10,31,68,0.18)] dark:shadow-[0_16px_40px_-8px_rgba(0,0,0,0.6)]">
-        {/* Subtle interior sheen */}
-        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#B8861B]/40 to-transparent" />
+      <div className="relative flex items-center gap-1.5 sm:gap-3 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full backdrop-blur-2xl bg-white/90 dark:bg-[#0A1F44]/90 border-2 border-[#D4AF37]/75 dark:border-[#D4AF37]/65 shadow-[0_12px_36px_-6px_rgba(10,31,68,0.18),0_0_24px_rgba(212,175,55,0.22)]">
+        {/* Gold edge lining shimmer */}
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent opacity-90" />
+        <div className="pointer-events-none absolute inset-x-12 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
 
         {/* Left Items: Pass & Check In */}
         {leftItems.map((item) => {

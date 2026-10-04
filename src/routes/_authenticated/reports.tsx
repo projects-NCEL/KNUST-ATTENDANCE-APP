@@ -21,7 +21,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, FileText, FileSpreadsheet, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { exportToExcel, exportToCSV, exportToPDF } from "@/lib/exporters";
-import { calculateAttendanceGrade } from "@/lib/grading";
 import { isStudentInCourse } from "@/lib/class-matching";
 
 export const Route = createFileRoute("/_authenticated/reports")({
@@ -59,7 +58,6 @@ function ReportsPage() {
   const [maxMisses, setMaxMisses] = useState<number>(3);
   const [risk, setRisk] = useState<Risk>("all");
   const [presence, setPresence] = useState<Presence>("all");
-  const [gradeWeight, setGradeWeight] = useState<number>(5);
 
   const { user } = useAuth();
   const currentUid = user?.id || firebaseAuth.currentUser?.uid;
@@ -283,7 +281,6 @@ function ReportsPage() {
         const scans = cells.filter((v) => v === 1).length;
         const missed = cells.length - scans;
         const pct = cells.length ? Math.round((scans / cells.length) * 100) : 0;
-        const gradeInfo = calculateAttendanceGrade(pct);
         return {
           id: s.id,
           full_name: s.full_name,
@@ -293,16 +290,13 @@ function ReportsPage() {
           scans,
           missed,
           pct,
-          score: Math.round((pct / 100) * gradeWeight * 100) / 100,
-          attendanceMarks: gradeInfo.marks,
-          attendanceGradeLabel: gradeInfo.label,
           atRisk: missed > maxMisses,
         };
       })
       .sort((a, b) => a.full_name.localeCompare(b.full_name));
 
     return { rows, days: activeDays };
-  }, [raw, courseId, courses, activeDays, maxMisses, gradeWeight]);
+  }, [raw, courseId, courses, activeDays, maxMisses]);
 
   const visibleRows = useMemo(() => {
     if (!report) return [];
@@ -359,8 +353,6 @@ function ReportsPage() {
       "Total Scans",
       "Total Missed",
       "Attendance %",
-      "Attendance Grade (/10 Marks)",
-      `Score (/${gradeWeight})`,
       "Status",
     ];
 
@@ -369,7 +361,6 @@ function ReportsPage() {
       const scans = cells.filter((v) => v === 1).length;
       const missed = cells.length - scans;
       const pct = cells.length ? Math.round((scans / cells.length) * 100) : 0;
-      const gradeInfo = calculateAttendanceGrade(pct);
       return {
         full_name: s.full_name,
         index_number: s.index_number,
@@ -378,8 +369,6 @@ function ReportsPage() {
         scans,
         missed,
         pct,
-        gradeMarks: gradeInfo.marks,
-        score: Math.round((pct / 100) * gradeWeight * 100) / 100,
         atRisk: missed > maxMisses,
       };
     });
@@ -401,8 +390,6 @@ function ReportsPage() {
       row["Total Scans"] = s.scans;
       row["Total Missed"] = s.missed;
       row["Attendance %"] = `${s.pct}%`;
-      row["Attendance Grade (/10 Marks)"] = `${s.gradeMarks}/10 Marks`;
-      row[`Score (/${gradeWeight})`] = s.score;
       row["Status"] = s.atRisk ? `AT RISK (>${maxMisses} missed)` : "PASSED";
       return row;
     });
@@ -563,20 +550,7 @@ function ReportsPage() {
               onChange={(e) => setMaxMisses(Math.max(0, Number(e.target.value)))}
             />
           </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">
-              Attendance weight (% of final grade)
-            </Label>
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              step={0.5}
-              value={gradeWeight}
-              onChange={(e) => setGradeWeight(Math.max(0, Math.min(100, Number(e.target.value))))}
-            />
-          </div>
-          <div className="sm:col-span-2 lg:col-span-4 pt-2">
+          <div className="sm:col-span-2 lg:col-span-3 pt-2">
             <Label className="text-xs font-semibold text-muted-foreground mb-2 block uppercase tracking-wider">
               Attendance Filter Toggle
             </Label>
@@ -613,8 +587,7 @@ function ReportsPage() {
               Complete Attendance Compilation
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              Download the entire semester attendance matrix across all lectures with attendance %,
-              10-mark grades, and at-risk standing.
+              Download the entire semester attendance matrix across all lectures with attendance % and at-risk standing.
             </p>
           </CardHeader>
           <CardContent className="pt-2 flex flex-wrap items-center gap-2">
@@ -753,8 +726,6 @@ function ReportsPage() {
                     <th className="p-3 text-center">Scans</th>
                     <th className="p-3 text-center">Missed</th>
                     <th className="p-3 text-center">%</th>
-                    <th className="p-3 text-center whitespace-nowrap">Grade (/10)</th>
-                    <th className="p-3 text-center whitespace-nowrap">Score /{gradeWeight}</th>
                     <th className="p-3 text-center">Status</th>
                   </tr>
                 </thead>
@@ -778,12 +749,6 @@ function ReportsPage() {
                       </td>
                       <td className="p-3 text-center font-semibold">{r.pct}%</td>
                       <td className="p-3 text-center">
-                        <Badge variant="outline" className="font-mono text-xs font-semibold">
-                          {r.attendanceMarks}/10
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-center font-semibold text-primary">{r.score}</td>
-                      <td className="p-3 text-center">
                         <span
                           className={`text-xs px-2 py-1 rounded font-medium ${r.atRisk ? "bg-destructive/15 text-destructive" : "bg-success/15 text-success"}`}
                         >
@@ -795,7 +760,7 @@ function ReportsPage() {
                   {!visibleRows.length && (
                     <tr>
                       <td
-                        colSpan={9 + report.days.length}
+                        colSpan={7 + report.days.length}
                         className="p-6 text-center text-muted-foreground"
                       >
                         {allDays.length
@@ -820,8 +785,7 @@ function ReportsPage() {
           <FileSpreadsheet className="size-10 mx-auto mb-2 text-muted-foreground/60" />
           <h3 className="font-semibold text-base mb-1">Select a course to view reports</h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            Choose any course from the selector above to see full semester attendance records,
-            individual session breakdowns, and 10-mark grades.
+            Choose any course from the selector above to see full semester attendance records and individual session breakdowns.
           </p>
         </Card>
       )}

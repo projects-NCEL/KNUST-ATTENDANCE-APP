@@ -17,6 +17,7 @@ import {
   FileText,
   Inbox,
   MessageSquare,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -80,12 +81,14 @@ interface PushNotificationManagerProps {
   userContext: PushUserContext;
   showCard?: boolean;
   onSubscribedChange?: (isSubscribed: boolean) => void;
+  hideHistory?: boolean;
 }
 
 export function PushNotificationManager({
   userContext,
   showCard = true,
   onSubscribedChange,
+  hideHistory = false,
 }: PushNotificationManagerProps) {
   const [status, setStatus] = useState<PushPermissionStatus>("prompt");
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -188,6 +191,39 @@ export function PushNotificationManager({
       );
     } catch {
       // Ignore
+    }
+  };
+
+  const deleteNotification = async (notificationId: string) => {
+    try {
+      setHistory((prev) => prev.filter((item) => item.id !== notificationId));
+      await fetch("/api/push/notifications", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId }),
+      });
+      toast.success("Notification removed");
+    } catch {
+      toast.error("Failed to delete notification");
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    if (!confirm("Are you sure you want to clear all notification records?")) return;
+    try {
+      setHistory([]);
+      await fetch("/api/push/notifications", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clearAll: true,
+          userId: userContext.userId,
+          altId: userContext.studentId || userContext.studentIndex,
+        }),
+      });
+      toast.success("All notification records cleared");
+    } catch {
+      toast.error("Failed to clear notifications");
     }
   };
 
@@ -490,178 +526,205 @@ export function PushNotificationManager({
         </div>
 
         {/* ------------------------------------------------------------------ */}
-        {/* Notification History Feed                                          */}
+        {/* Notification History Feed (Hidden if hideHistory=true)              */}
         {/* ------------------------------------------------------------------ */}
-        <div className="space-y-3 pt-2 border-t">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                <Clock className="size-3.5 text-primary" />
-                Notification History ({history.length})
+        {!hideHistory && (
+          <div className="space-y-3 pt-2 border-t">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <Clock className="size-3.5 text-primary" />
+                  Notification History ({history.length})
+                </div>
+                {history.some((h) => !h.isRead) && (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary font-semibold">
+                    {history.filter((h) => !h.isRead).length} Unread
+                  </Badge>
+                )}
               </div>
-              {history.some((h) => !h.isRead) && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary font-semibold">
-                  {history.filter((h) => !h.isRead).length} Unread
-                </Badge>
-              )}
-            </div>
 
-            <div className="flex items-center gap-2">
-              {history.some((h) => !h.isRead) && (
+              <div className="flex items-center gap-1.5">
+                {history.some((h) => !h.isRead) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={markAllHistoryRead}
+                    className="text-xs h-7 text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    Mark all as read
+                  </Button>
+                )}
+                {history.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllNotifications}
+                    className="text-xs h-7 text-destructive hover:bg-destructive/10 gap-1 cursor-pointer"
+                  >
+                    <Trash2 className="size-3" />
+                    <span>Clear all</span>
+                  </Button>
+                )}
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={markAllHistoryRead}
-                  className="text-xs h-7 text-muted-foreground hover:text-foreground"
+                  onClick={loadHistory}
+                  disabled={historyLoading}
+                  className="text-xs h-7 gap-1 cursor-pointer"
                 >
-                  Mark all as read
+                  <RefreshCw className={`size-3 ${historyLoading ? "animate-spin" : ""}`} />
+                  Refresh
                 </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={loadHistory}
-                disabled={historyLoading}
-                className="text-xs h-7 gap-1"
-              >
-                <RefreshCw className={`size-3 ${historyLoading ? "animate-spin" : ""}`} />
-                Refresh
-              </Button>
+              </div>
             </div>
-          </div>
 
-          {/* Filter Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
-            {[
-              { id: "all", label: "All Alerts" },
-              { id: "ANNOUNCEMENT", label: "Announcements" },
-              { id: "ASSIGNMENT", label: "Assignments" },
-              { id: "ATTENDANCE", label: "Attendance" },
-            ].map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setHistoryFilter(f.id)}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors shrink-0 ${
-                  historyFilter === f.id
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+            {/* Filter Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+              {[
+                { id: "all", label: "All Alerts" },
+                { id: "ANNOUNCEMENT", label: "Announcements" },
+                { id: "ASSIGNMENT", label: "Assignments" },
+                { id: "ATTENDANCE", label: "Attendance" },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setHistoryFilter(f.id)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors shrink-0 cursor-pointer ${
+                    historyFilter === f.id
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
 
-          {/* List of Notification History Records */}
-          <div className="rounded-xl border divide-y overflow-hidden bg-background">
-            {historyLoading && history.length === 0 ? (
-              <div className="p-8 text-center text-xs text-muted-foreground space-y-2">
-                <Loader2 className="size-5 animate-spin mx-auto text-primary" />
-                <p>Loading notification history...</p>
-              </div>
-            ) : history.filter((item) => (historyFilter === "all" ? true : item.type?.toUpperCase() === historyFilter.toUpperCase())).length === 0 ? (
-              <div className="p-8 text-center text-xs text-muted-foreground space-y-2">
-                <Inbox className="size-8 text-muted-foreground/40 mx-auto" />
-                <p className="font-semibold text-foreground text-sm">No notification records yet</p>
-                <p className="max-w-xs mx-auto text-muted-foreground">
-                  When your course lecturers post announcements, assign coursework, or open attendance sessions, they will be logged here and sent directly to your phone.
-                </p>
-              </div>
-            ) : (
-              history
-                .filter((item) => (historyFilter === "all" ? true : item.type?.toUpperCase() === historyFilter.toUpperCase()))
-                .map((n) => {
-                  const isAnnouncement = n.type?.toUpperCase() === "ANNOUNCEMENT";
-                  const isAssignment = n.type?.toUpperCase() === "ASSIGNMENT";
-                  const isAttendance = n.type?.toUpperCase() === "ATTENDANCE";
+            {/* List of Notification History Records */}
+            <div className="rounded-xl border divide-y overflow-hidden bg-background">
+              {historyLoading && history.length === 0 ? (
+                <div className="p-8 text-center text-xs text-muted-foreground space-y-2">
+                  <Loader2 className="size-5 animate-spin mx-auto text-primary" />
+                  <p>Loading notification history...</p>
+                </div>
+              ) : history.filter((item) => (historyFilter === "all" ? true : item.type?.toUpperCase() === historyFilter.toUpperCase())).length === 0 ? (
+                <div className="p-8 text-center text-xs text-muted-foreground space-y-2">
+                  <Inbox className="size-8 text-muted-foreground/40 mx-auto" />
+                  <p className="font-semibold text-foreground text-sm">No notification records</p>
+                  <p className="max-w-xs mx-auto text-muted-foreground">
+                    When your course lecturers post announcements, assign coursework, or open attendance sessions, they will be logged here and sent directly to your phone.
+                  </p>
+                </div>
+              ) : (
+                history
+                  .filter((item) => (historyFilter === "all" ? true : item.type?.toUpperCase() === historyFilter.toUpperCase()))
+                  .map((n) => {
+                    const isAnnouncement = n.type?.toUpperCase() === "ANNOUNCEMENT";
+                    const isAssignment = n.type?.toUpperCase() === "ASSIGNMENT";
+                    const isAttendance = n.type?.toUpperCase() === "ATTENDANCE";
 
-                  return (
-                    <div
-                      key={n.id}
-                      className={`p-3.5 sm:p-4 flex items-start gap-3 transition-colors ${
-                        !n.isRead ? "bg-primary/5 font-medium" : "hover:bg-muted/30"
-                      }`}
-                    >
+                    return (
                       <div
-                        className={`size-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                          isAnnouncement
-                            ? "bg-blue-100 text-blue-700"
-                            : isAssignment
-                            ? "bg-amber-100 text-amber-700"
-                            : isAttendance
-                            ? "bg-[#D4AF37]/15 text-[#AA820A]"
-                            : "bg-muted text-muted-foreground"
+                        key={n.id}
+                        className={`p-3.5 sm:p-4 flex items-start gap-3 transition-colors ${
+                          !n.isRead ? "bg-primary/5 font-medium" : "hover:bg-muted/30"
                         }`}
                       >
-                        {isAnnouncement ? (
-                          <Megaphone className="size-4" />
-                        ) : isAssignment ? (
-                          <FileText className="size-4" />
-                        ) : (
-                          <Bell className="size-4" />
-                        )}
-                      </div>
+                        <div
+                          className={`size-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                            isAnnouncement
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                              : isAssignment
+                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                              : isAttendance
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {isAnnouncement ? (
+                            <Megaphone className="size-4" />
+                          ) : isAssignment ? (
+                            <FileText className="size-4" />
+                          ) : (
+                            <Bell className="size-4" />
+                          )}
+                        </div>
 
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-foreground truncate">
-                              {n.title}
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-foreground truncate">
+                                {n.title}
+                              </span>
+                              {!n.isRead && (
+                                <span className="size-2 rounded-full bg-primary shrink-0" />
+                              )}
+                            </div>
+                            <span className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
+                              <Clock className="size-3" />
+                              {formatNotificationDate(n.createdAt)}
                             </span>
-                            {!n.isRead && (
-                              <span className="size-2 rounded-full bg-primary shrink-0" />
-                            )}
                           </div>
-                          <span className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
-                            <Clock className="size-3" />
-                            {formatNotificationDate(n.createdAt)}
-                          </span>
-                        </div>
 
-                        <p className="text-xs text-muted-foreground leading-relaxed break-words">
-                          {n.body}
-                        </p>
+                          <p className="text-xs text-muted-foreground leading-relaxed break-words">
+                            {n.body}
+                          </p>
 
-                        <div className="pt-1 flex items-center gap-2 flex-wrap">
-                          <Badge variant="outline" className="text-[10px] py-0 px-1.5 uppercase font-semibold">
-                            {n.type || "UPDATE"}
-                          </Badge>
-                          {n.url && typeof n.url === "string" && n.url !== "#" && (
+                          <div className="pt-1 flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-[10px] py-0 px-1.5 uppercase font-semibold">
+                                {n.type || "UPDATE"}
+                              </Badge>
+                              {n.url && typeof n.url === "string" && n.url !== "#" && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!n.isRead) markSingleRead(n.id);
+                                    const safeUrl = String(n.url || "").trim();
+                                    if (!safeUrl) return;
+                                    if (safeUrl.startsWith("http://") || safeUrl.startsWith("https://")) {
+                                      window.open(safeUrl, "_blank", "noopener,noreferrer");
+                                    } else {
+                                      window.location.assign(safeUrl);
+                                    }
+                                  }}
+                                  className="text-[11px] text-primary hover:underline inline-flex items-center gap-1 font-semibold cursor-pointer"
+                                >
+                                  Open Update <ExternalLink className="size-3" />
+                                </button>
+                              )}
+                              {!n.isRead && (
+                                <button
+                                  type="button"
+                                  onClick={() => markSingleRead(n.id)}
+                                  className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+                                >
+                                  Mark as read
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Individual Delete Button */}
                             <button
                               type="button"
-                              onClick={() => {
-                                if (!n.isRead) markSingleRead(n.id);
-                                const safeUrl = String(n.url || "").trim();
-                                if (!safeUrl) return;
-                                if (safeUrl.startsWith("http://") || safeUrl.startsWith("https://")) {
-                                  window.open(safeUrl, "_blank", "noopener,noreferrer");
-                                } else {
-                                  window.location.assign(safeUrl);
-                                }
-                              }}
-                              className="text-[11px] text-primary hover:underline inline-flex items-center gap-1 font-semibold cursor-pointer"
+                              onClick={() => deleteNotification(n.id)}
+                              className="text-[11px] text-muted-foreground hover:text-destructive inline-flex items-center gap-1 cursor-pointer transition-colors p-1"
+                              title="Delete notification"
+                              aria-label="Delete notification"
                             >
-                              Open Update <ExternalLink className="size-3" />
+                              <Trash2 className="size-3.5" />
+                              <span>Delete</span>
                             </button>
-                          )}
-                          {!n.isRead && (
-                            <button
-                              type="button"
-                              onClick={() => markSingleRead(n.id)}
-                              className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
-                            >
-                              Mark as read
-                            </button>
-                          )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })
-            )}
+                    );
+                  })
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

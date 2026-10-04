@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 export const AddToHomeScreenBanner: React.FC = () => {
-  const { isInstalled, browserInfo, triggerNativeInstall, isInstallable } = usePWAInstall();
+  const { isInstalled, browserInfo, triggerNativeInstall, isInstallable, isMounted } = usePWAInstall();
   const [showGuideModal, setShowGuideModal] = useState(false);
 
   const handleInstallClick = async () => {
@@ -142,14 +142,22 @@ export const AddToHomeScreenBanner: React.FC = () => {
                 <span className="text-xs sm:text-sm font-bold text-[#0A1F44] dark:text-white">
                   {isInstalled ? "Qmark App Active" : "Add to Home Screen"}
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#B8861B]/15 text-[#B8861B] dark:text-[#E2BD56] border border-[#B8861B]/30 shrink-0">
-                  {browserInfo.browser} • {browserInfo.os}
+                <span
+                  suppressHydrationWarning
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#B8861B]/15 text-[#B8861B] dark:text-[#E2BD56] border border-[#B8861B]/30 shrink-0"
+                >
+                  {isMounted ? `${browserInfo.browser} • ${browserInfo.os}` : "Web App • Mobile & Desktop"}
                 </span>
               </div>
-              <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 truncate max-w-sm">
+              <p
+                suppressHydrationWarning
+                className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 truncate max-w-sm"
+              >
                 {isInstalled
                   ? "Running in full-screen standalone mode."
-                  : `Launch faster directly from your home screen on ${browserInfo.browser}.`}
+                  : isMounted
+                    ? `Launch faster directly from your home screen on ${browserInfo.browser}.`
+                    : "Launch faster directly from your home screen on your device."}
               </p>
             </div>
           </div>
@@ -168,17 +176,19 @@ export const AddToHomeScreenBanner: React.FC = () => {
                 onClick={handleInstallClick}
                 className="w-full sm:w-auto h-8.5 px-4 rounded-full font-bold text-xs cursor-pointer shadow-xs bg-[#0A1F44] hover:bg-[#0E2858] text-white dark:bg-[#B8861B] dark:hover:bg-[#C99826] dark:text-white border border-[#B8861B]/40 flex items-center justify-center gap-1.5"
               >
-                {browserInfo.isIOS ? (
+                {isMounted && browserInfo.isIOS ? (
                   <Share2 className="size-3.5 text-[#E2BD56] dark:text-white shrink-0" />
                 ) : (
                   <Smartphone className="size-3.5 text-[#E2BD56] dark:text-white shrink-0" />
                 )}
                 <span>
-                  {isInstallable
-                    ? "Install App"
-                    : browserInfo.isIOS
-                      ? "Add to iOS"
-                      : "Add to Screen"}
+                  {isMounted
+                    ? (isInstallable
+                        ? "Install App"
+                        : browserInfo.isIOS
+                          ? "Add to iOS"
+                          : "Add to Screen")
+                    : "Add to Screen"}
                 </span>
               </Button>
             )}

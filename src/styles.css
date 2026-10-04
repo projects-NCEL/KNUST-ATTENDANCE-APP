@@ -246,14 +246,18 @@
 /* ========================================================================= */
 
 .glass-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1.5px solid rgba(212, 175, 55, 0.35);
+  box-shadow: 0 16px 40px -12px rgba(10, 31, 68, 0.1), 0 0 20px -2px rgba(212, 175, 55, 0.15);
 }
 .dark .glass-card {
-  background: #0d2140;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  background: rgba(10, 31, 68, 0.55);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1.5px solid rgba(212, 175, 55, 0.3);
+  box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.5), 0 0 24px -2px rgba(212, 175, 55, 0.2);
 }
 
 .glass-pill {

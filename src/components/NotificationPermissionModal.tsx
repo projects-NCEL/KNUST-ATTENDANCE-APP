@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Check, Bell, BellRing, Sparkles, Clock, QrCode } from "lucide-react";
+import { Check, Bell, BellRing, Clock, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   subscribeDeviceToPush,

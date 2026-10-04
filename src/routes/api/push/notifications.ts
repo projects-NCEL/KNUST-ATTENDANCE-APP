@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   queryCollectionRest,
   setDocRest,
+  deleteDocRest,
 } from "@/integrations/firebase/firestore-rest";
 
 export const Route = createFileRoute("/api/push/notifications")({
@@ -78,6 +79,53 @@ export const Route = createFileRoute("/api/push/notifications")({
           }
 
           return Response.json({ error: "Invalid parameters" }, { status: 400 });
+        } catch (err: any) {
+          return Response.json({ error: err.message }, { status: 500 });
+        }
+      },
+
+      DELETE: async ({ request }) => {
+        try {
+          const body = await request.json();
+          const { notificationId, clearAll, userId, altId } = body;
+
+          if (clearAll && (userId || altId)) {
+            const idsToQuery = Array.from(
+              new Set([userId, altId, "all", "students", "broadcast_student"].filter(Boolean)),
+            );
+            const lists = await Promise.all(
+              idsToQuery.map((targetId) =>
+                queryCollectionRest("in_app_notifications", {
+                  where: [{ field: "userId", op: "EQUAL", value: targetId }],
+                  limit: 100,
+                }).catch(() => []),
+              ),
+            );
+
+            const allItems: any[] = [];
+            const seen = new Set<string>();
+            for (const list of lists) {
+              for (const item of list) {
+                if (item.id && !seen.has(item.id)) {
+                  seen.add(item.id);
+                  allItems.push(item);
+                }
+              }
+            }
+
+            await Promise.all(
+              allItems.map((item) => deleteDocRest("in_app_notifications", item.id)),
+            );
+
+            return Response.json({ success: true, count: allItems.length });
+          }
+
+          if (notificationId) {
+            await deleteDocRest("in_app_notifications", notificationId);
+            return Response.json({ success: true });
+          }
+
+          return Response.json({ error: "Missing notificationId or clearAll" }, { status: 400 });
         } catch (err: any) {
           return Response.json({ error: err.message }, { status: 500 });
         }

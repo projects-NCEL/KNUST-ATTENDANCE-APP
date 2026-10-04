@@ -351,7 +351,7 @@ export function AnnouncementsAndAssignmentsPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6 max-w-6xl">
+      <div className="space-y-6 max-w-6xl lg:max-w-none w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">

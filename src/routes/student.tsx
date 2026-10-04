@@ -39,6 +39,11 @@ import {
   Shield,
   ArrowLeft,
   Check,
+  Trash2,
+  RefreshCw,
+  Inbox,
+  Bell,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { StudentQrPassCard } from "@/components/StudentQrPassCard";
@@ -232,6 +237,64 @@ function StudentPortalPage() {
   const [newSettingsPassword, setNewSettingsPassword] = useState("");
   const [changingPass, setChangingPass] = useState(false);
 
+  // Dedicated Notification Center State
+  const [notificationsList, setNotificationsList] = useState<any[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifFilter, setNotifFilter] = useState<string>("all");
+
+  const loadNotifications = useCallback(async (studentId?: string, studentIdx?: string) => {
+    const sId = studentId || me?.id;
+    const sIdx = studentIdx || me?.index_number;
+    if (!sId && !sIdx) return;
+    setNotifLoading(true);
+    try {
+      const res = await fetch(
+        `/api/push/notifications?userId=${encodeURIComponent(sId || "")}&altId=${encodeURIComponent(sIdx || "")}`,
+      );
+      if (res.ok) {
+        const json = await res.json();
+        setNotificationsList(json.notifications || []);
+      }
+    } catch {
+      // non-blocking
+    } finally {
+      setNotifLoading(false);
+    }
+  }, [me?.id, me?.index_number]);
+
+  const deleteSingleNotification = async (notifId: string) => {
+    setNotificationsList((prev) => prev.filter((n) => n.id !== notifId));
+    try {
+      await fetch("/api/push/notifications", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId: notifId }),
+      });
+      toast.success("Notification removed");
+    } catch {
+      toast.error("Failed to delete notification");
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    if (!confirm("Are you sure you want to clear all notification records?")) return;
+    setNotificationsList([]);
+    try {
+      await fetch("/api/push/notifications", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clearAll: true,
+          userId: me?.id,
+          altId: me?.index_number,
+        }),
+      });
+      toast.success("All notification records cleared");
+    } catch {
+      toast.error("Failed to clear notifications");
+    }
+  };
+
   const loadStudentData = useCallback(async (userIndex: string, userPass?: string) => {
     try {
       const dataRes = await fetch("/api/public/student-auth", {
@@ -242,6 +305,7 @@ function StudentPortalPage() {
       const data = await dataRes.json();
       if (data.student) {
         setMe(data.student);
+        loadNotifications(data.student.id, data.student.index_number);
       }
       if (Array.isArray(data.courses)) setCourses(data.courses);
       if (Array.isArray(data.history)) setHistory(data.history);
@@ -260,7 +324,7 @@ function StudentPortalPage() {
     } catch (err) {
       console.error("Error loading student portal data:", err);
     }
-  }, []);
+  }, [loadNotifications]);
 
   const handleLogin = useCallback(
     async (loginIndex = signInIndex, loginPass = signInPassword) => {
@@ -593,74 +657,73 @@ function StudentPortalPage() {
         </header>
 
         {/* Main Split-Card Container (Matching Attached Screenshots) */}
-        <div className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-10 my-auto">
-          <div className="w-full max-w-5xl rounded-[28px] sm:rounded-[32px] border border-[#D4AF37]/35 shadow-2xl bg-card overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[640px]">
+        <div className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-10 my-auto w-full">
+          <div className="w-full max-w-5xl lg:max-w-[94vw] xl:max-w-[1550px] 2xl:max-w-[1750px] rounded-[28px] sm:rounded-[32px] border border-[#D4AF37]/35 shadow-2xl bg-card overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[640px]">
             {/* ------------------------------------------------------------- */}
             {/* LEFT COLUMN: Deep Navy #0A1F44 with Black Students Hero Image */}
             {/* ------------------------------------------------------------- */}
             <div className="md:col-span-5 bg-[#0A1F44] text-white p-7 sm:p-10 flex flex-col justify-between relative overflow-hidden select-none">
-              {/* Strategic Black Students Campus Hero Image Background */}
+              {/* Strategic Black Students Campus Hero Image Background - Vibrant and clearly visible */}
               <img
                 src="/knust-students-hero.jpg"
                 alt="University Students on Campus"
-                className="absolute inset-0 size-full object-cover object-center filter brightness-[0.36] contrast-[1.08]"
+                className="absolute inset-0 size-full object-cover object-center filter brightness-95 contrast-105"
               />
-              {/* Rich Deep Navy Gradient Overlay for crystal-clear readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0A1F44] via-[#0A1F44]/85 to-[#0A1F44]/65" />
-              <div className="absolute inset-0 bg-[#0A1F44]/40 mix-blend-multiply" />
+              {/* Very transparent subtle gradient overlay so the photo is brightly visible */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/15 backdrop-blur-[0.5px]" />
 
               {/* Top Logo & Status Capsule */}
               <div className="relative z-10 space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="size-11 rounded-xl bg-black/50 border border-[#D4AF37]/50 flex items-center justify-center p-1.5 shadow-sm backdrop-blur-xs">
+                  <div className="size-11 rounded-xl bg-black/40 border border-white/30 flex items-center justify-center p-1.5 shadow-sm backdrop-blur-md">
                     <img src="/qmark_icon_standalone.png" alt="Qmark" className="size-full object-contain" />
                   </div>
                   <div>
-                    <h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-0.5 leading-none">
+                    <h1 className="text-xl font-extrabold tracking-tight text-white flex items-center gap-0.5 leading-none drop-shadow-md">
                       Q<span className="text-[#D4AF37]">mark</span>
                     </h1>
-                    <p className="text-[10px] font-bold tracking-widest text-[#D4AF37] uppercase mt-1">
+                    <p className="text-[10px] font-bold tracking-widest text-white/90 uppercase mt-1 drop-shadow-sm">
                       Student Pass
                     </p>
                   </div>
                 </div>
 
                 <div className="inline-block">
-                  <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-[#D4AF37] bg-[#D4AF37]/20 border border-[#D4AF37]/40 px-3 py-1 rounded-full backdrop-blur-xs">
+                  <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-white bg-black/40 border border-white/30 px-3 py-1 rounded-full backdrop-blur-md shadow-xs">
                     Official Student Pass
                   </span>
                 </div>
               </div>
 
               {/* Bottom Feature Highlights */}
-              <div className="relative z-10 pt-10 md:pt-0 space-y-4">
+              <div className="relative z-10 pt-10 md:pt-0 space-y-4 drop-shadow-md">
                 <div>
                   <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white leading-tight">
                     Your Personal Digital QR Pass
                   </h2>
-                  <p className="text-xs text-white/80 mt-2 leading-relaxed">
+                  <p className="text-xs text-white/95 mt-2 leading-relaxed">
                     Instant classroom check-ins, Apple Wallet-style dynamic QR badges, assignments, and real-time push alerts on your phone.
                   </p>
                 </div>
 
-                <div className="space-y-2.5 pt-2 border-t border-white/15 text-xs">
-                  <div className="flex items-center gap-2.5 text-white/95">
-                    <div className="size-4.5 rounded-full border border-[#D4AF37] flex items-center justify-center shrink-0 bg-[#D4AF37]/20">
-                      <Check className="size-2.5 text-[#D4AF37] stroke-[3]" />
+                <div className="space-y-2.5 pt-2 border-t border-white/25 text-xs">
+                  <div className="flex items-center gap-2.5 text-white">
+                    <div className="size-4.5 rounded-full border border-white/60 flex items-center justify-center shrink-0 bg-black/30">
+                      <Check className="size-2.5 text-white stroke-[3]" />
                     </div>
                     <span>Apple Wallet style digital QR pass</span>
                   </div>
 
-                  <div className="flex items-center gap-2.5 text-white/95">
-                    <div className="size-4.5 rounded-full border border-[#D4AF37] flex items-center justify-center shrink-0 bg-[#D4AF37]/20">
-                      <Check className="size-2.5 text-[#D4AF37] stroke-[3]" />
+                  <div className="flex items-center gap-2.5 text-white">
+                    <div className="size-4.5 rounded-full border border-white/60 flex items-center justify-center shrink-0 bg-black/30">
+                      <Check className="size-2.5 text-white stroke-[3]" />
                     </div>
                     <span>Instant geofenced lecture check-in</span>
                   </div>
 
-                  <div className="flex items-center gap-2.5 text-white/95">
-                    <div className="size-4.5 rounded-full border border-[#D4AF37] flex items-center justify-center shrink-0 bg-[#D4AF37]/20">
-                      <Check className="size-2.5 text-[#D4AF37] stroke-[3]" />
+                  <div className="flex items-center gap-2.5 text-white">
+                    <div className="size-4.5 rounded-full border border-white/60 flex items-center justify-center shrink-0 bg-black/30">
+                      <Check className="size-2.5 text-white stroke-[3]" />
                     </div>
                     <span>Real-time attendance & 75% exam cutoff monitor</span>
                   </div>
@@ -1270,7 +1333,7 @@ function StudentPortalPage() {
         onSignOut={handleSignOut}
       />
 
-      <div className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <div className="flex-1 w-full max-w-4xl lg:max-w-[97vw] xl:max-w-[98vw] 2xl:max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 py-6 space-y-6">
         {/* Active Live Session Alert */}
         {activeSession && (
           <div className="p-3.5 rounded-xl border border-[#B8861B]/40 bg-[#B8861B]/10 flex items-center justify-between gap-3 text-xs">
@@ -1363,6 +1426,11 @@ function StudentPortalPage() {
           >
             <BellRing className="size-4" />
             <span>Notifications</span>
+            {notificationsList.length > 0 && (
+              <span className="size-4 rounded-full bg-primary text-primary-foreground text-[10px] grid place-items-center font-bold">
+                {notificationsList.length}
+              </span>
+            )}
           </button>
 
           <button
@@ -1635,15 +1703,204 @@ function StudentPortalPage() {
                 <h3 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
                   <BellRing className="size-4.5 text-primary" />
                   <span>Notification History & Alerts</span>
+                  {notificationsList.length > 0 && (
+                    <Badge variant="secondary" className="text-xs px-2 py-0.5 bg-primary/10 text-primary font-bold">
+                      {notificationsList.length} total
+                    </Badge>
+                  )}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Real-time push notifications, class session alerts, announcements, and task updates for {me.index_number}.
                 </p>
               </div>
+
+              {/* Action buttons: Clear All and Refresh */}
+              <div className="flex items-center gap-2">
+                {notificationsList.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearAllNotifications}
+                    className="h-8 text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/30 gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span>Clear all</span>
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadNotifications(me.id, me.index_number)}
+                  disabled={notifLoading}
+                  className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className={`size-3.5 ${notifLoading ? "animate-spin" : ""}`} />
+                  <span>Refresh</span>
+                </Button>
+              </div>
             </div>
 
-            <Card className="border border-border bg-card rounded-2xl shadow-xs overflow-hidden">
-              <CardContent className="p-4 sm:p-6">
+            {/* Filter Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+              {[
+                { id: "all", label: `All Alerts (${notificationsList.length})` },
+                {
+                  id: "ANNOUNCEMENT",
+                  label: `Announcements (${notificationsList.filter((n) => n.type?.toUpperCase() === "ANNOUNCEMENT").length})`,
+                },
+                {
+                  id: "ASSIGNMENT",
+                  label: `Assignments (${notificationsList.filter((n) => n.type?.toUpperCase() === "ASSIGNMENT").length})`,
+                },
+                {
+                  id: "ATTENDANCE",
+                  label: `Attendance (${notificationsList.filter((n) => n.type?.toUpperCase() === "ATTENDANCE").length})`,
+                },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setNotifFilter(f.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors shrink-0 cursor-pointer ${
+                    notifFilter === f.id
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Notification Messages List */}
+            <div className="rounded-2xl border border-border bg-card divide-y overflow-hidden shadow-xs">
+              {notifLoading && notificationsList.length === 0 ? (
+                <div className="p-10 text-center text-xs text-muted-foreground space-y-2">
+                  <RefreshCw className="size-6 animate-spin mx-auto text-primary" />
+                  <p className="font-semibold text-sm">Loading notification history...</p>
+                </div>
+              ) : notificationsList.filter((item) =>
+                  notifFilter === "all" ? true : item.type?.toUpperCase() === notifFilter.toUpperCase(),
+                ).length === 0 ? (
+                <div className="p-10 text-center text-xs text-muted-foreground space-y-2">
+                  <Inbox className="size-9 text-muted-foreground/40 mx-auto" />
+                  <p className="font-bold text-foreground text-sm">All caught up!</p>
+                  <p className="max-w-sm mx-auto text-muted-foreground">
+                    No notification messages here right now. When your course lecturers post announcements, assign coursework, or start roll calls, all notifications will arrive here.
+                  </p>
+                </div>
+              ) : (
+                notificationsList
+                  .filter((item) =>
+                    notifFilter === "all" ? true : item.type?.toUpperCase() === notifFilter.toUpperCase(),
+                  )
+                  .map((n) => {
+                    const isAnnouncement = n.type?.toUpperCase() === "ANNOUNCEMENT";
+                    const isAssignment = n.type?.toUpperCase() === "ASSIGNMENT";
+                    const isAttendance = n.type?.toUpperCase() === "ATTENDANCE";
+
+                    return (
+                      <div
+                        key={n.id}
+                        className={`p-4 sm:p-5 flex items-start gap-3.5 transition-colors ${
+                          !n.isRead ? "bg-primary/5 font-medium" : "hover:bg-muted/30"
+                        }`}
+                      >
+                        <div
+                          className={`size-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                            isAnnouncement
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                              : isAssignment
+                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                              : isAttendance
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {isAnnouncement ? (
+                            <Megaphone className="size-4.5" />
+                          ) : isAssignment ? (
+                            <FileText className="size-4.5" />
+                          ) : isAttendance ? (
+                            <CalendarCheck className="size-4.5" />
+                          ) : (
+                            <Bell className="size-4.5" />
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold text-foreground">
+                                {n.title}
+                              </span>
+                              {!n.isRead && (
+                                <span className="size-2 rounded-full bg-primary shrink-0" />
+                              )}
+                            </div>
+                            <span className="text-[11px] text-muted-foreground flex items-center gap-1 shrink-0">
+                              <Clock className="size-3" />
+                              {n.createdAt ? new Date(n.createdAt).toLocaleDateString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }) : "Recently"}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-muted-foreground leading-relaxed break-words">
+                            {n.body}
+                          </p>
+
+                          <div className="pt-2 flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-[10px] py-0 px-1.5 uppercase font-semibold">
+                                {n.type || "UPDATE"}
+                              </Badge>
+                              {n.url && typeof n.url === "string" && n.url !== "#" && (
+                                <a
+                                  href={n.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-primary hover:underline inline-flex items-center gap-1 font-semibold"
+                                >
+                                  <span>View Related Page</span>
+                                  <ExternalLink className="size-3" />
+                                </a>
+                              )}
+                            </div>
+
+                            {/* Individual Delete Button */}
+                            <button
+                              type="button"
+                              onClick={() => deleteSingleNotification(n.id)}
+                              className="text-xs text-muted-foreground hover:text-destructive inline-flex items-center gap-1 cursor-pointer transition-colors p-1 rounded-md hover:bg-destructive/10"
+                              title="Delete notification"
+                              aria-label="Delete notification"
+                            >
+                              <Trash2 className="size-3.5" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
+            </div>
+
+            {/* Notification Device Settings */}
+            <Card className="border border-border bg-card rounded-2xl shadow-xs overflow-hidden mt-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <BellRing className="size-4 text-primary" /> Device Notification Settings
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Configure browser & phone push notifications for class notices and attendance alerts.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-1">
                 <PushNotificationManager
                   userContext={{
                     userId: me.id,
@@ -1651,6 +1908,7 @@ function StudentPortalPage() {
                     studentIndex: me.index_number,
                   }}
                   showCard={false}
+                  hideHistory={true}
                 />
               </CardContent>
             </Card>
@@ -1702,6 +1960,7 @@ function StudentPortalPage() {
                     userRole: "student",
                     studentIndex: me.index_number,
                   }}
+                  hideHistory={true}
                 />
               </CardContent>
             </Card>
