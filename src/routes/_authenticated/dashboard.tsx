@@ -65,10 +65,10 @@ function Dashboard() {
       async (snap) => {
         setTodayCount(snap.size);
 
-        // Fetch student details for the top recent 8
+        // Fetch student details for the top recent 5
         const sortedDocs = snap.docs
           .sort((a, b) => ((b.data() as any).created_at || "").localeCompare((a.data() as any).created_at || ""))
-          .slice(0, 8);
+          .slice(0, 5);
 
         const studentIds = Array.from(new Set(sortedDocs.map((d) => (d.data() as any).student_id).filter(Boolean)));
         const studentMap = new Map<string, { name: string; index: string }>();

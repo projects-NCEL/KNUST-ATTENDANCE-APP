@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { registerPushServiceWorker } from "@/lib/push-client";
 import { GoldMeshBackground } from "@/components/GoldMeshBackground";
 import { GlobalProgressBar } from "@/components/GlobalProgressBar";
+import { SplashScreen } from "@/components/SplashScreen";
 
 function NotFoundComponent() {
   return (
@@ -223,6 +224,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <GlobalProgressBar />
+      <SplashScreen />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>

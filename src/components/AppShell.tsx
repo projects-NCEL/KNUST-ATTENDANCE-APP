@@ -22,8 +22,9 @@ import { clearUserAppCache } from "@/lib/query-client";
 import { Badge } from "@/components/ui/badge";
 
 /* ========================================================================= */
-/* ULTRA-TRANSPARENT, WHITE GLASS-LIKE FLOATING NAVBAR                       */
-/* (Home button always stands out, larger, animated, with gold edge linings) */
+/* ========================================================================= */
+/* BALANCED, MODERN FLOATING NAVBAR                                          */
+/* (Real-world mobile app proportions, delicate subtle hairline gold accent) */
 /* ========================================================================= */
 function TutorFloatingNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -39,15 +40,13 @@ function TutorFloatingNav() {
 
   return (
     <nav
-      className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[94vw] pointer-events-auto select-none"
+      className="fixed bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-40 max-w-[96vw] pointer-events-auto select-none"
       aria-label="Faculty Navigation"
     >
-      {/* Container with refined Gold Edge Linings */}
-      <div className="relative flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-full backdrop-blur-3xl bg-white/85 dark:bg-[#0A1F44]/90 border-2 border-[#D4AF37]/75 dark:border-[#D4AF37]/65 shadow-[0_16px_40px_-8px_rgba(0,0,0,0.18),0_0_24px_rgba(212,175,55,0.22),0_1px_2px_rgba(255,255,255,0.9)_inset]">
-        {/* Top gold edge lining shimmer */}
-        <div className="pointer-events-none absolute inset-x-8 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent opacity-90" />
-        {/* Bottom gold edge lining highlight */}
-        <div className="pointer-events-none absolute inset-x-12 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
+      {/* Sleek, Ergonomic Glass Container with Delicate Subtle Gold Accent */}
+      <div className="relative flex items-center gap-1 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full backdrop-blur-2xl bg-white/92 dark:bg-[#07162c]/92 border border-[#D4AF37]/30 dark:border-[#D4AF37]/25 shadow-[0_10px_30px_-6px_rgba(0,0,0,0.16)] dark:shadow-[0_12px_32px_-6px_rgba(0,0,0,0.5)]">
+        {/* Whisper-thin subtle top gold hairline */}
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37]/40 to-transparent" />
 
         {navItems.map((item) => {
           const isActive =
@@ -58,23 +57,16 @@ function TutorFloatingNav() {
 
           if (item.isCenter) {
             return (
-              <Link key={item.to} to={item.to as string} className="relative group mx-1.5 sm:mx-2 -my-2.5">
+              <Link key={item.to} to={item.to as string} className="relative group mx-1 sm:mx-2 -my-2.5 sm:-my-3.5">
                 <motion.div
-                  whileHover={{ scale: 1.14, y: -4 }}
+                  whileHover={{ scale: 1.08, y: -2 }}
                   whileTap={{ scale: 0.94 }}
-                  animate={{
-                    y: [-2, -5, -2],
-                  }}
-                  transition={{
-                    y: { repeat: Infinity, duration: 3, ease: "easeInOut" },
-                    type: "spring",
-                    stiffness: 400,
-                    damping: 25,
-                  }}
-                  className="size-12 sm:size-14 rounded-full flex flex-col items-center justify-center transition-all cursor-pointer relative shadow-[0_10px_28px_rgba(212,175,55,0.45),0_4px_12px_rgba(0,0,0,0.15)] bg-white text-[#0A1F44] dark:bg-[#07162b] dark:text-[#E2BD56] border-2 border-[#D4AF37] ring-4 ring-[#D4AF37]/30 backdrop-blur-2xl"
+                  className="size-11 sm:size-12 rounded-full flex flex-col items-center justify-center transition-all cursor-pointer relative shadow-[0_4px_16px_rgba(0,0,0,0.18)] bg-[#0A1F44] text-[#E2BD56] dark:bg-[#07162b] dark:text-[#E2BD56] border border-[#D4AF37]/50 ring-2 ring-[#D4AF37]/20"
                 >
-                  <Icon className="size-5 sm:size-5.5 stroke-[2.5]" />
-                  <span className="text-[9px] font-extrabold uppercase leading-none mt-0.5 tracking-tight text-[#0A1F44] dark:text-[#E2BD56]">Home</span>
+                  <Icon className="size-5 sm:size-5.5 stroke-[2.2]" />
+                  <span className="text-[9px] font-black uppercase leading-none mt-0.5 tracking-wider text-[#E2BD56]">
+                    Home
+                  </span>
                 </motion.div>
               </Link>
             );
@@ -83,10 +75,10 @@ function TutorFloatingNav() {
           return (
             <Link key={item.to} to={item.to as string} className="relative group">
               <motion.div
-                whileHover={{ scale: 1.06 }}
-                whileTap={{ scale: 0.94 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                className={`relative flex flex-col items-center justify-center px-3 sm:px-4 py-1.5 rounded-full transition-colors cursor-pointer ${
+                className={`relative flex flex-col items-center justify-center px-2.5 sm:px-3.5 py-1.5 rounded-full transition-colors cursor-pointer min-w-[50px] sm:min-w-[62px] ${
                   isActive
                     ? "text-[#0A1F44] dark:text-[#E2BD56] font-bold"
                     : "text-muted-foreground hover:text-foreground hover:bg-[#D4AF37]/10"
@@ -95,12 +87,12 @@ function TutorFloatingNav() {
                 {isActive && (
                   <motion.div
                     layoutId="glass-nav-pill"
-                    className="absolute inset-0 rounded-full bg-[#D4AF37]/15 dark:bg-[#D4AF37]/25 border border-[#D4AF37]/60 shadow-xs"
+                    className="absolute inset-0 rounded-full bg-[#D4AF37]/15 dark:bg-[#D4AF37]/20 border border-[#D4AF37]/35"
                     transition={{ type: "spring", stiffness: 350, damping: 30 }}
                   />
                 )}
-                <Icon className="size-4.5 sm:size-5 relative z-10" />
-                <span className="text-[10px] leading-tight mt-0.5 tracking-tight relative z-10 hidden xs:inline">
+                <Icon className="size-5 sm:size-5.5 relative z-10 stroke-[2]" />
+                <span className="text-[10px] sm:text-[11px] font-semibold leading-tight mt-0.5 tracking-tight relative z-10">
                   {item.label}
                 </span>
               </motion.div>
@@ -356,7 +348,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           }}
         />
 
-        <main className="flex-1 w-full max-w-5xl lg:max-w-[97vw] xl:max-w-[98vw] 2xl:max-w-[1920px] mx-auto p-4 sm:p-6 lg:p-8 xl:px-10 pb-28 sm:pb-32 min-w-0">
+        <main className="flex-1 w-full max-w-5xl lg:max-w-[97vw] xl:max-w-[98vw] 2xl:max-w-[1920px] mx-auto p-4 sm:p-6 lg:p-8 xl:px-10 pb-24 sm:pb-28 min-w-0">
           {children}
         </main>
 
