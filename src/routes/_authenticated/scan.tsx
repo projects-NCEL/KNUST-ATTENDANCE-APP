@@ -180,19 +180,6 @@ function ScanPage() {
     };
   }, []);
 
-  // Synchronize already recorded set from records query
-  useEffect(() => {
-    if (records) {
-      const set = new Set<string>();
-      records.forEach((r: any) => {
-        if (r.student_id) set.add(String(r.student_id).toUpperCase());
-        if (r.index_number) set.add(String(r.index_number).toUpperCase());
-        if (r.students?.index_number) set.add(String(r.students.index_number).toUpperCase());
-      });
-      scannedRecordsSet.current = set;
-    }
-  }, [records]);
-
   // Open Sessions list
   const { data: openSessions, isLoading: sessionsLoading } = useQuery({
     queryKey: ["open-sessions", currentUid],
@@ -300,6 +287,19 @@ function ScanPage() {
     },
     enabled: !!activeSession && !!currentUid,
   });
+
+  // Synchronize already recorded set from records query
+  useEffect(() => {
+    if (records) {
+      const set = new Set<string>();
+      records.forEach((r: any) => {
+        if (r.student_id) set.add(String(r.student_id).toUpperCase());
+        if (r.index_number) set.add(String(r.index_number).toUpperCase());
+        if (r.students?.index_number) set.add(String(r.students.index_number).toUpperCase());
+      });
+      scannedRecordsSet.current = set;
+    }
+  }, [records]);
 
   // Create Quick Session if none exists
   const handleCreateQuickSession = async (): Promise<string | null> => {
