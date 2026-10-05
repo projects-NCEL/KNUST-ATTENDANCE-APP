@@ -742,17 +742,6 @@ function StudentsPage() {
             <Upload className="size-4 mr-1" />
             Import
           </Button>
-          <input
-            ref={emailFileRef}
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            hidden
-            onChange={onImportEmails}
-          />
-          <Button variant="outline" onClick={() => emailFileRef.current?.click()}>
-            <Mail className="size-4 mr-1" />
-            Import emails
-          </Button>
           <Dialog open={exportOpen} onOpenChange={setExportOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">Export</Button>
@@ -1162,20 +1151,20 @@ function QrButton({ student }: { student: any }) {
   const [dataUrl, setDataUrl] = useState("");
   const show = async () => {
     setOpen(true);
-    let qrValue = student.qr_uuid;
+    let qrValue = student.index_number || student.qr_uuid;
     if (!qrValue || typeof qrValue !== "string" || !qrValue.trim()) {
-      qrValue = student.index_number || student.id || crypto.randomUUID();
-      if (student.id) {
-        updateDoc(doc(firestoreDb, "students", student.id), { qr_uuid: qrValue }).catch((e) =>
-          console.error("Could not persist student qr_uuid", e),
-        );
-      }
+      qrValue = student.id || crypto.randomUUID();
+    }
+    if (student.id && !student.qr_uuid) {
+      updateDoc(doc(firestoreDb, "students", student.id), { qr_uuid: qrValue }).catch((e) =>
+        console.error("Could not persist student qr_uuid", e),
+      );
     }
     try {
       const url = await QRCode.toDataURL(qrValue, {
         width: 320,
         margin: 2,
-        color: { dark: "#D4AF37", light: "#ffffff" },
+        color: { dark: "#0A1F44", light: "#ffffff" },
       });
       setDataUrl(url);
     } catch (err) {

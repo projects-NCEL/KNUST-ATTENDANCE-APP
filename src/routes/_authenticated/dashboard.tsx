@@ -153,7 +153,7 @@ function Dashboard() {
 
   return (
     <AppShell>
-      <div className="w-full max-w-md mx-auto sm:max-w-lg lg:max-w-xl pb-16">
+      <div className="w-full max-w-7xl mx-auto px-1 sm:px-4 lg:px-6 pb-20 space-y-6 sm:space-y-8">
         <style>{`
           :root {
             --ink: #071733;
@@ -201,6 +201,11 @@ function Dashboard() {
             line-height: 1.08;
             color: var(--ink);
           }
+          @media (min-width: 640px) {
+            .dash-hello h1 {
+              font-size: 38px;
+            }
+          }
           .dark .dash-hello h1 {
             color: #FFFFFF;
           }
@@ -235,6 +240,11 @@ function Dashboard() {
             -webkit-mask: linear-gradient(#000, #000) 0 0 / 100% calc(100% - 29px) no-repeat, var(--wave) 0 100% / 360px 30px repeat-x;
                     mask: linear-gradient(#000, #000) 0 0 / 100% calc(100% - 29px) no-repeat, var(--wave) 0 100% / 360px 30px repeat-x;
             animation: dashEdge 9s linear infinite;
+          }
+          @media (min-width: 768px) {
+            .dash-hero {
+              padding: 32px 32px 64px;
+            }
           }
           @keyframes dashEdge {
             to {
@@ -349,11 +359,10 @@ function Dashboard() {
           }
           .dash-hero h2 {
             position: relative;
-            margin: 20px 0 6px;
-            font-size: 38px;
+            margin: 16px 0 6px;
             font-weight: 800;
             letter-spacing: -.04em;
-            line-height: 1;
+            line-height: 1.05;
           }
           .dash-hero h2 em {
             font-style: normal;
@@ -363,7 +372,6 @@ function Dashboard() {
           .dash-hero .meta {
             position: relative;
             margin: 0;
-            font-size: 14px;
             font-weight: 500;
             color: rgba(255,255,255,.68);
           }
@@ -371,7 +379,6 @@ function Dashboard() {
           .dash-go {
             position: relative;
             overflow: hidden;
-            margin-top: 22px;
             width: 100%;
             height: 58px;
             border: 0;
@@ -449,7 +456,7 @@ function Dashboard() {
           .dash-alt {
             position: relative;
             display: block;
-            margin: 14px auto 0;
+            margin: 12px auto 0;
             width: max-content;
             font-size: 13px;
             font-weight: 600;
@@ -495,10 +502,9 @@ function Dashboard() {
             display: flex;
             align-items: center;
             gap: 14px;
-            padding: 14px 16px;
-            margin-bottom: 10px;
+            padding: 16px 18px;
             border-radius: 20px;
-            background: rgba(255,255,255,.82);
+            background: rgba(255,255,255,.85);
             backdrop-filter: blur(10px);
             border: 1px solid var(--line);
             box-shadow: 0 6px 18px rgba(12,38,86,.06);
@@ -599,13 +605,24 @@ function Dashboard() {
         `}</style>
 
         {/* ---------- Greeting ---------- */}
-        <div className="dash-hello dash-in" style={{ "--d": ".08s" } as any}>
-          <div className="d">{formattedDate}</div>
-          <h1>
-            Welcome,
-            <br />
-            <span>{displayName}</span>
-          </h1>
+        <div className="dash-hello dash-in flex flex-col sm:flex-row sm:items-end justify-between gap-4" style={{ "--d": ".08s" } as any}>
+          <div>
+            <div className="d">{formattedDate}</div>
+            <h1>
+              Welcome,
+              <br />
+              <span>{displayName}</span>
+            </h1>
+          </div>
+
+          {/* Quick status & scan count on wide screens */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-white/70 dark:bg-white/10 border border-black/5 dark:border-white/10 backdrop-blur-md shadow-xs">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-semibold text-muted-foreground">Today's Scans:</span>
+              <span className="text-sm font-bold text-foreground font-mono">{todayCount}</span>
+            </div>
+          </div>
         </div>
 
         {/* ---------- Hero with curly, moving bottom edge ---------- */}
@@ -617,137 +634,148 @@ function Dashboard() {
               <i></i>
             </div>
 
-            <div className="dash-row">
-              <span className="dash-eyebrow">
-                <svg viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M12 7v5l3 2" />
-                </svg>
-                {heroWhen}
-              </span>
-              <span className="dash-when">
-                {activeSession?.status === "OPEN" ? "Live Session" : "Today"}
-              </span>
+            <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div className="space-y-2 flex-1 min-w-0">
+                <div className="dash-row justify-start gap-3">
+                  <span className="dash-eyebrow">
+                    <svg viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 7v5l3 2" />
+                    </svg>
+                    {heroWhen}
+                  </span>
+                  <span className="dash-when">
+                    {activeSession?.status === "OPEN" ? "Live Session" : "Today"}
+                  </span>
+                </div>
+
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight">
+                  {heroCode} <em>{heroTitle}</em>
+                </h2>
+                <p className="meta text-sm sm:text-base">{heroTime} &nbsp;·&nbsp; {heroVenue}</p>
+              </div>
+
+              <div className="flex flex-col items-center md:items-end shrink-0 w-full md:w-auto">
+                <Link to={scanLink as string} className="w-full md:w-auto" style={{ textDecoration: "none" }}>
+                  <button className="dash-go md:min-w-[260px] md:px-8" id="go">
+                    <span className="dash-scan-ico">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
+                      </svg>
+                      <b></b>
+                    </span>
+                    Start scanning
+                  </button>
+                </Link>
+
+                <Link to={"/sessions" as string} className="dash-alt">
+                  or create a new session
+                </Link>
+              </div>
             </div>
-
-            <h2>
-              {heroCode} <em>{heroTitle}</em>
-            </h2>
-            <p className="meta">{heroTime} &nbsp;·&nbsp; {heroVenue}</p>
-
-            <Link to={scanLink as string} style={{ textDecoration: "none" }}>
-              <button className="dash-go" id="go">
-                <span className="dash-scan-ico">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
-                  </svg>
-                  <b></b>
-                </span>
-                Start scanning
-              </button>
-            </Link>
-
-            <Link to={"/sessions" as string} className="dash-alt">
-              or create a new session
-            </Link>
           </section>
         </div>
 
         {/* ---------- Later today / Activity Stream ---------- */}
-        <div className="dash-sec dash-in" style={{ "--d": ".32s" } as any}>
-          <h3>{upcomingSessions.length > 0 ? "Later today" : todayScans.length > 0 ? "Today's scans" : "Class Schedule"}</h3>
-          <Link to={"/sessions" as string}>See all</Link>
+        <div className="space-y-3">
+          <div className="dash-sec dash-in" style={{ "--d": ".32s" } as any}>
+            <h3>{upcomingSessions.length > 0 ? "Later today" : todayScans.length > 0 ? "Today's scans" : "Class Schedule"}</h3>
+            <Link to={"/sessions" as string}>See all</Link>
+          </div>
+
+          {/* Responsive multi-column grid that fills the width of any screen */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+            {/* List of upcoming sessions if scheduled */}
+            {upcomingSessions.length > 0 &&
+              upcomingSessions.map((item, idx) => (
+                <Link
+                  to={`/scan?session=${item.id}` as string}
+                  key={item.id}
+                  className="dash-item dash-in"
+                  style={{ "--d": `${0.4 + idx * 0.08}s` } as any}
+                >
+                  <div className="t">
+                    {item.start_time}
+                    <small>{item.duration}</small>
+                  </div>
+                  <div className="bar" />
+                  <div className="n">
+                    <b>{item.course_code}</b>
+                    <span>{item.type} · {item.venue}</span>
+                  </div>
+                  <svg viewBox="0 0 24 24">
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                </Link>
+              ))}
+
+            {/* If no upcoming sessions, display today's recorded attendance scans (max 5) */}
+            {upcomingSessions.length === 0 && todayScans.length > 0 &&
+              todayScans.map((item, idx) => (
+                <Link
+                  to={"/reports" as string}
+                  key={item.id}
+                  className="dash-item dash-in"
+                  style={{ "--d": `${0.4 + idx * 0.08}s` } as any}
+                >
+                  <div className="t">
+                    {item.time}
+                    <small>Present</small>
+                  </div>
+                  <div className="bar" />
+                  <div className="n">
+                    <b>{item.student_name}</b>
+                    <span>{item.index_number} · Verified Scan</span>
+                  </div>
+                  <svg viewBox="0 0 24 24">
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                </Link>
+              ))}
+
+            {/* Sample default schedule items matching prototype if brand-new account */}
+            {upcomingSessions.length === 0 && todayScans.length === 0 && (
+              <>
+                <Link
+                  to={"/sessions" as string}
+                  className="dash-item dash-in"
+                  style={{ "--d": ".42s" } as any}
+                >
+                  <div className="t">
+                    14:00
+                    <small>2 hrs</small>
+                  </div>
+                  <div className="bar" />
+                  <div className="n">
+                    <b>MATH 252</b>
+                    <span>Tutorial · Room 105</span>
+                  </div>
+                  <svg viewBox="0 0 24 24">
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                </Link>
+                <Link
+                  to={"/sessions" as string}
+                  className="dash-item dash-in"
+                  style={{ "--d": ".5s" } as any}
+                >
+                  <div className="t">
+                    16:30
+                    <small>1 hr</small>
+                  </div>
+                  <div className="bar" />
+                  <div className="n">
+                    <b>PE 262</b>
+                    <span>Lecture · Room LT4</span>
+                  </div>
+                  <svg viewBox="0 0 24 24">
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                </Link>
+              </>
+            )}
+          </div>
         </div>
-
-        {/* List of upcoming sessions if scheduled */}
-        {upcomingSessions.length > 0 &&
-          upcomingSessions.map((item, idx) => (
-            <Link
-              to={`/scan?session=${item.id}` as string}
-              key={item.id}
-              className="dash-item dash-in"
-              style={{ "--d": `${0.4 + idx * 0.08}s` } as any}
-            >
-              <div className="t">
-                {item.start_time}
-                <small>{item.duration}</small>
-              </div>
-              <div className="bar" />
-              <div className="n">
-                <b>{item.course_code}</b>
-                <span>{item.type} · {item.venue}</span>
-              </div>
-              <svg viewBox="0 0 24 24">
-                <path d="M9 6l6 6-6 6" />
-              </svg>
-            </Link>
-          ))}
-
-        {/* If no upcoming sessions, display today's recorded attendance scans (max 5) */}
-        {upcomingSessions.length === 0 && todayScans.length > 0 &&
-          todayScans.map((item, idx) => (
-            <Link
-              to={"/reports" as string}
-              key={item.id}
-              className="dash-item dash-in"
-              style={{ "--d": `${0.4 + idx * 0.08}s` } as any}
-            >
-              <div className="t">
-                {item.time}
-                <small>Present</small>
-              </div>
-              <div className="bar" />
-              <div className="n">
-                <b>{item.student_name}</b>
-                <span>{item.index_number} · Verified Scan</span>
-              </div>
-              <svg viewBox="0 0 24 24">
-                <path d="M9 6l6 6-6 6" />
-              </svg>
-            </Link>
-          ))}
-
-        {/* Sample default schedule items matching prototype if brand-new account */}
-        {upcomingSessions.length === 0 && todayScans.length === 0 && (
-          <>
-            <Link
-              to={"/sessions" as string}
-              className="dash-item dash-in"
-              style={{ "--d": ".42s" } as any}
-            >
-              <div className="t">
-                14:00
-                <small>2 hrs</small>
-              </div>
-              <div className="bar" />
-              <div className="n">
-                <b>MATH 252</b>
-                <span>Tutorial · Room 105</span>
-              </div>
-              <svg viewBox="0 0 24 24">
-                <path d="M9 6l6 6-6 6" />
-              </svg>
-            </Link>
-            <Link
-              to={"/sessions" as string}
-              className="dash-item dash-in"
-              style={{ "--d": ".5s" } as any}
-            >
-              <div className="t">
-                16:30
-                <small>1 hr</small>
-              </div>
-              <div className="bar" />
-              <div className="n">
-                <b>PE 262</b>
-                <span>Lecture · Room LT4</span>
-              </div>
-              <svg viewBox="0 0 24 24">
-                <path d="M9 6l6 6-6 6" />
-              </svg>
-            </Link>
-          </>
-        )}
       </div>
     </AppShell>
   );

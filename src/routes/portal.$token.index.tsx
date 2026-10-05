@@ -108,7 +108,7 @@ function PortalPage() {
       const url = await QRCode.toDataURL(row.qr_uuid, {
         width: 360,
         margin: 2,
-        color: { dark: "#D4AF37", light: "#ffffff" },
+        color: { dark: "#0A1F44", light: "#ffffff" },
       });
       setQrDataUrl(url);
     } catch (err: any) {
