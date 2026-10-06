@@ -314,13 +314,15 @@ function ScanPage() {
     queryFn: async () => {
       if (!currentUid) return [];
       const [sessSnap, coursesSnap] = await Promise.all([
+        // Only this lecturer's open sessions and courses (never whole collections)
         getDocs(
           query(
             collection(firestoreDb, "attendance_sessions"),
+            where("owner_id", "==", currentUid),
             where("status", "==", "OPEN"),
           ),
         ),
-        getDocs(collection(firestoreDb, "courses")),
+        getDocs(query(collection(firestoreDb, "courses"), where("owner_id", "==", currentUid))),
       ]);
       const courseMap = new Map(coursesSnap.docs.map((d) => [d.id, d.data() as any]));
       return sessSnap.docs.map((d) => {
@@ -333,6 +335,8 @@ function ScanPage() {
       });
     },
     enabled: !!currentUid,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   // Current session details
@@ -707,8 +711,8 @@ function ScanPage() {
             created_at: new Date().toISOString(),
           };
 
+          // The live listener picks up the new record; no need to re-read sessions and courses
           await addDoc(collection(firestoreDb, "attendance_records"), recordPayload);
-          qc.invalidateQueries({ queryKey: ["open-sessions"] });
         } catch (saveErr) {
           console.error("Async attendance save error:", saveErr);
           scannedRecordsSet.current.delete(cleanUpper);
