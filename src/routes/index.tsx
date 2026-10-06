@@ -161,10 +161,10 @@ function HomePage() {
       </header>
 
       {/* Main Content Area: Simplified, focused layout with 2 Gateways + Install Banner */}
-      <main className="flex-1 flex flex-col justify-center w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-10 sm:py-16 space-y-8 sm:space-y-10">
+      <main className="flex-1 flex flex-col justify-center w-full max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-7 sm:space-y-8">
         {/* Simple Title Section */}
         <div className="text-center space-y-3 max-w-2xl mx-auto">
-          <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-[#0A1F44] dark:text-white leading-[1.1]">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-[#0A1F44] dark:text-white leading-[1.1]">
             Attendance, <span className="bg-gradient-to-r from-[#B8861B] via-[#E2BD56] to-[#B8861B] bg-clip-text text-transparent">Verified Instantly.</span>
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground font-medium leading-relaxed">
@@ -173,7 +173,7 @@ function HomePage() {
         </div>
 
         {/* The 2 Primary Gateways: Clean, Elegant, Glass-Like Containers */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 w-full items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full items-stretch">
           {/* 1. STUDENT GATEWAY */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -181,7 +181,7 @@ function HomePage() {
             transition={{ duration: 0.35, delay: 0.1 }}
             whileHover={{ y: -4 }}
             onClick={() => handleSelectRole("student")}
-            className="group relative rounded-3xl p-6 sm:p-8 backdrop-blur-3xl bg-white/[0.12] dark:bg-[#0A1F44]/25 border-2 border-[#D4AF37]/50 hover:border-[#D4AF37] shadow-[0_20px_50px_-15px_rgba(10,31,68,0.12),inset_0_1px_2px_rgba(255,255,255,0.4)] transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden"
+            className="group relative rounded-2xl p-5 sm:p-6 backdrop-blur-3xl bg-white/[0.12] dark:bg-[#0A1F44]/25 border-2 border-[#D4AF37]/50 hover:border-[#D4AF37] shadow-[0_20px_50px_-15px_rgba(10,31,68,0.12),inset_0_1px_2px_rgba(255,255,255,0.4)] transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden"
           >
             {/* Top gold edge sheen */}
             <div className="pointer-events-none absolute inset-x-8 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent opacity-90" />
@@ -189,16 +189,16 @@ function HomePage() {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="size-14 rounded-2xl backdrop-blur-xl bg-white/40 dark:bg-white/10 border-2 border-[#D4AF37]/60 flex items-center justify-center text-[#0A1F44] dark:text-[#E2BD56] shadow-sm group-hover:scale-105 transition-transform">
-                  <GraduationCap className="size-7" />
+                <div className="size-11 rounded-xl backdrop-blur-xl bg-white/40 dark:bg-white/10 border-2 border-[#D4AF37]/60 flex items-center justify-center text-[#0A1F44] dark:text-[#E2BD56] shadow-sm group-hover:scale-105 transition-transform">
+                  <GraduationCap className="size-5" />
                 </div>
-                <span className="px-3.5 py-1 rounded-full text-xs font-black tracking-widest uppercase backdrop-blur-md bg-[#D4AF37]/20 text-[#0A1F44] dark:text-[#E2BD56] border border-[#D4AF37]/50 shadow-xs">
+                <span className="px-3 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase backdrop-blur-md bg-[#D4AF37]/20 text-[#0A1F44] dark:text-[#E2BD56] border border-[#D4AF37]/50 shadow-xs">
                   STUDENT PORTAL
                 </span>
               </div>
 
-              <div className="space-y-1.5 pt-2">
-                <h2 className="text-2xl sm:text-3xl font-black text-[#0A1F44] dark:text-white group-hover:text-[#B8861B] dark:group-hover:text-[#E2BD56] transition-colors">
+              <div className="space-y-1 pt-1">
+                <h2 className="text-xl sm:text-2xl font-black text-[#0A1F44] dark:text-white group-hover:text-[#B8861B] dark:group-hover:text-[#E2BD56] transition-colors">
                   Student Portal
                 </h2>
                 <p className="text-sm text-muted-foreground leading-relaxed">
@@ -207,12 +207,12 @@ function HomePage() {
               </div>
             </div>
 
-            <div className="mt-8 pt-4 border-t border-[#D4AF37]/30 flex items-center justify-between">
+            <div className="mt-5 pt-3 border-t border-[#D4AF37]/30 flex items-center justify-between">
               <span className="text-sm font-extrabold text-[#0A1F44] dark:text-[#E2BD56]">
                 Enter Student Portal
               </span>
-              <div className="size-10 rounded-full backdrop-blur-md bg-white/50 dark:bg-white/10 border-2 border-[#D4AF37]/70 flex items-center justify-center text-[#0A1F44] dark:text-[#E2BD56] group-hover:translate-x-1.5 group-hover:border-[#D4AF37] transition-all shadow-sm">
-                <ArrowRight className="size-5" />
+              <div className="size-9 rounded-full backdrop-blur-md bg-white/50 dark:bg-white/10 border-2 border-[#D4AF37]/70 flex items-center justify-center text-[#0A1F44] dark:text-[#E2BD56] group-hover:translate-x-1.5 group-hover:border-[#D4AF37] transition-all shadow-sm">
+                <ArrowRight className="size-4" />
               </div>
             </div>
           </motion.div>
@@ -224,7 +224,7 @@ function HomePage() {
             transition={{ duration: 0.35, delay: 0.15 }}
             whileHover={{ y: -4 }}
             onClick={() => handleSelectRole("lecturer")}
-            className="group relative rounded-3xl p-6 sm:p-8 backdrop-blur-3xl bg-white/[0.12] dark:bg-[#0A1F44]/25 border-2 border-[#D4AF37]/50 hover:border-[#D4AF37] shadow-[0_20px_50px_-15px_rgba(10,31,68,0.12),inset_0_1px_2px_rgba(255,255,255,0.4)] transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden"
+            className="group relative rounded-2xl p-5 sm:p-6 backdrop-blur-3xl bg-white/[0.12] dark:bg-[#0A1F44]/25 border-2 border-[#D4AF37]/50 hover:border-[#D4AF37] shadow-[0_20px_50px_-15px_rgba(10,31,68,0.12),inset_0_1px_2px_rgba(255,255,255,0.4)] transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden"
           >
             {/* Top gold edge sheen */}
             <div className="pointer-events-none absolute inset-x-8 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent opacity-90" />
@@ -232,16 +232,16 @@ function HomePage() {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="size-14 rounded-2xl backdrop-blur-xl bg-white/40 dark:bg-white/10 border-2 border-[#D4AF37]/60 flex items-center justify-center text-[#0A1F44] dark:text-[#E2BD56] shadow-sm group-hover:scale-105 transition-transform">
-                  <Building2 className="size-7" />
+                <div className="size-11 rounded-xl backdrop-blur-xl bg-white/40 dark:bg-white/10 border-2 border-[#D4AF37]/60 flex items-center justify-center text-[#0A1F44] dark:text-[#E2BD56] shadow-sm group-hover:scale-105 transition-transform">
+                  <Building2 className="size-5" />
                 </div>
-                <span className="px-3.5 py-1 rounded-full text-xs font-black tracking-widest uppercase backdrop-blur-md bg-[#0A1F44]/15 dark:bg-white/10 text-[#0A1F44] dark:text-slate-200 border border-[#D4AF37]/40 shadow-xs">
+                <span className="px-3 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase backdrop-blur-md bg-[#0A1F44]/15 dark:bg-white/10 text-[#0A1F44] dark:text-slate-200 border border-[#D4AF37]/40 shadow-xs">
                   FACULTY SUITE
                 </span>
               </div>
 
-              <div className="space-y-1.5 pt-2">
-                <h2 className="text-2xl sm:text-3xl font-black text-[#0A1F44] dark:text-white group-hover:text-[#B8861B] dark:group-hover:text-[#E2BD56] transition-colors">
+              <div className="space-y-1 pt-1">
+                <h2 className="text-xl sm:text-2xl font-black text-[#0A1F44] dark:text-white group-hover:text-[#B8861B] dark:group-hover:text-[#E2BD56] transition-colors">
                   Faculty Portal
                 </h2>
                 <p className="text-sm text-muted-foreground leading-relaxed">
@@ -250,12 +250,12 @@ function HomePage() {
               </div>
             </div>
 
-            <div className="mt-8 pt-4 border-t border-[#D4AF37]/30 flex items-center justify-between">
+            <div className="mt-5 pt-3 border-t border-[#D4AF37]/30 flex items-center justify-between">
               <span className="text-sm font-extrabold text-[#0A1F44] dark:text-[#E2BD56]">
                 {hasLecturerSession ? "Go to Dashboard" : "Faculty Sign In"}
               </span>
-              <div className="size-10 rounded-full backdrop-blur-md bg-white/50 dark:bg-white/10 border-2 border-[#D4AF37]/70 flex items-center justify-center text-[#0A1F44] dark:text-[#E2BD56] group-hover:translate-x-1.5 group-hover:border-[#D4AF37] transition-all shadow-sm">
-                <ArrowRight className="size-5" />
+              <div className="size-9 rounded-full backdrop-blur-md bg-white/50 dark:bg-white/10 border-2 border-[#D4AF37]/70 flex items-center justify-center text-[#0A1F44] dark:text-[#E2BD56] group-hover:translate-x-1.5 group-hover:border-[#D4AF37] transition-all shadow-sm">
+                <ArrowRight className="size-4" />
               </div>
             </div>
           </motion.div>
