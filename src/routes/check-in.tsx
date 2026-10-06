@@ -2,15 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { firestoreDb } from "@/integrations/firebase/config";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  addDoc,
-} from "firebase/firestore";
+import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -453,118 +445,12 @@ function CheckInPage() {
         if (apiErr.message && !apiErr.message.includes("fetch") && !apiErr.message.includes("Failed")) {
           throw apiErr;
         }
-        console.warn("API check-in encountered network issue, attempting client-side fallback:", apiErr);
+        console.warn("API check-in encountered network issue:", apiErr);
       }
 
-      // 4. Fallback client-side recording if server is unreachable
-      let studentDoc: any = null;
-      let studentData: any = null;
-
-      try {
-        const studSnap = await getDocs(
-          query(
-            collection(firestoreDb, "students"),
-            where("index_number", "==", cleanIndex),
-          ),
-        );
-
-        if (!studSnap.empty) {
-          studentDoc = studSnap.docs[0];
-          studentData = studentDoc.data();
-        } else {
-          // Fallback: search across all students case-insensitively
-          const allStudentsSnap = await getDocs(collection(firestoreDb, "students"));
-          const matched = allStudentsSnap.docs.find(
-            (d) => (d.data()?.index_number || "").toString().trim().toUpperCase() === cleanIndex,
-          );
-          if (matched) {
-            studentDoc = matched;
-            studentData = matched.data();
-          }
-        }
-      } catch (findErr) {
-        console.warn("Student lookup query exception:", findErr);
-      }
-
-      // If not yet in lecturer's students roster, identify by index number so they are recorded present
-      const studentId = studentDoc ? studentDoc.id : cleanIndex;
-      const studentFullName = studentData?.full_name || `Student (${cleanIndex})`;
-
-      const today = new Date().toISOString().slice(0, 10);
-
-      // Duplicate Check: check if student has already checked in for this session
-      let existingRecord: any = null;
-      try {
-        const recQuery = await getDocs(
-          query(
-            collection(firestoreDb, "attendance_records"),
-            where("session_id", "==", activeSessionId),
-            where("student_id", "==", studentId),
-          ),
-        );
-
-        existingRecord = recQuery.docs[0];
-
-        // Also check by index_number directly in case student_id differs
-        if (!existingRecord) {
-          const indexRecQuery = await getDocs(
-            query(
-              collection(firestoreDb, "attendance_records"),
-              where("session_id", "==", activeSessionId),
-              where("index_number", "==", cleanIndex),
-            ),
-          );
-          existingRecord = indexRecQuery.docs[0];
-        }
-      } catch (dupErr) {
-        console.warn("Duplicate check query note:", dupErr);
-      }
-
-      if (existingRecord) {
-        const exData = existingRecord.data();
-        const formattedTime = exData.check_in_at
-          ? new Date(exData.check_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-          : "today";
-
-        setDone({
-          name: studentFullName,
-          indexNumber: cleanIndex,
-          distance: Math.round(distanceM),
-          alreadyMarked: true,
-          time: formattedTime,
-        });
-        toast.info(`Already marked present for this session (${formattedTime})`);
-        return;
-      }
-
-      // Record new attendance record in Firestore client
-      const now = new Date();
-      await addDoc(collection(firestoreDb, "attendance_records"), {
-        session_id: activeSessionId,
-        student_id: studentId,
-        index_number: cleanIndex,
-        student_name: studentFullName,
-        course_id: sessData.course_id || null,
-        owner_id: sessData.owner_id || null,
-        session_date: today,
-        check_in_at: now.toISOString(),
-        status: "PRESENT",
-        source: "projector_qr",
-        geo_lat: userLat,
-        geo_lng: userLng,
-        geo_accuracy_m: accuracy,
-        distance_m: Math.round(distanceM),
-        geofence_flagged: geofenceFlagged,
-        created_at: now.toISOString(),
-      });
-
-      setDone({
-        name: studentFullName,
-        indexNumber: cleanIndex,
-        distance: Math.round(distanceM),
-        alreadyMarked: false,
-      });
-      toast.success(`✓ Marked Present: ${studentFullName}`);
+      // No client-side fallback: check-ins must go through the server,
+      // which checks that the student belongs to this session's class.
+      throw new Error("Could not reach the attendance server. Check your internet connection and try again.");
     } catch (err: any) {
       console.error("Check-in error:", err);
       toast.error(err.message ?? "Check-in failed. Please try again.");
@@ -960,4 +846,3 @@ function CheckInPage() {
     </div>
   );
 }
-
