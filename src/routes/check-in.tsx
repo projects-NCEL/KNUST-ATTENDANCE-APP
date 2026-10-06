@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { firestoreDb } from "@/integrations/firebase/config";
-import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -139,45 +139,8 @@ function CheckInPage() {
         }
         return;
       }
-    } catch {
-      // Fall through to Firestore
-    }
-
-    try {
-      const sessSnap = await getDocs(collection(firestoreDb, "attendance_sessions"));
-      const openDocs = sessSnap.docs.filter((d) => {
-        const dData = d.data() as any;
-        const status = (dData.status || "").toUpperCase();
-        return status === "OPEN" || status === "ACTIVE" || (dData.is_active === true && status !== "CLOSED");
-      });
-
-      const coursesSnap = await getDocs(collection(firestoreDb, "courses")).catch(() => ({ docs: [] }));
-      const coursesMap = new Map<string, any>();
-      coursesSnap.docs.forEach((cd) => coursesMap.set(cd.id, cd.data()));
-
-      const formatted: SessionInfo[] = openDocs.map((d) => {
-        const dData = d.data() as any;
-        const c = dData.course_id ? coursesMap.get(dData.course_id) : null;
-        return {
-          id: d.id,
-          title: dData.title || c?.title || "Class Attendance",
-          courseCode: c?.code || dData.course_code || "",
-          courseTitle: c?.title || dData.course_title || "",
-          latitude: typeof dData.latitude === "number" ? dData.latitude : null,
-          longitude: typeof dData.longitude === "number" ? dData.longitude : null,
-          radius_m: dData.radius_m || 100,
-          status: "OPEN",
-          is_active: true,
-          owner_id: dData.owner_id,
-          course_id: dData.course_id,
-        };
-      });
-
-      setOpenSessions(formatted);
-      if (formatted.length === 1 && !session) {
-        setActiveSessionId(formatted[0].id);
-      }
     } catch (err) {
+      // Never fall back to reading whole collections from the browser
       console.error("Error fetching open sessions:", err);
     } finally {
       setOpenSessionsLoading(false);
