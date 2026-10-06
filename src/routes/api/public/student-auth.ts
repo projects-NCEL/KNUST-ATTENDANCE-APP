@@ -311,25 +311,40 @@ export const Route = createFileRoute("/api/public/student-auth")({
               });
             }
 
-            let studentDocId = studentDocs[0]?.id;
-            let studentFullName = studentDocs[0]?.full_name || studentDocs[0]?.name;
-
-            if (!studentDocId) {
-              studentDocId = sanitizeDocId(`stud_${upperIndex}`);
-              studentFullName = `Student (${upperIndex})`;
-              // Auto-create student doc so they exist in student list
-              try {
-                await setDocRest("students", studentDocId, {
-                  full_name: studentFullName,
-                  index_number: upperIndex,
-                  level: sessionData.level ? String(sessionData.level) : "100",
-                  owner_id: sessionData.owner_id || null,
-                  created_at: new Date().toISOString(),
-                });
-              } catch (createErr) {
-                console.warn("Auto-create student note:", createErr);
+            // Class rule: only students on this lecturer's class list, at the course's level
+            const sessionOwner = sessionData.owner_id || null;
+            const rosterMatch = studentDocs.find(
+              (s: any) => sessionOwner && s.owner_id === sessionOwner,
+            );
+            if (!rosterMatch) {
+              return Response.json(
+                {
+                  error: `Index number ${upperIndex} is not on this lecturer's class list. Ask your lecturer to add you.`,
+                  not_in_class: true,
+                },
+                { status: 403 },
+              );
+            }
+            if (sessionData.course_id) {
+              const courseData = await getDocRest("courses", sessionData.course_id).catch(() => null);
+              if (
+                courseData?.level &&
+                rosterMatch.level &&
+                !levelMatches(courseData.level, rosterMatch.level)
+              ) {
+                return Response.json(
+                  {
+                    error: `This session is for Level ${normalizeLevel(courseData.level)} students. You are in Level ${normalizeLevel(rosterMatch.level)}.`,
+                    not_in_class: true,
+                  },
+                  { status: 403 },
+                );
               }
             }
+
+            const studentDocId = rosterMatch.id;
+            const studentFullName =
+              rosterMatch.full_name || rosterMatch.name || `Student (${upperIndex})`;
 
             // 3. Duplicate check for this session
             const existingRecords = await queryCollectionRest("attendance_records", {
