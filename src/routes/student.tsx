@@ -44,6 +44,7 @@ import {
   Inbox,
   Bell,
   FileText,
+  Home,
 } from "lucide-react";
 import { toast } from "sonner";
 import { StudentQrPassCard } from "@/components/StudentQrPassCard";
@@ -224,7 +225,7 @@ function StudentPortalPage() {
 
   // Authenticated State
   const [me, setMe] = useState<StudentMe | null>(null);
-  const [portalTab, setPortalTab] = useState<PortalTabType>("qr");
+  const [portalTab, setPortalTab] = useState<PortalTabType>("attendance");
   const [courses, setCourses] = useState<CourseAttendanceRow[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [announcements, setAnnouncements] = useState<NoticeItem[]>([]);
@@ -1343,8 +1344,21 @@ function StudentPortalPage() {
           </div>
         )}
 
-        {/* 5 Straightforward Nav Tabs */}
+        {/* Nav Tabs: Home (attendance dashboard) comes first */}
         <div className="flex items-center gap-1.5 p-1 bg-muted rounded-xl overflow-x-auto text-xs font-semibold select-none border border-border">
+          <button
+            type="button"
+            onClick={() => setPortalTab("attendance")}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all shrink-0 cursor-pointer ${
+              portalTab === "attendance"
+                ? "bg-card text-foreground shadow-xs font-bold border border-border"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Home className="size-4" />
+            <span>Home</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setPortalTab("qr")}
@@ -1356,19 +1370,6 @@ function StudentPortalPage() {
           >
             <QrCode className="size-4" />
             <span>My QR Code</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setPortalTab("attendance")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all shrink-0 cursor-pointer ${
-              portalTab === "attendance"
-                ? "bg-card text-foreground shadow-xs font-bold border border-border"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <CalendarCheck className="size-4" />
-            <span>Attendance</span>
           </button>
 
           <button
