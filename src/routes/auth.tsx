@@ -93,11 +93,11 @@ function AuthPage() {
         </div>
       </header>
 
-      {/* Main Split-Card Container: Covers almost entire screen width on desktop/laptop */}
+      {/* Main Split-Card Container: capped at ~900px so it matches the student sign-in */}
       <div className="flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-10 my-auto w-full">
-        <div className="w-full max-w-4xl lg:max-w-[94vw] xl:max-w-[1550px] 2xl:max-w-[1750px] rounded-[28px] sm:rounded-[32px] border-2 border-[#D4AF37]/40 dark:border-[#D4AF37]/35 shadow-[0_20px_60px_-15px_rgba(10,31,68,0.18),0_0_25px_rgba(212,175,55,0.15)] bg-white dark:bg-[#0A1F44]/95 overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[540px]">
+        <div className="w-full max-w-4xl rounded-[22px] sm:rounded-[28px] border-2 border-[#D4AF37]/40 dark:border-[#D4AF37]/35 shadow-[0_20px_60px_-15px_rgba(10,31,68,0.18),0_0_25px_rgba(212,175,55,0.15)] bg-white dark:bg-[#0A1F44]/95 overflow-hidden grid grid-cols-1 md:grid-cols-12 md:min-h-[460px]">
           {/* LEFT COLUMN: Black Lecturers Hero Image with ultra-transparent glass styling */}
-          <div className="md:col-span-6 lg:col-span-7 relative overflow-hidden flex flex-col justify-between p-7 sm:p-10 lg:p-12 text-white min-h-[300px] md:min-h-full">
+          <div className="md:col-span-6 relative overflow-hidden flex flex-col justify-between p-5 sm:p-7 text-white min-h-[220px] md:min-h-full">
             {/* Real Black Lecturer Hero Image */}
             <img
               src="/black-lecturer-hero.jpg"
@@ -132,8 +132,8 @@ function AuthPage() {
             </div>
 
             {/* Bottom Highlights */}
-            <div className="relative z-10 pt-10 md:pt-0 space-y-3">
-              <h2 className="text-lg sm:text-2xl font-extrabold tracking-tight text-white leading-tight drop-shadow-sm">
+            <div className="relative z-10 pt-6 md:pt-0 space-y-2.5">
+              <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-white leading-tight drop-shadow-sm">
                 Smart Classroom Attendance & Analytics
               </h2>
               <p className="text-xs sm:text-sm text-white/95 leading-relaxed drop-shadow-sm max-w-xl">
@@ -154,13 +154,13 @@ function AuthPage() {
           </div>
 
           {/* RIGHT COLUMN: Single-Click Google Sign In */}
-          <div className="md:col-span-6 lg:col-span-5 p-7 sm:p-10 lg:p-12 flex flex-col justify-between bg-white dark:bg-[#07162b]/95">
-            <div className="my-auto space-y-6">
+          <div className="md:col-span-6 p-5 sm:p-7 flex flex-col justify-between bg-white dark:bg-[#07162b]/95">
+            <div className="my-auto space-y-5">
               <div className="space-y-3 text-center md:text-left">
                 <div className="size-12 rounded-2xl bg-[#0A1F44]/5 dark:bg-white/10 border-2 border-[#D4AF37]/40 shadow-xs flex items-center justify-center mx-auto md:mx-0">
                   <GraduationCap className="size-6 text-[#0A1F44] dark:text-[#E2BD56]" />
                 </div>
-                <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0A1F44] dark:text-white">
+                <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#0A1F44] dark:text-white">
                   Faculty Sign In
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -174,7 +174,7 @@ function AuthPage() {
                   type="button"
                   onClick={handleGoogleSignIn}
                   disabled={googleLoading}
-                  className="w-full h-12 text-sm font-bold bg-white text-[#0A1F44] hover:bg-slate-50 dark:bg-white dark:text-[#0A1F44] dark:hover:bg-slate-100 border-2 border-[#D4AF37]/50 hover:border-[#D4AF37] shadow-md flex items-center justify-center gap-3 cursor-pointer rounded-xl transition-all"
+                  className="w-full h-11 text-sm font-bold bg-white text-[#0A1F44] hover:bg-slate-50 dark:bg-white dark:text-[#0A1F44] dark:hover:bg-slate-100 border-2 border-[#D4AF37]/50 hover:border-[#D4AF37] shadow-md flex items-center justify-center gap-3 cursor-pointer rounded-xl transition-all"
                 >
                   {googleLoading ? (
                     <>
@@ -212,7 +212,7 @@ function AuthPage() {
               </div>
             </div>
 
-            <div className="pt-6 border-t border-slate-200 dark:border-white/10 text-[11px] text-center text-slate-600 dark:text-slate-300">
+            <div className="pt-4 mt-5 border-t border-slate-200 dark:border-white/10 text-[11px] text-center text-slate-600 dark:text-slate-300">
               Are you a student?{" "}
               <Link to="/student" className="font-bold text-[#0A1F44] dark:text-[#E2BD56] hover:underline">
                 Go to Student Pass
