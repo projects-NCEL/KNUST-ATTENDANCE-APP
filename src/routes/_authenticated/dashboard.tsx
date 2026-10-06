@@ -153,9 +153,9 @@ function Dashboard() {
 
   return (
     <AppShell>
-      <div className="w-full max-w-7xl mx-auto px-1 sm:px-4 lg:px-6 pb-20 space-y-6 sm:space-y-8">
+      <div className="w-full max-w-7xl mx-auto px-1 sm:px-4 lg:px-6 pb-20 space-y-6 sm:space-y-8 dash-scope">
         <style>{`
-          :root {
+          .dash-scope {
             --ink: #071733;
             --navy-1: #06142F;
             --navy-2: #0C2656;
@@ -609,9 +609,7 @@ function Dashboard() {
           <div>
             <div className="d">{formattedDate}</div>
             <h1>
-              Welcome,
-              <br />
-              <span>{displayName}</span>
+              Welcome, <span>{displayName}</span>
             </h1>
           </div>
 
