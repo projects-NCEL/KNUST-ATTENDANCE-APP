@@ -49,6 +49,24 @@ function levelMatches(courseLevel: any, studentLevel: any): boolean {
   return false;
 }
 
+// Department names are typed by hand, so compare them loosely:
+// "Department of Computer Science" matches "Computer Science"
+function deptKey(name: any): string {
+  return String(name || "")
+    .toLowerCase()
+    .replace(/^\s*(the\s+)?(department|dept\.?|faculty|school)\s+of\s+/i, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function deptNamesMatch(name: any, wantedKey: string): boolean {
+  const k = deptKey(name);
+  if (!k || !wantedKey) return false;
+  if (k === wantedKey) return true;
+  const shorter = k.length < wantedKey.length ? k : wantedKey;
+  const longer = k.length < wantedKey.length ? wantedKey : k;
+  return shorter.length >= 8 && longer.includes(shorter);
+}
+
 function hashPassword(password: string, salt: string): string {
   return pbkdf2Sync(password, salt, 100000, 64, "sha512").toString("hex");
 }
@@ -155,7 +173,8 @@ export const Route = createFileRoute("/api/public/student-auth")({
 
           // ACTION: Register New Student (Self-Registration)
           if (action === "register_new_student") {
-            const { full_name, level, program, email, password } = body;
+            const { full_name, level, program, department, email, password } = body;
+            const cleanDept = String(department || "").trim();
             const cleanName = (full_name || "").trim();
             const cleanEmail = (email || "").trim().toLowerCase();
             const cleanProg = (program || "General").trim();
@@ -192,23 +211,72 @@ export const Route = createFileRoute("/api/public/student-auth")({
               );
             }
 
-            // Generate UUID for QR
+            // Generate UUID for QR (one QR for the student across all their lecturers)
             const newQrUuid = randomBytes(16).toString("hex");
-            const newStudentDocId = sanitizeDocId(`stud_${upperIndex}`);
+            const nowIso = new Date().toISOString();
 
-            const newStudentData = {
+            // Find the student's class: lecturers who have the student's department set up
+            // and teach an active course at the student's level. The student is added to
+            // each of those lecturers' class lists automatically.
+            const wantedDept = deptKey(cleanDept || cleanProg);
+            const allDeptDocs = wantedDept
+              ? await queryCollectionRest("departments", { limit: 500 }).catch(() => [])
+              : [];
+            const deptIdsByOwner = new Map<string, string[]>();
+            for (const d of allDeptDocs) {
+              if (!d.owner_id || !deptNamesMatch(d.name, wantedDept)) continue;
+              const list = deptIdsByOwner.get(d.owner_id) || [];
+              list.push(d.id);
+              deptIdsByOwner.set(d.owner_id, list);
+            }
+
+            const classPlacements: { ownerId: string; deptId: string }[] = [];
+            for (const [ownerId, deptIds] of deptIdsByOwner) {
+              const ownerCourses = await queryCollectionRest("courses", {
+                where: [{ field: "owner_id", op: "EQUAL", value: ownerId }],
+                limit: 200,
+              }).catch(() => []);
+              const teachesThisClass = ownerCourses.some(
+                (c: any) =>
+                  !c.archived &&
+                  levelMatches(c.level, cleanLvl) &&
+                  (!c.department_id || deptIds.includes(c.department_id)),
+              );
+              if (teachesThisClass) classPlacements.push({ ownerId, deptId: deptIds[0] });
+            }
+
+            const baseStudentData = {
               full_name: cleanName,
               index_number: upperIndex,
               level: cleanLvl,
               program: cleanProg,
+              department_name: cleanDept || null,
               email: cleanEmail,
               qr_uuid: newQrUuid,
-              owner_id: "universal",
-              created_at: new Date().toISOString(),
+              created_at: nowIso,
               self_registered: true,
             };
 
-            await setDocRest("students", newStudentDocId, newStudentData);
+            let newStudentDocId = "";
+            if (classPlacements.length > 0) {
+              for (const placement of classPlacements) {
+                const docId = sanitizeDocId(`stud_${upperIndex}_${placement.ownerId}`);
+                await setDocRest("students", docId, {
+                  ...baseStudentData,
+                  owner_id: placement.ownerId,
+                  department_id: placement.deptId,
+                });
+                if (!newStudentDocId) newStudentDocId = docId;
+              }
+            } else {
+              // No lecturer has this class set up yet: keep the student unassigned.
+              // A lecturer can still add them from the Students page.
+              newStudentDocId = sanitizeDocId(`stud_${upperIndex}`);
+              await setDocRest("students", newStudentDocId, {
+                ...baseStudentData,
+                owner_id: "universal",
+              });
+            }
 
             // Create account with password
             const salt = randomBytes(16).toString("hex");
@@ -229,6 +297,7 @@ export const Route = createFileRoute("/api/public/student-auth")({
             return Response.json({
               ok: true,
               message: "Student registration completed successfully!",
+              assigned_classes: classPlacements.length,
               student: {
                 id: newStudentDocId,
                 full_name: cleanName,
@@ -237,7 +306,7 @@ export const Route = createFileRoute("/api/public/student-auth")({
                 program: cleanProg,
                 email: cleanEmail,
                 qr_uuid: newQrUuid,
-                lecturers_count: 1,
+                lecturers_count: Math.max(1, classPlacements.length),
               },
             });
           }
@@ -745,56 +814,53 @@ export const Route = createFileRoute("/api/public/student-auth")({
               });
             }
 
-            const enrolledCourseIds = Array.from(
-              new Set(myRegistrations.map((r: any) => r.course_id).filter(Boolean)),
+            // Class rule: a student only sees courses, announcements and assignments from
+            // lecturers who have them on their class list, for the student's level.
+            const myLecturerIds = new Set<string>(
+              matchingStudents
+                .map((s: any) => s.owner_id)
+                .filter((id: any) => id && id !== "universal"),
             );
+            const studentLevelFor = (lecturerId: string): string =>
+              String(
+                matchingStudents.find((s: any) => s.owner_id === lecturerId)?.level || level || "100",
+              );
 
-            // 2. Fetch courses (bounded, cached in-memory)
+            // 2. Fetch courses: a general batch (for history labels) plus each of the student's lecturers' courses
             const allCourses = await queryCollectionRest("courses", { limit: 100 });
             const coursesMap = new Map<string, any>();
             allCourses.forEach((c) => coursesMap.set(c.id, c));
+            for (const lecturerId of myLecturerIds) {
+              const ownCourses = await queryCollectionRest("courses", {
+                where: [{ field: "owner_id", op: "EQUAL", value: lecturerId }],
+                limit: 200,
+              }).catch(() => []);
+              ownCourses.forEach((c: any) => coursesMap.set(c.id, c));
+            }
+
+            const inMyClass = (c: any): boolean => {
+              if (!c || c.archived || !c.level) return false;
+              if (!c.owner_id || !myLecturerIds.has(c.owner_id)) return false;
+              return levelMatches(c.level, studentLevelFor(c.owner_id));
+            };
+
+            const enrolledCourseIds: string[] = [];
+            for (const c of coursesMap.values()) {
+              if (inMyClass(c) && !enrolledCourseIds.includes(c.id)) {
+                enrolledCourseIds.push(c.id);
+              }
+            }
+            // Explicit course registrations still count, but only for the student's own class
+            for (const r of myRegistrations) {
+              if (r.course_id && inMyClass(coursesMap.get(r.course_id)) && !enrolledCourseIds.includes(r.course_id)) {
+                enrolledCourseIds.push(r.course_id);
+              }
+            }
 
             // Fetch departments for department name resolution
             const allDepts = await queryCollectionRest("departments", { limit: 50 }).catch(() => []);
             const deptsMap = new Map<string, any>();
             allDepts.forEach((d: any) => deptsMap.set(d.id, d));
-
-            // Include courses created by the student's lecturer(s) that match the student's level
-            // e.g. PETROLEUM ENGINEERING THERMODYNAMICS II (L200) -> visible to all Level 200 students under that lecturer
-            for (const s of matchingStudents) {
-              const lecturerId = s.owner_id;
-              if (!lecturerId) continue;
-              const sLevel = s.level || level || "100";
-              for (const c of allCourses) {
-                if (c.owner_id === lecturerId && !c.archived) {
-                  if (levelMatches(c.level, sLevel)) {
-                    if (!enrolledCourseIds.includes(c.id)) {
-                      enrolledCourseIds.push(c.id);
-                    }
-                  }
-                }
-              }
-            }
-
-            // Universal fallback: If student has no specific course registrations yet,
-            // match active courses by academic level or show all active courses
-            if (enrolledCourseIds.length === 0) {
-              const sLevel = String(primaryStudent.level || level || "100");
-              for (const c of allCourses) {
-                if (!c.archived && (levelMatches(c.level, sLevel) || !c.level)) {
-                  if (!enrolledCourseIds.includes(c.id)) {
-                    enrolledCourseIds.push(c.id);
-                  }
-                }
-              }
-              if (enrolledCourseIds.length === 0) {
-                for (const c of allCourses) {
-                  if (!c.archived && !enrolledCourseIds.includes(c.id)) {
-                    enrolledCourseIds.push(c.id);
-                  }
-                }
-              }
-            }
 
             // 3. Fetch attendance records specifically for THIS student
             let myRecords: any[] = [];
@@ -827,7 +893,11 @@ export const Route = createFileRoute("/api/public/student-auth")({
             // Include courses from attendance sessions as well
             for (const r of myRecords) {
               const sess = sessionMap.get(r.session_id);
-              if (sess?.course_id && !enrolledCourseIds.includes(sess.course_id)) {
+              if (
+                sess?.course_id &&
+                !enrolledCourseIds.includes(sess.course_id) &&
+                inMyClass(coursesMap.get(sess.course_id))
+              ) {
                 enrolledCourseIds.push(sess.course_id);
               }
             }
@@ -966,12 +1036,12 @@ export const Route = createFileRoute("/api/public/student-auth")({
             const allNotices = await queryCollectionRest("announcements", { limit: 50 }).catch(() => []);
             const notices = allNotices
               .filter((n: any) => {
-                if (n.course_id && enrolledCourseIds.includes(n.course_id)) return true;
-                if (!n.course_id) {
-                  if (!n.levels || n.levels.length === 0) return true;
-                  if (n.levels.includes(String(level))) return true;
-                }
-                return false;
+                // Course announcements: only for the student's own class courses
+                if (n.course_id) return enrolledCourseIds.includes(n.course_id);
+                // General announcements: only from the student's own lecturers, for their level
+                if (!n.owner_id || !myLecturerIds.has(n.owner_id)) return false;
+                if (!n.levels || n.levels.length === 0) return true;
+                return n.levels.some((l: any) => levelMatches(l, studentLevelFor(n.owner_id)));
               })
               .map((n: any) => {
                 const crs = n.course_id ? coursesMap.get(n.course_id) : null;
@@ -1004,12 +1074,12 @@ export const Route = createFileRoute("/api/public/student-auth")({
             const allAssignments = await queryCollectionRest("assignments", { limit: 50 }).catch(() => []);
             const assignments = allAssignments
               .filter((a: any) => {
-                if (a.course_id && enrolledCourseIds.includes(a.course_id)) return true;
-                if (!a.course_id) {
-                  if (!a.levels || a.levels.length === 0) return true;
-                  if (a.levels.includes(String(level))) return true;
-                }
-                return false;
+                // Course assignments: only for the student's own class courses
+                if (a.course_id) return enrolledCourseIds.includes(a.course_id);
+                // General tasks: only from the student's own lecturers, for their level
+                if (!a.owner_id || !myLecturerIds.has(a.owner_id)) return false;
+                if (!a.levels || a.levels.length === 0) return true;
+                return a.levels.some((l: any) => levelMatches(l, studentLevelFor(a.owner_id)));
               })
               .map((a: any) => {
                 const crs = a.course_id ? coursesMap.get(a.course_id) : null;
