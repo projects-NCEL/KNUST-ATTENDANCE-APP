@@ -49,6 +49,26 @@ function levelMatches(courseLevel: any, studentLevel: any): boolean {
   return false;
 }
 
+// Read a small set of documents by id (1 read each), skipping missing ones
+async function getDocsByIds(collectionName: string, ids: string[]): Promise<Map<string, any>> {
+  const out = new Map<string, any>();
+  const unique = Array.from(new Set(ids.filter(Boolean)));
+  const docs = await Promise.all(
+    unique.map((id) => getDocRest(collectionName, id).catch(() => null)),
+  );
+  docs.forEach((d: any, i: number) => {
+    if (d) out.set(unique[i], { ...d, id: unique[i] });
+  });
+  return out;
+}
+
+// Open sessions only (indexed equality query, never a scan of the whole collection)
+async function getOpenSessions(ownerId?: string): Promise<any[]> {
+  const where: any[] = [{ field: "status", op: "EQUAL", value: "OPEN" }];
+  if (ownerId) where.push({ field: "owner_id", op: "EQUAL", value: ownerId });
+  return queryCollectionRest("attendance_sessions", { where, limit: 20 }).catch(() => []);
+}
+
 // Department names are typed by hand, so compare them loosely:
 // "Department of Computer Science" matches "Computer Science"
 function deptKey(name: any): string {
@@ -313,15 +333,11 @@ export const Route = createFileRoute("/api/public/student-auth")({
 
           // ACTION: Fetch currently open lecturer sessions for student check-in
           if (action === "get_active_sessions") {
-            const allSessions = await queryCollectionRest("attendance_sessions", { limit: 50 });
-            const openSessions = allSessions.filter((s: any) => {
-              const status = (s.status || "").toUpperCase();
-              return status === "OPEN" || status === "ACTIVE" || (s.is_active === true && status !== "CLOSED");
-            });
-
-            const courses = await queryCollectionRest("courses", { limit: 100 }).catch(() => []);
-            const courseMap = new Map<string, any>();
-            courses.forEach((c) => courseMap.set(c.id, c));
+            const openSessions = await getOpenSessions();
+            const courseMap = await getDocsByIds(
+              "courses",
+              openSessions.map((s: any) => s.course_id),
+            );
 
             const enriched = openSessions.map((s: any) => {
               const c = s.course_id ? courseMap.get(s.course_id) : null;
@@ -826,17 +842,17 @@ export const Route = createFileRoute("/api/public/student-auth")({
                 matchingStudents.find((s: any) => s.owner_id === lecturerId)?.level || level || "100",
               );
 
-            // 2. Fetch courses: a general batch (for history labels) plus each of the student's lecturers' courses
-            const allCourses = await queryCollectionRest("courses", { limit: 100 });
+            // 2. Fetch only the courses of the student's own lecturers
             const coursesMap = new Map<string, any>();
-            allCourses.forEach((c) => coursesMap.set(c.id, c));
-            for (const lecturerId of myLecturerIds) {
-              const ownCourses = await queryCollectionRest("courses", {
-                where: [{ field: "owner_id", op: "EQUAL", value: lecturerId }],
-                limit: 200,
-              }).catch(() => []);
-              ownCourses.forEach((c: any) => coursesMap.set(c.id, c));
-            }
+            const lecturerCourseLists = await Promise.all(
+              Array.from(myLecturerIds).map((lecturerId) =>
+                queryCollectionRest("courses", {
+                  where: [{ field: "owner_id", op: "EQUAL", value: lecturerId }],
+                  limit: 100,
+                }).catch(() => []),
+              ),
+            );
+            lecturerCourseLists.flat().forEach((c: any) => coursesMap.set(c.id, c));
 
             const inMyClass = (c: any): boolean => {
               if (!c || c.archived || !c.level) return false;
@@ -857,10 +873,11 @@ export const Route = createFileRoute("/api/public/student-auth")({
               }
             }
 
-            // Fetch departments for department name resolution
-            const allDepts = await queryCollectionRest("departments", { limit: 50 }).catch(() => []);
-            const deptsMap = new Map<string, any>();
-            allDepts.forEach((d: any) => deptsMap.set(d.id, d));
+            // Departments: only the few used by this student's courses
+            const deptsMap = await getDocsByIds(
+              "departments",
+              enrolledCourseIds.map((cId) => coursesMap.get(cId)?.department_id),
+            );
 
             // 3. Fetch attendance records specifically for THIS student
             let myRecords: any[] = [];
@@ -876,17 +893,21 @@ export const Route = createFileRoute("/api/public/student-auth")({
                 });
               }
             } catch {
-              const partialRecords = await queryCollectionRest("attendance_records", { limit: 200 }).catch(() => []);
-              myRecords = partialRecords.filter((r: any) => {
-                if (allStudentIds.includes(r.student_id)) return true;
-                if (r.index_number && r.index_number.toUpperCase() === cleanIndex.toUpperCase()) return true;
-                return false;
-              });
+              // Never fall back to reading other students' records
+              myRecords = [];
             }
 
             // Collect only session IDs relevant to this student's attendance to avoid reading thousands of global sessions
             const neededSessionIds = Array.from(new Set(myRecords.map((r: any) => r.session_id).filter(Boolean)));
-            const allSessions = await queryCollectionRest("attendance_sessions", { limit: 100 });
+            const sessionsByCourse = await Promise.all(
+              enrolledCourseIds.map((cId) =>
+                queryCollectionRest("attendance_sessions", {
+                  where: [{ field: "course_id", op: "EQUAL", value: cId }],
+                  limit: 100,
+                }).catch(() => []),
+              ),
+            );
+            const allSessions: any[] = sessionsByCourse.flat();
             const sessionMap = new Map<string, any>();
             allSessions.forEach((s) => sessionMap.set(s.id, s));
 
@@ -903,9 +924,7 @@ export const Route = createFileRoute("/api/public/student-auth")({
             }
 
             // 4. Fetch users (lecturers) to associate course lecturer names
-            const allUsers = await queryCollectionRest("users", { limit: 50 }).catch(() => []);
-            const usersMap = new Map<string, any>();
-            allUsers.forEach((u: any) => usersMap.set(u.id, u));
+            const usersMap = await getDocsByIds("users", Array.from(myLecturerIds));
 
             // 5. Enrich course attendance rows with Lecturer Name, Level, Department & Metrics
             const enrichedCourses = enrolledCourseIds.map((cId) => {
@@ -1033,7 +1052,17 @@ export const Route = createFileRoute("/api/public/student-auth")({
               );
 
             // Fetch announcements across all lecturers (bounded to recent 50)
-            const allNotices = await queryCollectionRest("announcements", { limit: 50 }).catch(() => []);
+            const lecturerList = Array.from(myLecturerIds);
+            const allNotices = (
+              await Promise.all(
+                lecturerList.map((lecturerId) =>
+                  queryCollectionRest("announcements", {
+                    where: [{ field: "owner_id", op: "EQUAL", value: lecturerId }],
+                    limit: 30,
+                  }).catch(() => []),
+                ),
+              )
+            ).flat();
             const notices = allNotices
               .filter((n: any) => {
                 // Course announcements: only for the student's own class courses
@@ -1071,7 +1100,37 @@ export const Route = createFileRoute("/api/public/student-auth")({
               );
 
             // Fetch assignments across all lecturers for enrolled courses (bounded to recent 50)
-            const allAssignments = await queryCollectionRest("assignments", { limit: 50 }).catch(() => []);
+            const allAssignments = (
+              await Promise.all(
+                lecturerList.map((lecturerId) =>
+                  queryCollectionRest("assignments", {
+                    where: [{ field: "owner_id", op: "EQUAL", value: lecturerId }],
+                    limit: 30,
+                  }).catch(() => []),
+                ),
+              )
+            ).flat();
+
+            // Open sessions of the student's own lecturers, for their class only
+            const activeSessions = (
+              await Promise.all(lecturerList.map((lecturerId) => getOpenSessions(lecturerId)))
+            )
+              .flat()
+              .filter((sess: any) => sess.course_id && enrolledCourseIds.includes(sess.course_id))
+              .map((sess: any) => {
+                const c = coursesMap.get(sess.course_id);
+                return {
+                  id: sess.id,
+                  title: sess.title || c?.title || "Class Attendance",
+                  courseCode: c?.code || "",
+                  courseTitle: c?.title || "",
+                  status: "OPEN",
+                  is_active: true,
+                  owner_id: sess.owner_id,
+                  course_id: sess.course_id,
+                  starts_at: sess.starts_at || sess.created_at || null,
+                };
+              });
             const assignments = allAssignments
               .filter((a: any) => {
                 // Course assignments: only for the student's own class courses
@@ -1130,6 +1189,7 @@ export const Route = createFileRoute("/api/public/student-auth")({
               announcements: notices,
               assignments,
               history,
+              active_sessions: activeSessions,
             });
           }
 
