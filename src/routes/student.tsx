@@ -419,6 +419,7 @@ function StudentPortalPage() {
           index: upperIdx,
           level: regLevel,
           program: regProgram.trim() || regDepartment,
+          department: regDepartment,
           email: regEmail.trim(),
           password: regPassword,
         }),
@@ -429,7 +430,13 @@ function StudentPortalPage() {
         return;
       }
 
-      toast.success("Account registered successfully! Entering portal...");
+      if (data.assigned_classes > 0) {
+        toast.success("Account registered and added to your class list. Entering portal...");
+      } else {
+        toast.success("Account registered. Your lecturer has not set up your class in Qmark yet, so ask them to add you.", {
+          duration: 8000,
+        });
+      }
       saveStudentSession(upperIdx, regPassword);
       localStorage.setItem("qroll_student_session", "true");
       localStorage.setItem("qroll_active_gateway", "student");
