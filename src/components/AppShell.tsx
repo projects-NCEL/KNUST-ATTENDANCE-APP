@@ -42,18 +42,18 @@ function TutorFloatingNav() {
 
   return (
     <nav
-      className="fixed bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-40 max-w-[96vw] pointer-events-auto select-none"
+      className="lg:hidden fixed bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-40 max-w-[94vw] pointer-events-auto select-none"
       aria-label="Faculty Navigation"
     >
       {/* Sleek, Ergonomic Glass Container with Scooped Center Notch */}
-      <div className="relative flex items-center gap-1.5 sm:gap-2.5 px-3.5 sm:px-6 py-2.5 sm:py-3 rounded-full backdrop-blur-3xl bg-white/95 dark:bg-[#07162c]/95 border-[2.5px] border-[#D4AF37]/50 dark:border-[#D4AF37]/45 shadow-[0_16px_44px_-6px_rgba(0,0,0,0.32)] dark:shadow-[0_20px_48px_-6px_rgba(0,0,0,0.75)]">
+      <div className="relative flex items-center gap-1 sm:gap-2 px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-full backdrop-blur-3xl bg-white/95 dark:bg-[#07162c]/95 border-2 border-[#D4AF37]/50 dark:border-[#D4AF37]/45 shadow-[0_16px_44px_-6px_rgba(0,0,0,0.32)] dark:shadow-[0_20px_48px_-6px_rgba(0,0,0,0.75)]">
         {/* Top gold hairline */}
         <div className="pointer-events-none absolute inset-x-8 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#D4AF37]/80 to-transparent" />
 
         {/* Animated Curved Notch Scoop (Curved In) Cradling the Projecting Home Button */}
-        <div className="pointer-events-none absolute -top-[16px] left-1/2 -translate-x-1/2 w-28 sm:w-32 h-5 overflow-visible flex items-center justify-center">
+        <div className="pointer-events-none absolute -top-[14px] left-1/2 -translate-x-1/2 w-24 sm:w-28 h-4 overflow-visible flex items-center justify-center">
           <svg
-            className="w-28 sm:w-32 h-5 overflow-visible"
+            className="w-24 sm:w-28 h-4 overflow-visible"
             viewBox="0 0 120 20"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -95,12 +95,12 @@ function TutorFloatingNav() {
 
           if (item.isCenter) {
             return (
-              <Link key={item.to} to={item.to as string} className="relative group mx-2 sm:mx-3">
+              <Link key={item.to} to={item.to as string} className="relative group mx-1.5 sm:mx-2.5">
                 {/* Home Button Projecting Out Above Navbar on the Curved Scoop */}
                 <motion.div
-                  whileHover={{ scale: 1.1, y: -28 }}
-                  whileTap={{ scale: 0.92, y: -20 }}
-                  animate={{ y: -22 }}
+                  whileHover={{ scale: 1.08, y: -22 }}
+                  whileTap={{ scale: 0.92, y: -16 }}
+                  animate={{ y: -18 }}
                   transition={{ type: "spring", stiffness: 450, damping: 22 }}
                   className="relative cursor-pointer flex flex-col items-center justify-center"
                 >
@@ -109,14 +109,14 @@ function TutorFloatingNav() {
 
                   {/* Projected Circular Button */}
                   <div
-                    className={`size-15 sm:size-16 rounded-full flex flex-col items-center justify-center transition-all duration-300 relative border-[3px] ${
+                    className={`size-[52px] sm:size-14 rounded-full flex flex-col items-center justify-center transition-all duration-300 relative border-[2.5px] ${
                       isActive
                         ? "bg-[#0A1F44] text-[#E2BD56] border-[#D4AF37] ring-4 ring-[#D4AF37]/45 shadow-[0_12px_28px_rgba(212,175,55,0.55)]"
                         : "bg-[#0A1F44] text-[#F3DB8B] border-[#D4AF37]/85 ring-2 ring-[#D4AF37]/30 shadow-[0_10px_24px_rgba(0,0,0,0.4)] hover:border-[#D4AF37]"
                     }`}
                   >
-                    <Icon className="size-6.5 sm:size-7 stroke-[3.2] drop-shadow-sm" />
-                    <span className="text-[10px] sm:text-[11px] font-black uppercase leading-none mt-0.5 tracking-wider text-[#E2BD56]">
+                    <Icon className="size-5 sm:size-6 stroke-[3] drop-shadow-sm" />
+                    <span className="text-[9px] sm:text-[10px] font-black uppercase leading-none mt-0.5 tracking-wider text-[#E2BD56]">
                       Home
                     </span>
                   </div>
@@ -131,7 +131,7 @@ function TutorFloatingNav() {
                 whileHover={{ scale: 1.07 }}
                 whileTap={{ scale: 0.93 }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                className={`relative flex flex-col items-center justify-center px-3.5 sm:px-4.5 py-1.5 sm:py-2 rounded-full transition-all cursor-pointer min-w-[56px] sm:min-w-[70px] ${
+                className={`relative flex flex-col items-center justify-center px-2.5 sm:px-4 py-1.5 rounded-full transition-all cursor-pointer min-w-[52px] sm:min-w-[64px] ${
                   isActive
                     ? "text-[#0A1F44] dark:text-[#E2BD56] font-black"
                     : "text-muted-foreground hover:text-foreground hover:bg-[#D4AF37]/15 font-bold"
@@ -140,12 +140,12 @@ function TutorFloatingNav() {
                 {isActive && (
                   <motion.div
                     layoutId="glass-nav-pill"
-                    className="absolute inset-0 rounded-full bg-[#D4AF37]/25 dark:bg-[#D4AF37]/30 border-[2px] border-[#D4AF37]/65 shadow-xs"
+                    className="absolute inset-0 rounded-full bg-[#D4AF37]/25 dark:bg-[#D4AF37]/30 border-[1.5px] border-[#D4AF37]/65 shadow-xs"
                     transition={{ type: "spring", stiffness: 380, damping: 28 }}
                   />
                 )}
-                <Icon className={`size-6 sm:size-6.5 relative z-10 ${isActive ? "stroke-[3.2]" : "stroke-[2.9]"}`} />
-                <span className="text-[12px] sm:text-[13px] font-black leading-tight mt-0.5 tracking-tight relative z-10 uppercase">
+                <Icon className={`size-5 sm:size-[22px] relative z-10 ${isActive ? "stroke-[3]" : "stroke-[2.6]"}`} />
+                <span className="text-[10px] sm:text-[11px] font-black leading-tight mt-0.5 tracking-tight relative z-10 uppercase">
                   {item.label}
                 </span>
               </motion.div>
@@ -401,11 +401,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           }}
         />
 
-        <main className="flex-1 w-full max-w-5xl lg:max-w-[97vw] xl:max-w-[98vw] 2xl:max-w-[1920px] mx-auto p-4 sm:p-6 lg:p-8 xl:px-10 pb-24 sm:pb-28 min-w-0">
+        <main className="flex-1 w-full max-w-5xl lg:max-w-[97vw] xl:max-w-[98vw] 2xl:max-w-[1920px] mx-auto p-4 sm:p-6 lg:p-8 xl:px-10 pb-24 sm:pb-28 lg:pb-8 min-w-0">
           {children}
         </main>
 
-        {/* Ultra-transparent Frosted Glass Navbar */}
+        {/* Floating navbar: phones and tablets only, hidden from lg screens up */}
         <TutorFloatingNav />
       </div>
     </div>
