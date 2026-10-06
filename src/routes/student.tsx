@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,6 +91,10 @@ function clearStudentSession() {
     localStorage.removeItem(STORE);
     sessionStorage.removeItem(STORE);
     localStorage.removeItem("qroll_student_session");
+    // Drop cached portal data on sign-out
+    Object.keys(sessionStorage)
+      .filter((k) => k.startsWith("qmark_portal_cache_"))
+      .forEach((k) => sessionStorage.removeItem(k));
   } catch (e) {
     console.debug("Session clear error", e);
   }
@@ -296,36 +300,73 @@ function StudentPortalPage() {
     }
   };
 
-  const loadStudentData = useCallback(async (userIndex: string, userPass?: string) => {
-    try {
-      const dataRes = await fetch("/api/public/student-auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "data", index: userIndex, password: userPass }),
-      });
-      const data = await dataRes.json();
-      if (data.student) {
-        setMe(data.student);
-        loadNotifications(data.student.id, data.student.index_number);
-      }
-      if (Array.isArray(data.courses)) setCourses(data.courses);
-      if (Array.isArray(data.history)) setHistory(data.history);
-      if (Array.isArray(data.announcements)) setAnnouncements(data.announcements);
-      if (Array.isArray(data.assignments)) setAssignments(data.assignments);
-
-      const sessRes = await fetch("/api/public/student-auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "get_active_sessions" }),
-      });
-      const sessData = await sessRes.json();
-      if (Array.isArray(sessData.sessions) && sessData.sessions.length > 0) {
-        setActiveSession(sessData.sessions[0]);
-      }
-    } catch (err) {
-      console.error("Error loading student portal data:", err);
+  // Portal data is cached in this browser tab for 3 minutes, so refreshing the page
+  // or signing back in does not hit the database again.
+  const PORTAL_CACHE_MS = 3 * 60 * 1000;
+  const applyPortalData = useCallback((data: any) => {
+    if (data.student) setMe(data.student);
+    if (Array.isArray(data.courses)) setCourses(data.courses);
+    if (Array.isArray(data.history)) setHistory(data.history);
+    if (Array.isArray(data.announcements)) setAnnouncements(data.announcements);
+    if (Array.isArray(data.assignments)) setAssignments(data.assignments);
+    if (Array.isArray(data.active_sessions)) {
+      setActiveSession(data.active_sessions.length > 0 ? data.active_sessions[0] : null);
     }
-  }, [loadNotifications]);
+  }, []);
+
+  const loadingDataRef = useRef(false);
+  const loadStudentData = useCallback(
+    async (userIndex: string, userPass?: string, force = false) => {
+      const cacheKey = `qmark_portal_cache_${userIndex.toUpperCase()}`;
+      if (!force) {
+        try {
+          const cached = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
+          if (cached && Date.now() - cached.t < PORTAL_CACHE_MS) {
+            applyPortalData(cached.data);
+            if (cached.data?.student) {
+              loadNotifications(cached.data.student.id, cached.data.student.index_number);
+            }
+            return;
+          }
+        } catch {
+          // ignore bad cache
+        }
+      }
+      // Never run two loads at the same time
+      if (loadingDataRef.current) return;
+      loadingDataRef.current = true;
+      try {
+        const dataRes = await fetch("/api/public/student-auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "data", index: userIndex, password: userPass }),
+        });
+        const data = await dataRes.json();
+        if (!dataRes.ok) {
+          console.error("Portal data error:", data?.error);
+          if (dataRes.status === 429 || dataRes.status === 503) {
+            toast.error("Qmark is busy right now. Please try again in a few minutes.");
+          }
+          return;
+        }
+        applyPortalData(data);
+        if (data.student) {
+          loadNotifications(data.student.id, data.student.index_number);
+        }
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify({ t: Date.now(), data }));
+        } catch {
+          // storage full; ignore
+        }
+      } catch (err) {
+        console.error("Error loading student portal data:", err);
+      } finally {
+        loadingDataRef.current = false;
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [applyPortalData],
+  );
 
   const handleLogin = useCallback(
     async (loginIndex = signInIndex, loginPass = signInPassword) => {
@@ -374,8 +415,11 @@ function StudentPortalPage() {
     [signInIndex, signInPassword, loadStudentData],
   );
 
-  // Restore stored session
+  // Restore stored session (runs once per page load, never in a loop)
+  const restoredRef = useRef(false);
   useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
     try {
       const raw = localStorage.getItem(STORE);
       if (raw) {
@@ -441,7 +485,7 @@ function StudentPortalPage() {
       localStorage.setItem("qroll_student_session", "true");
       localStorage.setItem("qroll_active_gateway", "student");
       setMe(data.student);
-      void loadStudentData(upperIdx, regPassword);
+      void loadStudentData(upperIdx, regPassword, true);
     } catch {
       toast.error("Failed to connect. Please try again.");
     } finally {
@@ -489,7 +533,7 @@ function StudentPortalPage() {
       localStorage.setItem("qroll_student_session", "true");
       localStorage.setItem("qroll_active_gateway", "student");
       setMe(data.student);
-      void loadStudentData(upperIdx, actPassword);
+      void loadStudentData(upperIdx, actPassword, true);
     } catch {
       toast.error("Network error. Please try again.");
     } finally {
@@ -537,7 +581,7 @@ function StudentPortalPage() {
       localStorage.setItem("qroll_student_session", "true");
       localStorage.setItem("qroll_active_gateway", "student");
       setMe(data.student);
-      void loadStudentData(upperIdx, resetNewPassword);
+      void loadStudentData(upperIdx, resetNewPassword, true);
     } catch {
       toast.error("Network error. Please try again.");
     } finally {
