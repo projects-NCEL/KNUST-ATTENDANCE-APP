@@ -1457,9 +1457,9 @@ function StudentPortalPage() {
 
         {/* TAB 2: ATTENDANCE (REDESIGNED STUDENT HOMEPAGE MATCHING LECTURER DASHBOARD) */}
         {portalTab === "attendance" && (
-          <div className="space-y-6 sm:space-y-8 pb-10">
+          <div className="dash-scope space-y-6 sm:space-y-8 pb-10">
             <style>{`
-              :root {
+              .dash-scope {
                 --ink: #071733;
                 --navy-1: #06142F;
                 --navy-2: #0C2656;
