@@ -134,7 +134,30 @@ export async function savePushSubscription(
     lastFailureAt: null,
   };
 
+  // Save new subscription
   await setDocRest("push_subscriptions", docId, subDoc, true);
+
+  // Deactivate any older subscriptions for this user on the same platform with different endpoints
+  try {
+    const userSubs = await queryCollectionRest("push_subscriptions", {
+      where: [
+        { field: "userId", op: "EQUAL", value: cleanUserId },
+        { field: "isActive", op: "EQUAL", value: true },
+      ],
+    });
+    for (const s of userSubs) {
+      if (s.id !== docId && s.platform === subDoc.platform && s.endpoint !== subDoc.endpoint) {
+        setDocRest("push_subscriptions", s.id, {
+          isActive: false,
+          updatedAt: now,
+          failureReason: "superseded_by_new_subscription",
+        }).catch(() => {});
+      }
+    }
+  } catch {
+    // non-blocking cleanup
+  }
+
   console.log(
     `[WebPush] Subscription saved for ${userRole} ${cleanUserId} on ${subDoc.platform}/${subDoc.browser}`,
   );
@@ -166,21 +189,50 @@ export async function removePushSubscription(endpoint: string, userId?: string):
   }
 }
 
-/** Low-level sender to a single subscription document */
+// In-memory dispatch cache to guarantee no device receives identical notifications within a 15s window
+const recentDispatches = new Map<string, number>();
+
+function cleanRecentDispatches() {
+  const now = Date.now();
+  for (const [key, timestamp] of recentDispatches.entries()) {
+    if (now - timestamp > 30000) {
+      recentDispatches.delete(key);
+    }
+  }
+}
+
+/** Low-level sender to a single subscription document with strict deduplication */
 async function sendToSubscriptionRecord(
   sub: StoredPushSubscription,
   payload: NotificationPayload,
-): Promise<{ success: boolean; expired?: boolean; error?: string }> {
+): Promise<{ success: boolean; expired?: boolean; error?: string; skippedDuplicate?: boolean }> {
+  cleanRecentDispatches();
+
+  // Deduplication key: combination of endpoint and notification title + type
+  const dedupKey = `${sub.endpoint}::${payload.type}::${payload.title}`;
+  const lastSent = recentDispatches.get(dedupKey);
+  const now = Date.now();
+
+  if (lastSent && now - lastSent < 15000) {
+    console.log(`[WebPush] Dropped duplicate push dispatch to ${sub.id} (within 15s debounce window)`);
+    return { success: true, skippedDuplicate: true };
+  }
+
+  recentDispatches.set(dedupKey, now);
+
+  const cleanEntityId = payload.entityId || (payload.title ? payload.title.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 32) : "notice");
+  const deterministicTag = payload.tag || `${payload.type || "qmark"}_${cleanEntityId}`;
+
   const pushPayload = JSON.stringify({
     title: payload.title,
     body: payload.body,
-    icon: payload.icon || "/favicon.png",
-    badge: payload.badge || "/favicon.png",
+    icon: payload.icon || "/qmark_icon_standalone.png",
+    badge: payload.badge || "/qmark_icon_standalone.png",
     url: payload.url || "/",
     entityId: payload.entityId,
     entityType: payload.entityType,
     type: payload.type,
-    tag: payload.tag,
+    tag: deterministicTag,
     timestamp: payload.timestamp || Date.now(),
     actions: payload.actions,
   });
@@ -334,11 +386,46 @@ export async function sendNotificationToUser(
     return { targetDevices: 0, successful: 0, failed: 0 };
   }
 
+  // Deduplicate subscriptions by endpoint and keep only the latest active one per platform/endpoint
+  const dedupedSubsMap = new Map<string, StoredPushSubscription>();
+  for (const s of subscriptions) {
+    if (!s.endpoint) continue;
+    const existing = dedupedSubsMap.get(s.endpoint);
+    if (!existing || (s.updatedAt || "") > (existing.updatedAt || "")) {
+      dedupedSubsMap.set(s.endpoint, s as StoredPushSubscription);
+    }
+  }
+
+  // If a user has multiple active subscriptions on the same mobile platform (e.g. iOS), keep only the newest one
+  const platformGroup = new Map<string, StoredPushSubscription>();
+  for (const sub of Array.from(dedupedSubsMap.values())) {
+    const key = sub.platform || "unknown";
+    const prev = platformGroup.get(key);
+    if (!prev || (sub.updatedAt || "") > (prev.updatedAt || "")) {
+      if (prev && prev.id !== sub.id) {
+        // Deactivate older duplicate subscription for this device
+        setDocRest("push_subscriptions", prev.id, {
+          isActive: false,
+          updatedAt: new Date().toISOString(),
+          failureReason: "superseded_by_newer_device_sub",
+        }).catch(() => {});
+      }
+      platformGroup.set(key, sub);
+    } else if (prev && prev.id !== sub.id) {
+      setDocRest("push_subscriptions", sub.id, {
+        isActive: false,
+        updatedAt: new Date().toISOString(),
+        failureReason: "superseded_by_newer_device_sub",
+      }).catch(() => {});
+    }
+  }
+
+  const finalSubs = Array.from(platformGroup.values());
   let successful = 0;
   let failed = 0;
 
-  for (const sub of subscriptions) {
-    const res = await sendToSubscriptionRecord(sub as StoredPushSubscription, payload);
+  for (const sub of finalSubs) {
+    const res = await sendToSubscriptionRecord(sub, payload);
     if (res.success) {
       successful++;
     } else {
@@ -347,10 +434,10 @@ export async function sendNotificationToUser(
   }
 
   console.log(
-    `[WebPush] Sent "${payload.title}" to user ${cleanId} (${successful}/${subscriptions.length} devices delivered)`,
+    `[WebPush] Sent "${payload.title}" to user ${cleanId} (${successful}/${finalSubs.length} device(s) delivered)`,
   );
 
-  return { targetDevices: subscriptions.length, successful, failed };
+  return { targetDevices: finalSubs.length, successful, failed };
 }
 
 /**
@@ -401,14 +488,15 @@ export async function sendNotificationToCourseStudents(
 
     const studentIds = registrations.map((r: any) => r.student_id).filter(Boolean);
 
-    // 2. Fetch student records to get both student doc id and index_number
+    // 2. Fetch student records and resolve to exactly ONE canonical ID per student
     const studentUserIds = new Set<string>();
 
     for (const sid of studentIds) {
-      studentUserIds.add(sid);
       const studentDoc = await getDocRest("students", sid).catch(() => null);
       if (studentDoc && studentDoc.index_number) {
         studentUserIds.add(studentDoc.index_number.trim());
+      } else {
+        studentUserIds.add(sid);
       }
     }
 
@@ -423,16 +511,17 @@ export async function sendNotificationToCourseStudents(
       });
 
       for (const s of cohortStudents) {
-        studentUserIds.add(s.id);
         if (s.index_number) {
           studentUserIds.add(s.index_number.trim());
+        } else {
+          studentUserIds.add(s.id);
         }
       }
     }
 
     const recipientList = Array.from(studentUserIds);
     console.log(
-      `[WebPush] Resolved ${recipientList.length} candidate student identifier(s) for course ${cleanCourseId}`,
+      `[WebPush] Resolved ${recipientList.length} canonical student(s) for course ${cleanCourseId}`,
     );
 
     if (recipientList.length === 0) {
@@ -452,7 +541,7 @@ export async function sendNotificationToCourseStudents(
 }
 
 /**
- * Broadcast notification to all active devices/users (or filtered by role)
+ * Broadcast notification to all active devices/users (or filtered by role) with endpoint deduplication
  */
 export async function sendNotificationToAllActive(
   payload: NotificationPayload,
@@ -464,13 +553,24 @@ export async function sendNotificationToAllActive(
       filters.push({ field: "userRole", op: "EQUAL", value: targetRole });
     }
 
-    const subscriptions = await queryCollectionRest("push_subscriptions", {
+    const rawSubscriptions = await queryCollectionRest("push_subscriptions", {
       where: filters,
     });
 
-    if (subscriptions.length === 0) {
+    if (rawSubscriptions.length === 0) {
       return { totalDevices: 0, totalDelivered: 0 };
     }
+
+    // Deduplicate by endpoint to ensure each physical device is pinged only once
+    const dedupMap = new Map<string, StoredPushSubscription>();
+    for (const sub of rawSubscriptions) {
+      if (!sub.endpoint) continue;
+      const existing = dedupMap.get(sub.endpoint);
+      if (!existing || (sub.updatedAt || "") > (existing.updatedAt || "")) {
+        dedupMap.set(sub.endpoint, sub as StoredPushSubscription);
+      }
+    }
+    const subscriptions = Array.from(dedupMap.values());
 
     // Record in-app notification for each unique user
     const uniqueUserIds = Array.from(

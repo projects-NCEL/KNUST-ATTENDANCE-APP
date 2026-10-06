@@ -61,7 +61,8 @@ self.addEventListener("push", (event) => {
   const icon = payload.icon || "/qmark_icon_standalone.png";
   const badge = payload.badge || "/qmark_icon_standalone.png";
   const url = payload.url || "/";
-  const tag = payload.tag || (payload.entityId ? `${payload.type || "qmark"}_${payload.entityId}` : `qmark_${Date.now()}`);
+  const cleanId = payload.entityId || (payload.title ? payload.title.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 32) : "notice");
+  const tag = payload.tag || `${payload.type || "qmark"}_${cleanId}`;
 
   const options = {
     body,
@@ -75,7 +76,7 @@ self.addEventListener("push", (event) => {
       timestamp: payload.timestamp || Date.now(),
     },
     tag,
-    renotify: true,
+    renotify: false,
     requireInteraction: payload.type === "ATTENDANCE", // keep attendance on screen till actioned
     vibrate: [200, 100, 200],
     actions: payload.actions || [

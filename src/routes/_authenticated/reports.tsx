@@ -212,6 +212,10 @@ function ReportsPage() {
     const set = new Set<string>();
     for (const r of raw?.records ?? [])
       set.add(r.session_date ?? (r.check_in_at ? dayKey(r.check_in_at) : ""));
+    for (const s of raw?.sessions ?? []) {
+      if (s.starts_at) set.add(dayKey(s.starts_at));
+      else if (s.created_at) set.add(dayKey(s.created_at));
+    }
     set.delete("");
     return Array.from(set).sort();
   }, [raw]);
@@ -325,26 +329,73 @@ function ReportsPage() {
   const presentCount = report?.rows.filter((r) => r.scans > 0).length ?? 0;
   const absentCount = (report?.rows.length ?? 0) - presentCount;
 
-  // Compilation export: always spans all semester days
-  const exportCompilation = (fmt: "xlsx" | "csv" | "pdf") => {
-    if (!raw || !courseId || !allDays.length) {
-      toast.error("No course sessions found to compile");
+  // Compilation export: spans all semester days and strictly respects active risk and presence filters
+  const exportCompilation = async (fmt: "xlsx" | "csv" | "pdf") => {
+    if (!courseId) {
+      toast.error("Please pick a course first");
       return;
     }
-    const studentMap = new Map<string, any>();
-    for (const r of raw.regs)
-      if ((r as any).students) studentMap.set((r as any).students.id, (r as any).students);
-    for (const rec of raw.records) if (rec.students) studentMap.set(rec.students.id, rec.students);
-
-    const scanned = new Map<string, Set<string>>();
-    for (const rec of raw.records) {
-      const d = rec.session_date ?? (rec.check_in_at ? dayKey(rec.check_in_at) : null);
-      if (!d) continue;
-      if (!scanned.has(rec.student_id)) scanned.set(rec.student_id, new Set());
-      scanned.get(rec.student_id)!.add(d);
+    if (!report || !report.rows.length) {
+      toast.warning("No students found for this course");
+      return;
     }
 
-    const dayHeaders = allDays.map((d, idx) => `Session ${idx + 1} (${prettyDay(d)})`);
+    const daysToUse = allDays.length ? allDays : report.days;
+    if (!daysToUse.length) {
+      toast.warning("No attendance sessions recorded for this course yet");
+      return;
+    }
+
+    // Build scan lookup map for all days
+    const scanned = new Map<string, Set<string>>();
+    for (const rec of raw?.records ?? []) {
+      const d = rec.session_date ?? (rec.check_in_at ? dayKey(rec.check_in_at) : null);
+      if (!d) continue;
+      const idsToMark = new Set<string>();
+      if (rec.student_id) idsToMark.add(rec.student_id);
+      if (rec.students?.id) idsToMark.add(rec.students.id);
+      if (rec.index_number) idsToMark.add(String(rec.index_number).trim().toUpperCase());
+      if (rec.students?.index_number)
+        idsToMark.add(String(rec.students.index_number).trim().toUpperCase());
+
+      for (const id of idsToMark) {
+        if (!scanned.has(id)) scanned.set(id, new Set());
+        scanned.get(id)!.add(d);
+      }
+    }
+
+    // Filter students by active presence & risk settings
+    let studentsList = report.rows.map((s) => {
+      const cleanIdx = s.index_number ? String(s.index_number).trim().toUpperCase() : "";
+      const cells = daysToUse.map((d) =>
+        scanned.get(s.id)?.has(d) || (cleanIdx && scanned.get(cleanIdx)?.has(d)) ? 1 : 0,
+      );
+      const totalScans = cells.filter((v) => v === 1).length;
+      const totalMissed = cells.length - totalScans;
+      const pct = cells.length ? Math.round((totalScans / cells.length) * 100) : 0;
+      const isAtRisk = totalMissed > maxMisses;
+
+      return {
+        ...s,
+        cells,
+        scans: totalScans,
+        missed: totalMissed,
+        pct,
+        atRisk: isAtRisk,
+      };
+    });
+
+    if (risk === "at-risk") studentsList = studentsList.filter((s) => s.atRisk);
+    else if (risk === "passed") studentsList = studentsList.filter((s) => !s.atRisk);
+    if (presence === "present") studentsList = studentsList.filter((s) => s.scans > 0);
+    else if (presence === "absent") studentsList = studentsList.filter((s) => s.scans === 0);
+
+    if (studentsList.length === 0) {
+      toast.warning("No students match the current filter criteria");
+      return;
+    }
+
+    const dayHeaders = daysToUse.map((d, idx) => `Session ${idx + 1} (${prettyDay(d)})`);
     const headers = [
       "Name",
       "Index Number",
@@ -356,36 +407,14 @@ function ReportsPage() {
       "Status",
     ];
 
-    let studentsList = Array.from(studentMap.values()).map((s: any) => {
-      const cells = allDays.map((d) => (scanned.get(s.id)?.has(d) ? 1 : 0));
-      const scans = cells.filter((v) => v === 1).length;
-      const missed = cells.length - scans;
-      const pct = cells.length ? Math.round((scans / cells.length) * 100) : 0;
-      return {
-        full_name: s.full_name,
-        index_number: s.index_number,
-        level: s.level ?? "",
-        cells,
-        scans,
-        missed,
-        pct,
-        atRisk: missed > maxMisses,
-      };
-    });
-
-    if (risk === "at-risk") studentsList = studentsList.filter((s) => s.atRisk);
-    else if (risk === "passed") studentsList = studentsList.filter((s) => !s.atRisk);
-    if (presence === "present") studentsList = studentsList.filter((s) => s.scans > 0);
-    else if (presence === "absent") studentsList = studentsList.filter((s) => s.scans === 0);
-
     const rows = studentsList.map((s) => {
       const row: Record<string, string | number> = {
         Name: s.full_name,
         "Index Number": s.index_number,
-        Level: s.level,
+        Level: s.level ?? "",
       };
-      allDays.forEach((_d, idx) => {
-        row[dayHeaders[idx]] = s.cells[idx];
+      daysToUse.forEach((_d, idx) => {
+        row[dayHeaders[idx]] = s.cells[idx] === 1 ? "1 (PRESENT)" : "0 (ABSENT)";
       });
       row["Total Scans"] = s.scans;
       row["Total Missed"] = s.missed;
@@ -394,41 +423,57 @@ function ReportsPage() {
       return row;
     });
 
-    const filename = `${courseLabel?.code ?? "Course"}-Complete-Compilation`;
-    if (fmt === "xlsx") exportToExcel(rows, filename);
-    else if (fmt === "csv") exportToCSV(rows, filename);
-    else {
-      exportToPDF(
-        `${courseLabel?.code} — ${courseLabel?.title} (Complete Semester Compilation)`,
-        headers,
-        rows.map((r) => headers.map((h) => r[h] ?? "")),
-        filename,
-      );
+    const riskTag = risk !== "all" ? `-${risk}` : "";
+    const presTag = presence !== "all" ? `-${presence}` : "";
+    const filename = `${courseLabel?.code ?? "Course"}-Compilation${riskTag}${presTag}`;
+
+    try {
+      if (fmt === "xlsx") {
+        exportToExcel(rows, filename);
+      } else if (fmt === "csv") {
+        exportToCSV(rows, filename);
+      } else {
+        await exportToPDF(
+          `${courseLabel?.code ?? "Course"} — ${courseLabel?.title ?? "Attendance"} (Compilation · ${risk !== "all" ? risk.toUpperCase() : "ALL"})`,
+          headers,
+          rows.map((r) => headers.map((h) => r[h] ?? "")),
+          filename,
+        );
+      }
+      toast.success(`Exported compilation (${rows.length} students)`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to download export");
     }
   };
 
-  // Specific session export: single class day with check-in timestamp
-  const exportSpecificSession = (fmt: "xlsx" | "csv" | "pdf") => {
-    const target = mode === "daily" ? day : sessionDay;
+  // Specific session export: single class day with check-in timestamp and filter compliance
+  const exportSpecificSession = async (fmt: "xlsx" | "csv" | "pdf") => {
+    const target = (mode === "daily" ? day : sessionDay) || (allDays.length ? allDays[allDays.length - 1] : "");
     if (!target) {
       toast.error("Please pick a session day to export");
       return;
     }
-    const studentMap = new Map<string, any>();
-    for (const r of raw?.regs ?? [])
-      if ((r as any).students) studentMap.set((r as any).students.id, (r as any).students);
-    for (const rec of raw?.records ?? [])
-      if (rec.students) studentMap.set(rec.students.id, rec.students);
 
-    // Map student_id -> check_in timestamp for this target day
+    if (!report || !courseId) {
+      toast.error("No report data loaded");
+      return;
+    }
+
+    const dayIdx = allDays.indexOf(target);
+
+    // Map student_id / index_number -> check_in timestamp for this target day
     const checkInMap = new Map<string, string>();
     for (const rec of raw?.records ?? []) {
       const d = rec.session_date ?? (rec.check_in_at ? dayKey(rec.check_in_at) : null);
       if (d === target) {
-        checkInMap.set(
-          rec.student_id,
-          rec.check_in_at ? new Date(rec.check_in_at).toLocaleTimeString() : "Checked In",
-        );
+        const timeStr = rec.check_in_at
+          ? new Date(rec.check_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : "Checked In";
+        if (rec.student_id) checkInMap.set(rec.student_id, timeStr);
+        if (rec.students?.id) checkInMap.set(rec.students.id, timeStr);
+        if (rec.index_number) checkInMap.set(String(rec.index_number).trim().toUpperCase(), timeStr);
+        if (rec.students?.index_number)
+          checkInMap.set(String(rec.students.index_number).trim().toUpperCase(), timeStr);
       }
     }
 
@@ -439,22 +484,42 @@ function ReportsPage() {
       "Session Date",
       "Presence Status",
       "Check-in Time",
+      "Overall Standing",
     ];
-    let list = Array.from(studentMap.values()).map((s: any) => {
-      const isPresent = checkInMap.has(s.id);
+
+    let list = report.rows.map((s) => {
+      const cleanIdx = s.index_number ? String(s.index_number).trim().toUpperCase() : "";
+      const isPresent =
+        (dayIdx >= 0 && s.cells[dayIdx] === 1) ||
+        checkInMap.has(s.id) ||
+        (cleanIdx && checkInMap.has(cleanIdx));
+
+      const time =
+        checkInMap.get(s.id) ||
+        (cleanIdx ? checkInMap.get(cleanIdx) : null) ||
+        (isPresent ? "Present" : "—");
+
       return {
         full_name: s.full_name,
         index_number: s.index_number,
         level: s.level ?? "",
         session_date: prettyDay(target),
         status: isPresent ? "PRESENT" : "ABSENT",
-        time: checkInMap.get(s.id) ?? "—",
+        time,
         isPresent,
+        atRisk: s.atRisk,
       };
     });
 
     if (presence === "present") list = list.filter((s) => s.isPresent);
     else if (presence === "absent") list = list.filter((s) => !s.isPresent);
+    if (risk === "at-risk") list = list.filter((s) => s.atRisk);
+    else if (risk === "passed") list = list.filter((s) => !s.atRisk);
+
+    if (list.length === 0) {
+      toast.warning("No students match the current filter criteria for this session");
+      return;
+    }
 
     const rows = list.map((s) => ({
       Name: s.full_name,
@@ -463,19 +528,45 @@ function ReportsPage() {
       "Session Date": s.session_date,
       "Presence Status": s.status,
       "Check-in Time": s.time,
+      "Overall Standing": s.atRisk ? `AT RISK (>${maxMisses} missed)` : "PASSED",
     }));
 
-    const filename = `${courseLabel?.code ?? "Course"}-Session-${sessionNumOfDay(target)}-${target}`;
-    if (fmt === "xlsx") exportToExcel(rows, filename);
-    else if (fmt === "csv") exportToCSV(rows, filename);
-    else {
-      exportToPDF(
-        `${courseLabel?.code} — ${courseLabel?.title} (Session ${sessionNumOfDay(target)} · ${prettyDay(target)})`,
-        headers,
-        rows.map((r) => headers.map((h) => r[h] ?? "")),
-        filename,
-      );
+    const riskTag = risk !== "all" ? `-${risk}` : "";
+    const presTag = presence !== "all" ? `-${presence}` : "";
+    const filename = `${courseLabel?.code ?? "Course"}-Session-${sessionNumOfDay(target)}-${target}${riskTag}${presTag}`;
+
+    try {
+      if (fmt === "xlsx") {
+        exportToExcel(rows, filename);
+      } else if (fmt === "csv") {
+        exportToCSV(rows, filename);
+      } else {
+        await exportToPDF(
+          `${courseLabel?.code ?? "Course"} — ${courseLabel?.title ?? "Attendance"} (Session ${sessionNumOfDay(target)} · ${prettyDay(target)})`,
+          headers,
+          rows.map((r) => headers.map((h) => r[h] ?? "")),
+          filename,
+        );
+      }
+      toast.success(`Exported session records (${rows.length} students)`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to download session export");
     }
+  };
+
+  // Direct export of the currently active table view (reflects exactly what is visible)
+  const exportCurrentTableView = async (fmt: "xlsx" | "csv" | "pdf") => {
+    if (!report || visibleRows.length === 0) {
+      toast.warning("No data currently visible to export");
+      return;
+    }
+
+    if (mode === "daily" && day) {
+      await exportSpecificSession(fmt);
+      return;
+    }
+
+    await exportCompilation(fmt);
   };
 
   return (
@@ -594,7 +685,7 @@ function ReportsPage() {
             <Button
               variant="default"
               size="sm"
-              disabled={!courses?.length || !raw?.sessions?.length}
+              disabled={!courseId || !report?.rows?.length}
               onClick={() => exportCompilation("xlsx")}
             >
               <FileSpreadsheet className="size-4 mr-1.5" />
@@ -603,7 +694,7 @@ function ReportsPage() {
             <Button
               variant="outline"
               size="sm"
-              disabled={!courses?.length || !raw?.sessions?.length}
+              disabled={!courseId || !report?.rows?.length}
               onClick={() => exportCompilation("csv")}
             >
               <Download className="size-4 mr-1.5" />
@@ -612,7 +703,7 @@ function ReportsPage() {
             <Button
               variant="outline"
               size="sm"
-              disabled={!courses?.length || !raw?.sessions?.length}
+              disabled={!courseId || !report?.rows?.length}
               onClick={() => exportCompilation("pdf")}
             >
               <FileText className="size-4 mr-1.5" />
@@ -634,7 +725,7 @@ function ReportsPage() {
           </CardHeader>
           <CardContent className="pt-2 space-y-3">
             <div className="max-w-xs">
-              <Select value={sessionDay} onValueChange={setSessionDay}>
+              <Select value={sessionDay || day} onValueChange={setSessionDay}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Select class session" />
                 </SelectTrigger>
@@ -651,7 +742,7 @@ function ReportsPage() {
               <Button
                 variant="secondary"
                 size="sm"
-                disabled={!sessionDay}
+                disabled={!allDays.length}
                 onClick={() => exportSpecificSession("xlsx")}
               >
                 <FileSpreadsheet className="size-4 mr-1.5" />
@@ -660,7 +751,7 @@ function ReportsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={!sessionDay}
+                disabled={!allDays.length}
                 onClick={() => exportSpecificSession("csv")}
               >
                 <Download className="size-4 mr-1.5" />
@@ -669,7 +760,7 @@ function ReportsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={!sessionDay}
+                disabled={!allDays.length}
                 onClick={() => exportSpecificSession("pdf")}
               >
                 <FileText className="size-4 mr-1.5" />
@@ -699,15 +790,55 @@ function ReportsPage() {
               {visibleRows.length === 1 ? "" : "s"} · {report.days.length} class day
               {report.days.length === 1 ? "" : "s"}
             </CardTitle>
-            <Tabs value={risk} onValueChange={(v) => setRisk(v as Risk)}>
-              <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="at-risk">At risk ({atRiskCount})</TabsTrigger>
-                <TabsTrigger value="passed">
-                  Passed ({(report.rows.length ?? 0) - atRiskCount})
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <Tabs value={risk} onValueChange={(v) => setRisk(v as Risk)}>
+                <TabsList>
+                  <TabsTrigger value="all">All ({report.rows.length})</TabsTrigger>
+                  <TabsTrigger value="at-risk" className="text-destructive font-semibold">
+                    At risk ({atRiskCount})
+                  </TabsTrigger>
+                  <TabsTrigger value="passed">
+                    Passed ({(report.rows.length ?? 0) - atRiskCount})
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-muted-foreground mr-1 hidden sm:inline">
+                  Export Filtered View:
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => exportCurrentTableView("xlsx")}
+                  className="h-8 text-xs font-semibold cursor-pointer border-[#D4AF37]/40 hover:bg-[#D4AF37]/10"
+                  title="Export currently filtered students to Excel (.xlsx)"
+                >
+                  <FileSpreadsheet className="size-3.5 mr-1 text-emerald-600" />
+                  Excel
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => exportCurrentTableView("csv")}
+                  className="h-8 text-xs font-semibold cursor-pointer border-[#D4AF37]/40 hover:bg-[#D4AF37]/10"
+                  title="Export currently filtered students to CSV"
+                >
+                  <Download className="size-3.5 mr-1 text-primary" />
+                  CSV
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => exportCurrentTableView("pdf")}
+                  className="h-8 text-xs font-semibold cursor-pointer border-[#D4AF37]/40 hover:bg-[#D4AF37]/10"
+                  title="Export currently filtered students to PDF Report"
+                >
+                  <FileText className="size-3.5 mr-1 text-red-500" />
+                  PDF
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
