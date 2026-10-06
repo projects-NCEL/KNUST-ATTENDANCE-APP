@@ -70,7 +70,12 @@ function Dashboard() {
 
     // 2. Listen to today's sessions
     const unsubSessions = onSnapshot(
-      query(collection(firestoreDb, "attendance_sessions"), where("owner_id", "==", currentUid)),
+      // Only open sessions: closed ones from past weeks are never re-read
+      query(
+        collection(firestoreDb, "attendance_sessions"),
+        where("owner_id", "==", currentUid),
+        where("status", "==", "OPEN"),
+      ),
       (snap) => {
         const list: SessionItem[] = snap.docs.map((d) => {
           const data = d.data() as any;
@@ -101,34 +106,22 @@ function Dashboard() {
         where("owner_id", "==", currentUid),
         where("session_date", "==", todayStr),
       ),
-      async (snap) => {
+      (snap) => {
         setTodayCount(snap.size);
 
         const sortedDocs = snap.docs
           .sort((a, b) => ((b.data() as any).created_at || "").localeCompare((a.data() as any).created_at || ""))
           .slice(0, 5);
 
-        const studentIds = Array.from(new Set(sortedDocs.map((d) => (d.data() as any).student_id).filter(Boolean)));
-        const studentMap = new Map<string, { name: string; index: string }>();
-
-        if (studentIds.length > 0) {
-          const sSnap = await getDocs(
-            query(collection(firestoreDb, "students"), where("owner_id", "==", currentUid)),
-          );
-          sSnap.docs.forEach((d) => {
-            const data = d.data() as any;
-            studentMap.set(d.id, { name: data.full_name || "Student", index: data.index_number || "" });
-          });
-        }
-
+        // Records already carry the student's name and index number,
+        // so the student list is not re-read on every scan.
         const items: ScanRecordItem[] = sortedDocs.map((d) => {
           const data = d.data() as any;
-          const st = studentMap.get(data.student_id);
           const timeStr = data.check_in_at || data.created_at || new Date().toISOString();
           return {
             id: d.id,
-            student_name: st?.name || data.student_name || "Student",
-            index_number: st?.index || data.index_number || "",
+            student_name: data.student_name || "Student",
+            index_number: data.index_number || "",
             time: new Date(timeStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           };
         });
