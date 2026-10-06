@@ -200,6 +200,20 @@ async function decodeImageToQr(
   return null;
 }
 
+// Class levels can be stored as "200", "L200" or "Level 200"; compare the numbers
+function normalizeLevel(val: any): string {
+  if (!val) return "";
+  const str = String(val).trim().toUpperCase();
+  return str.replace(/^(LEVEL|LVL|L)\s*/i, "").trim() || str;
+}
+
+function levelMatches(a: any, b: any): boolean {
+  const x = normalizeLevel(a);
+  const y = normalizeLevel(b);
+  if (!x || !y) return true;
+  return x === y || x.replace(/\D/g, "") === y.replace(/\D/g, "");
+}
+
 function ScanPage() {
   const { session: sessionId } = Route.useSearch();
   const qc = useQueryClient();
@@ -254,9 +268,11 @@ function ScanPage() {
   }, [activeSession]);
 
   // Pre-load student roster in-memory cache for instant sub-millisecond lookups
+  // Only this lecturer's own students are loaded, so the scanner can tell who is in the class
   useEffect(() => {
+    if (!currentUid) return;
     let active = true;
-    getDocs(collection(firestoreDb, "students"))
+    getDocs(query(collection(firestoreDb, "students"), where("owner_id", "==", currentUid)))
       .then((snap) => {
         if (!active) return;
         const cache = new Map<string, any>();
@@ -290,7 +306,7 @@ function ScanPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [currentUid]);
 
   // Open Sessions list
   const { data: openSessions } = useQuery({
@@ -584,6 +600,26 @@ function ScanPage() {
       let studentId: string = studentData?.id || `stud_${sanitizedUpper}`;
       const resolvedName = studentData?.full_name || `Student (${cleanUpper})`;
       const resolvedIndex = studentData?.index_number || cleanUpper;
+
+      // Class rule: the student must be on this lecturer's list and at the course's level
+      const courseLevel = sess?.courses?.level;
+      const notInClass = !studentData
+        ? `${cleanUpper} is not on your class list`
+        : courseLevel && studentData.level && !levelMatches(courseLevel, studentData.level)
+          ? `${resolvedName} is Level ${normalizeLevel(studentData.level)}, this session is Level ${normalizeLevel(courseLevel)}`
+          : null;
+      if (notInClass) {
+        playScanSound("error");
+        triggerHaptic("error");
+        toast.error(`Not recorded: ${notInClass}`);
+        setLastScan({
+          name: `${resolvedName} (${resolvedIndex})`,
+          status: "NOT IN THIS CLASS",
+          time: nowTimeStr,
+        });
+        setStatus(`Not recorded: ${notInClass}`);
+        return false;
+      }
 
       // 3. Mark in-memory set IMMEDIATELY (<1ms) to eliminate duplicate race conditions
       scannedRecordsSet.current.add(cleanUpper);
