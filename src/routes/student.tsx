@@ -680,12 +680,12 @@ function StudentPortalPage() {
 
         {/* Main Split-Card Container */}
         <div className="flex-1 flex items-center justify-center p-2.5 sm:p-5 lg:p-8 my-auto w-full">
-          <div className="w-full max-w-5xl lg:max-w-[94vw] xl:max-w-[1550px] 2xl:max-w-[1750px] rounded-[24px] sm:rounded-[32px] border border-[#D4AF37]/35 shadow-2xl bg-card overflow-hidden grid grid-cols-1 md:grid-cols-12">
+          <div className="w-full max-w-4xl rounded-[22px] sm:rounded-[28px] border border-[#D4AF37]/35 shadow-2xl bg-card overflow-hidden grid grid-cols-1 md:grid-cols-12">
             {/* ------------------------------------------------------------- */}
             {/* LEFT COLUMN: Deep Navy #0A1F44 with Black Students Hero Image */}
             {/* Compact and short so students immediately see the login box   */}
             {/* ------------------------------------------------------------- */}
-            <div className="md:col-span-5 bg-[#0A1F44] text-white p-3.5 sm:p-5 md:p-8 flex flex-col justify-between relative overflow-hidden select-none min-h-[68px] sm:min-h-[84px] md:min-h-[540px]">
+            <div className="md:col-span-5 bg-[#0A1F44] text-white p-3.5 sm:p-5 md:p-8 flex flex-col justify-between relative overflow-hidden select-none min-h-[68px] sm:min-h-[84px] md:min-h-[460px]">
               {/* Strategic Black Students Campus Hero Image Background - Vibrant and clearly visible */}
               <img
                 src="/knust-students-hero.jpg"
@@ -729,7 +729,7 @@ function StudentPortalPage() {
             {/* ------------------------------------------------------------- */}
             {/* RIGHT COLUMN: Form Panel with the 4 Top Tabs                */}
             {/* ------------------------------------------------------------- */}
-            <div className="md:col-span-7 bg-[#FAF8F5] dark:bg-[#0A1F44]/90 p-6 sm:p-8 lg:p-10 flex flex-col justify-between">
+            <div className="md:col-span-7 bg-[#FAF8F5] dark:bg-[#0A1F44]/90 p-5 sm:p-7 flex flex-col justify-between">
               <div>
                 {/* 4 Tabs Segmented Capsule in requested order: Sign In -> Activate -> Reset -> Register */}
                 <div className="p-1 bg-[#ECEAE4] dark:bg-muted/80 rounded-full flex items-center justify-between text-xs font-semibold select-none border border-border/50">
