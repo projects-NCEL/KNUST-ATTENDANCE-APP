@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { firestoreDb } from "@/integrations/firebase/config";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { hasPassedLocalMidnight } from "@/lib/session-lifecycle";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -191,6 +192,15 @@ function CheckInPage() {
           }
         }
 
+        const passedMidnight = hasPassedLocalMidnight(data);
+        if (passedMidnight && data.status === "OPEN") {
+          updateDoc(doc(firestoreDb, "attendance_sessions", sessDoc.id), {
+            status: "CLOSED",
+            ends_at: new Date().toISOString(),
+          }).catch(() => {});
+          data.status = "CLOSED";
+        }
+
         if (isMounted) {
           setSessionInfo({
             id: sessDoc.id,
@@ -200,8 +210,8 @@ function CheckInPage() {
             latitude: typeof data.latitude === "number" ? data.latitude : null,
             longitude: typeof data.longitude === "number" ? data.longitude : null,
             radius_m: data.radius_m || 100,
-            status: data.status || (data.is_active === false ? "CLOSED" : "OPEN"),
-            is_active: data.is_active,
+            status: passedMidnight ? "CLOSED" : (data.status || (data.is_active === false ? "CLOSED" : "OPEN")),
+            is_active: passedMidnight ? false : data.is_active,
             owner_id: data.owner_id,
             course_id: data.course_id,
           });
@@ -309,10 +319,21 @@ function CheckInPage() {
       }
       const sessData = sessSnap.data() as any;
 
-      // In sessions.tsx, status is "OPEN" or "CLOSED"
-      const isClosed = sessData.status === "CLOSED" || sessData.is_active === false;
+      // Verify midnight expiration and session status
+      const passedMidnight = hasPassedLocalMidnight(sessData);
+      if (passedMidnight && sessData.status === "OPEN") {
+        updateDoc(sessionDocRef, {
+          status: "CLOSED",
+          ends_at: new Date().toISOString(),
+        }).catch(() => {});
+      }
+      const isClosed = sessData.status === "CLOSED" || sessData.is_active === false || passedMidnight;
       if (isClosed) {
-        throw new Error("This attendance session has already been closed by the lecturer.");
+        throw new Error(
+          passedMidnight
+            ? "This attendance session closed at 12:00 AM midnight. Please ask your lecturer for today's active session."
+            : "This attendance session has already been closed by the lecturer."
+        );
       }
 
       // 2. Obtain device location to verify presence in classroom

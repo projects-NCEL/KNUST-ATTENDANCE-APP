@@ -57,6 +57,13 @@ import {
 import QRCode from "qrcode";
 import { toast } from "sonner";
 import { getPublicOrigin } from "@/lib/public-origin";
+import {
+  hasPassedLocalMidnight,
+  formatMidnightClosureLabel,
+  computeNextSessionNumber,
+  getSessionLocalMidnight,
+  getDetectedLocalTimezone,
+} from "@/lib/session-lifecycle";
 
 export const Route = createFileRoute("/_authenticated/sessions")({
   head: () => ({ meta: [{ title: "Sessions — Qmark" }] }),
@@ -118,11 +125,11 @@ function SessionsPage() {
         query(collection(firestoreDb, "attendance_sessions"), where("owner_id", "==", currentUid)),
       );
       const courseMap = new Map((courses ?? []).map((c: any) => [c.id, c]));
-      const cutoff = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
       const list = await Promise.all(
         snap.docs.map(async (d) => {
           const data = d.data() as any;
-          if (data.status === "OPEN" && data.starts_at && data.starts_at < cutoff) {
+          const passedMidnight = hasPassedLocalMidnight(data);
+          if (data.status === "OPEN" && passedMidnight) {
             try {
               await updateDoc(doc(firestoreDb, "attendance_sessions", d.id), {
                 status: "CLOSED",
@@ -165,7 +172,7 @@ function SessionsPage() {
   };
 
   const courseSessions = (sessions ?? []).filter((s: any) => s.course_id === form.course_id);
-  const nextSessionNum = courseSessions.length + 1;
+  const nextSessionNum = computeNextSessionNumber(courseSessions);
 
   const create = async () => {
     if (!form.course_id) return toast.error("Pick a course");
@@ -174,8 +181,12 @@ function SessionsPage() {
     const currentUid = firebaseAuth.currentUser?.uid;
 
     const matchedSessions = (sessions ?? []).filter((s: any) => s.course_id === form.course_id);
-    const successionNum = matchedSessions.length + 1;
+    const successionNum = computeNextSessionNumber(matchedSessions);
     const autoTitle = form.title?.trim() || `Session ${successionNum}`;
+
+    const now = new Date();
+    const nextMidnight = getSessionLocalMidnight(now.toISOString());
+    const tz = getDetectedLocalTimezone();
 
     try {
       const docRef = await addDoc(collection(firestoreDb, "attendance_sessions"), {
@@ -189,8 +200,10 @@ function SessionsPage() {
         created_by: currentUid ?? null,
         owner_id: currentUid ?? null,
         status: "OPEN",
-        starts_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
+        starts_at: now.toISOString(),
+        created_at: now.toISOString(),
+        auto_closes_at: nextMidnight?.toISOString() || null,
+        timezone: tz,
       });
       toast.success(`Session ${successionNum} created`);
       const chosenCourse = courses?.find((c: any) => c.id === form.course_id);
@@ -227,40 +240,77 @@ function SessionsPage() {
     }
   };
 
-  const toggle = async (s: any) => {
-    const status = s.status === "OPEN" ? "CLOSED" : "OPEN";
-    const updates: any = { status };
-    if (status === "CLOSED") {
-      updates.ends_at = new Date().toISOString();
-    } else {
-      // Reopening for a new class day: reset starts_at so the 12h auto-close doesn't fire immediately
-      updates.starts_at = new Date().toISOString();
-      updates.ends_at = null;
-    }
+  const closeSession = async (s: any) => {
     try {
-      await updateDoc(doc(firestoreDb, "attendance_sessions", s.id), updates);
-      toast.success(status === "OPEN" ? "Session reopened for today" : "Session closed");
-      if (status === "OPEN" && s.course_id) {
-        fetch("/api/push/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          keepalive: true,
-          body: JSON.stringify({
-            courseId: s.course_id,
-            payload: {
-              type: "ATTENDANCE",
-              title: "Attendance Reopened",
-              body: `Attendance for ${s.courses?.code || "your class"} has reopened for today.`,
-              url: `/check-in?session=${s.id}`,
-              entityId: s.id,
-              entityType: "attendance_session",
-            },
-          }),
-        }).catch((e) => console.warn("Push dispatch warning:", e));
-      }
+      await updateDoc(doc(firestoreDb, "attendance_sessions", s.id), {
+        status: "CLOSED",
+        ends_at: new Date().toISOString(),
+      });
+      toast.success("Session closed");
       qc.invalidateQueries({ queryKey: ["sessions"] });
+      qc.invalidateQueries({ queryKey: ["open-sessions"] });
     } catch (err: any) {
-      toast.error(err?.message || "Failed to update session");
+      toast.error(err?.message || "Failed to close session");
+    }
+  };
+
+  const startNextSessionForCourse = async (s: any) => {
+    const uid = currentUid || firebaseAuth.currentUser?.uid;
+    if (!uid) return toast.error("Please sign in first");
+    if (!s.course_id) return toast.error("Course not found for this session");
+
+    const matchedSessions = (sessions ?? []).filter((item: any) => item.course_id === s.course_id);
+    const nextSessionNum = computeNextSessionNumber(matchedSessions);
+    const courseCode = s.courses?.code || "Class";
+    const autoTitle = `Session ${nextSessionNum}`;
+
+    const now = new Date();
+    const nextMidnight = getSessionLocalMidnight(now.toISOString());
+    const tz = getDetectedLocalTimezone();
+
+    try {
+      const docRef = await addDoc(collection(firestoreDb, "attendance_sessions"), {
+        course_id: s.course_id,
+        session_number: nextSessionNum,
+        title: autoTitle,
+        mode: s.mode || "single",
+        latitude: s.latitude ?? null,
+        longitude: s.longitude ?? null,
+        radius_m: s.radius_m || 80,
+        created_by: uid,
+        owner_id: uid,
+        status: "OPEN",
+        starts_at: now.toISOString(),
+        created_at: now.toISOString(),
+        auto_closes_at: nextMidnight?.toISOString() || null,
+        timezone: tz,
+      });
+
+      toast.success(`Session ${nextSessionNum} created for ${courseCode}! Opening scanner...`);
+
+      // Dispatch push notification to students
+      fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({
+          courseId: s.course_id,
+          payload: {
+            type: "ATTENDANCE",
+            title: `Session ${nextSessionNum} Active`,
+            body: `Attendance for ${courseCode} (Session ${nextSessionNum}) is now open. Tap to check in.`,
+            url: `/check-in?session=${docRef.id}`,
+            entityId: docRef.id,
+            entityType: "attendance_session",
+          },
+        }),
+      }).catch((e) => console.warn("Push notification warning:", e));
+
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+      qc.invalidateQueries({ queryKey: ["open-sessions"] });
+      window.location.href = `/scan?session=${docRef.id}`;
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to start new session");
     }
   };
 
@@ -396,8 +446,7 @@ function SessionsPage() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  This session is reusable — reopen it every class day and each day is reported
-                  separately.
+                  Each session automatically closes at 12:00 AM midnight. Reopening or starting next class will create a fresh session for that same course.
                 </p>
               </div>
               <div>
@@ -457,8 +506,10 @@ function SessionsPage() {
                   </span>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {s.title ?? "—"} · last opened {new Date(s.starts_at).toLocaleString()} ·{" "}
-                  {s.mode === "inout" ? "sign in + sign out" : "single scan"}
+                  {s.title ?? "—"} · started {new Date(s.starts_at).toLocaleString()} ·{" "}
+                  <span className={s.status === "OPEN" ? "text-primary font-medium" : "text-muted-foreground"}>
+                    {formatMidnightClosureLabel(s.starts_at)}
+                  </span>
                   {s.latitude != null ? ` · geofence ${s.radius_m}m` : ""}
                 </div>
               </div>
@@ -468,19 +519,21 @@ function SessionsPage() {
                 >
                   {s.status}
                 </span>
-                <Button size="sm" variant="outline" onClick={() => toggle(s)}>
-                  {s.status === "OPEN" ? (
-                    <>
-                      <Lock className="size-3 mr-1" />
-                      Close
-                    </>
-                  ) : (
-                    <>
-                      <Unlock className="size-3 mr-1" />
-                      Reopen
-                    </>
-                  )}
-                </Button>
+                {s.status === "OPEN" ? (
+                  <Button size="sm" variant="outline" onClick={() => closeSession(s)}>
+                    <Lock className="size-3 mr-1" />
+                    Close
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="bg-[#B8861B] hover:bg-[#A37415] text-white font-bold cursor-pointer shadow-xs"
+                    onClick={() => startNextSessionForCourse(s)}
+                  >
+                    <Plus className="size-3.5 mr-1" />
+                    Reopen (New Session)
+                  </Button>
+                )}
                 {s.status === "OPEN" && (
                   <Button size="sm" variant="outline" onClick={() => projectQr(s)}>
                     <Projector className="size-3 mr-1" />

@@ -41,6 +41,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import {
+  hasPassedLocalMidnight,
+  getSessionLocalMidnight,
+  computeNextSessionNumber,
+  formatMidnightClosureLabel,
+  getDetectedLocalTimezone,
+} from "@/lib/session-lifecycle";
 
 type Search = { session?: string };
 
@@ -325,17 +332,34 @@ function ScanPage() {
         getDocs(query(collection(firestoreDb, "courses"), where("owner_id", "==", currentUid))),
       ]);
       const courseMap = new Map(coursesSnap.docs.map((d) => [d.id, d.data() as any]));
-      return sessSnap.docs.map((d) => {
+      const validOpen: any[] = [];
+
+      for (const d of sessSnap.docs) {
         const data = d.data() as any;
-        return {
-          id: d.id,
-          ...data,
-          courses: data.course_id ? courseMap.get(data.course_id) : null,
-        };
-      });
+        const passedMidnight = hasPassedLocalMidnight(data);
+        if (passedMidnight) {
+          // Automatic 12:00 AM midnight closure in local timezone
+          try {
+            await updateDoc(doc(firestoreDb, "attendance_sessions", d.id), {
+              status: "CLOSED",
+              ends_at: new Date().toISOString(),
+            });
+          } catch {
+            // ignore
+          }
+        } else {
+          validOpen.push({
+            id: d.id,
+            ...data,
+            courses: data.course_id ? courseMap.get(data.course_id) : null,
+          });
+        }
+      }
+
+      return validOpen;
     },
     enabled: !!currentUid,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
@@ -347,6 +371,22 @@ function ScanPage() {
       const sSnap = await getDoc(doc(firestoreDb, "attendance_sessions", activeSession));
       if (!sSnap.exists()) return null;
       const data = { id: sSnap.id, ...(sSnap.data() as any) };
+
+      // Automatic 12:00 AM midnight closure
+      const passedMidnight = hasPassedLocalMidnight(data);
+      if (data.status === "OPEN" && passedMidnight) {
+        try {
+          await updateDoc(doc(firestoreDb, "attendance_sessions", activeSession), {
+            status: "CLOSED",
+            ends_at: new Date().toISOString(),
+          });
+          data.status = "CLOSED";
+          data.ends_at = new Date().toISOString();
+        } catch {
+          // ignore
+        }
+      }
+
       if (data.course_id) {
         try {
           const cSnap = await getDoc(doc(firestoreDb, "courses", data.course_id));
@@ -432,40 +472,107 @@ function ScanPage() {
     return () => unsubscribe();
   }, [activeSession]);
 
+  // Start Next Sequential Session for a Course
+  const handleStartNextSession = useCallback(
+    async (courseIdParam?: string | null): Promise<string | null> => {
+      if (!currentUid) {
+        toast.error("Please sign in first");
+        return null;
+      }
+      try {
+        let targetCourseId = courseIdParam || sessionRef.current?.course_id || null;
+        if (!targetCourseId) {
+          const coursesSnap = await getDocs(
+            query(collection(firestoreDb, "courses"), where("owner_id", "==", currentUid)),
+          );
+          if (coursesSnap.docs.length > 0) {
+            targetCourseId = coursesSnap.docs[0].id;
+          }
+        }
+        if (!targetCourseId) {
+          toast.error("Please create a course before starting attendance");
+          return null;
+        }
+
+        // Compute next succession number for this course
+        const existingSnap = await getDocs(
+          query(
+            collection(firestoreDb, "attendance_sessions"),
+            where("course_id", "==", targetCourseId),
+          ),
+        );
+        const existingList = existingSnap.docs.map((d) => d.data() as any);
+        const nextNum = computeNextSessionNumber(existingList);
+
+        const now = new Date();
+        const nextMidnight = getSessionLocalMidnight(now.toISOString());
+        const tz = getDetectedLocalTimezone();
+
+        let courseCode = "Course";
+        try {
+          const cSnap = await getDoc(doc(firestoreDb, "courses", targetCourseId));
+          if (cSnap.exists()) {
+            courseCode = (cSnap.data() as any).code || "Course";
+          }
+        } catch {
+          // ignore
+        }
+
+        const newSessionDoc = await addDoc(collection(firestoreDb, "attendance_sessions"), {
+          owner_id: currentUid,
+          created_by: currentUid,
+          course_id: targetCourseId,
+          session_number: nextNum,
+          title: `Session ${nextNum}`,
+          status: "OPEN",
+          mode: sessionRef.current?.mode || "single",
+          latitude: sessionRef.current?.latitude ?? null,
+          longitude: sessionRef.current?.longitude ?? null,
+          radius_m: sessionRef.current?.radius_m || 80,
+          starts_at: now.toISOString(),
+          created_at: now.toISOString(),
+          auto_closes_at: nextMidnight?.toISOString() || null,
+          timezone: tz,
+        });
+
+        toast.success(`Session ${nextNum} created for ${courseCode}! Ready for today's scans.`);
+
+        // Dispatch notification
+        fetch("/api/push/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          keepalive: true,
+          body: JSON.stringify({
+            courseId: targetCourseId,
+            payload: {
+              type: "ATTENDANCE",
+              title: `Session ${nextNum} Active`,
+              body: `Attendance for ${courseCode} (Session ${nextNum}) is now open. Tap to check in.`,
+              url: `/check-in?session=${newSessionDoc.id}`,
+              entityId: newSessionDoc.id,
+              entityType: "attendance_session",
+            },
+          }),
+        }).catch((e) => console.warn("Push notification warning:", e));
+
+        setActiveSession(newSessionDoc.id);
+        activeSessionRef.current = newSessionDoc.id;
+        qc.invalidateQueries({ queryKey: ["open-sessions"] });
+        qc.invalidateQueries({ queryKey: ["sessions"] });
+        qc.invalidateQueries({ queryKey: ["session", newSessionDoc.id] });
+        return newSessionDoc.id;
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to start next session");
+        return null;
+      }
+    },
+    [currentUid, qc],
+  );
+
   // Create Quick Session if none exists
   const handleCreateQuickSession = useCallback(async (): Promise<string | null> => {
-    if (!currentUid) {
-      toast.error("Please sign in first");
-      return null;
-    }
-    setCreatingQuick(true);
-    try {
-      const coursesSnap = await getDocs(
-        query(collection(firestoreDb, "courses"), where("owner_id", "==", currentUid)),
-      );
-      const firstCourse = coursesSnap.docs[0];
-      const now = new Date();
-      const newSessionDoc = await addDoc(collection(firestoreDb, "attendance_sessions"), {
-        owner_id: currentUid,
-        title: `Lecture Session — ${now.toLocaleDateString()}`,
-        course_id: firstCourse ? firstCourse.id : null,
-        status: "OPEN",
-        mode: "single",
-        starts_at: now.toISOString(),
-        created_at: now.toISOString(),
-      });
-      toast.success("Attendance session created and ready for scanning!");
-      qc.invalidateQueries({ queryKey: ["open-sessions"] });
-      setActiveSession(newSessionDoc.id);
-      activeSessionRef.current = newSessionDoc.id;
-      return newSessionDoc.id;
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to create quick session");
-      return null;
-    } finally {
-      setCreatingQuick(false);
-    }
-  }, [currentUid, qc]);
+    return handleStartNextSession(null);
+  }, [handleStartNextSession]);
 
   // Process Scanned QR code with instant zero-latency feedback & non-blocking background persistence
   const processQr = useCallback(async (rawInput: string): Promise<boolean> => {
@@ -545,6 +652,19 @@ function ScanPage() {
         activeSessionRef.current = autoId;
       } else {
         toast.error("Please select or create an active class session first.");
+        return false;
+      }
+    }
+
+    // Auto-advance if target session reached 12:00 AM midnight or is closed
+    if (sess && (sess.status === "CLOSED" || hasPassedLocalMidnight(sess))) {
+      toast.info("Previous session closed at 12:00 AM midnight. Starting today's new session for this course...");
+      const nextId = await handleStartNextSession(sess.course_id);
+      if (nextId) {
+        sess = { id: nextId, course_id: sess.course_id, owner_id: currentUid };
+        activeSessionRef.current = nextId;
+      } else {
+        toast.error("Please start a new session for this course.");
         return false;
       }
     }
@@ -731,7 +851,7 @@ function ScanPage() {
     } finally {
       inFlight.current.delete(code);
     }
-  }, [activeSession, currentUid, handleCreateQuickSession, openSessions, qc]);
+  }, [activeSession, currentUid, handleCreateQuickSession, handleStartNextSession, openSessions, qc]);
 
   // Clean, fail-safe camera shutdown
   const stopCamera = useCallback(() => {
@@ -1042,9 +1162,22 @@ function ScanPage() {
             <CardContent className="space-y-4 pt-4 flex-1">
               {/* Session Picker */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Target Course Session
-                </label>
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    Target Course Session
+                  </label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleStartNextSession(session?.course_id || null)}
+                    className="h-6 text-[11px] font-bold text-primary hover:text-primary/80 gap-1 p-0 px-1 cursor-pointer"
+                    title="Start the next sequential session for this course"
+                  >
+                    <Plus className="size-3" />
+                    + New Session
+                  </Button>
+                </div>
                 <Select
                   value={activeSession ?? ""}
                   onValueChange={(val) => {
@@ -1058,7 +1191,7 @@ function ScanPage() {
                     {(openSessions ?? []).map((s: any) => (
                       <SelectItem key={s.id} value={s.id} className="text-xs font-medium">
                         {s.courses?.code ? `${s.courses.code} — ` : ""}
-                        {s.title || "Session"} (
+                        {s.session_number ? `Session ${s.session_number}` : s.title || "Session"} (
                         {new Date(s.starts_at).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -1071,25 +1204,59 @@ function ScanPage() {
               </div>
 
               {session && (
-                <div className="p-3 rounded-xl border border-[#D4AF37]/35 bg-[#D4AF37]/5 dark:bg-[#D4AF37]/10 text-xs flex items-center justify-between">
+                <div
+                  className={`p-3 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                    session.status === "CLOSED" || hasPassedLocalMidnight(session)
+                      ? "border-amber-500/40 bg-amber-500/10 text-amber-950 dark:text-amber-200"
+                      : "border-[#D4AF37]/35 bg-[#D4AF37]/5 dark:bg-[#D4AF37]/10"
+                  }`}
+                >
                   <div>
-                    <span className="font-extrabold text-foreground text-sm">
-                      {session.courses?.code || "Course"}{" "}
-                      {session.courses?.title ? `· ${session.courses.title}` : ""}
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-extrabold text-foreground text-sm">
+                        {session.courses?.code || "Course"}{" "}
+                        {session.courses?.title ? `· ${session.courses.title}` : ""}
+                      </span>
+                      <span className="text-[11px] px-2 py-0.5 rounded font-semibold bg-primary/10 text-primary">
+                        {session.session_number
+                          ? `Session ${session.session_number}`
+                          : session.title || "Session"}
+                      </span>
+                      {(session.status === "CLOSED" || hasPassedLocalMidnight(session)) && (
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                          Closed at 12:00 AM Midnight
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {session.title || "Open attendance session"}
+                      {session.status === "CLOSED" || hasPassedLocalMidnight(session)
+                        ? "This session closed at 12:00 AM midnight. Yesterday's scans are saved. Start the next session to scan today."
+                        : formatMidnightClosureLabel(session)}
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={closeSession}
-                    className="h-8 text-[11px] font-bold text-destructive hover:bg-destructive/10 border-destructive/30 cursor-pointer"
-                  >
-                    <Lock className="size-3 mr-1" />
-                    Close Session
-                  </Button>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {session.status === "CLOSED" || hasPassedLocalMidnight(session) ? (
+                      <Button
+                        size="sm"
+                        onClick={() => handleStartNextSession(session.course_id)}
+                        className="h-8 text-xs font-bold bg-[#B8861B] hover:bg-[#A37415] text-white shadow-xs cursor-pointer"
+                      >
+                        <Plus className="size-3.5 mr-1" />
+                        Start Next Session (New)
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={closeSession}
+                        className="h-8 text-[11px] font-bold text-destructive hover:bg-destructive/10 border-destructive/30 cursor-pointer"
+                      >
+                        <Lock className="size-3 mr-1" />
+                        Close Session
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
 

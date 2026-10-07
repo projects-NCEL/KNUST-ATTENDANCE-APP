@@ -5,6 +5,7 @@ import {
   queryCollectionRest,
   isFirestoreQuotaError,
 } from "@/integrations/firebase/firestore-rest";
+import { hasPassedLocalMidnight } from "@/lib/session-lifecycle";
 import { pbkdf2Sync, randomBytes, timingSafeEqual } from "crypto";
 
 const DEFAULT_KNUST_DEPARTMENTS = [
@@ -66,7 +67,19 @@ async function getDocsByIds(collectionName: string, ids: string[]): Promise<Map<
 async function getOpenSessions(ownerId?: string): Promise<any[]> {
   const where: any[] = [{ field: "status", op: "EQUAL", value: "OPEN" }];
   if (ownerId) where.push({ field: "owner_id", op: "EQUAL", value: ownerId });
-  return queryCollectionRest("attendance_sessions", { where, limit: 20 }).catch(() => []);
+  const raw = await queryCollectionRest("attendance_sessions", { where, limit: 20 }).catch(() => []);
+  const valid: any[] = [];
+  for (const s of raw) {
+    if (hasPassedLocalMidnight(s)) {
+      setDocRest("attendance_sessions", s.id, {
+        status: "CLOSED",
+        ends_at: new Date().toISOString(),
+      }, true).catch(() => {});
+    } else {
+      valid.push(s);
+    }
+  }
+  return valid;
 }
 
 // Department names are typed by hand, so compare them loosely:
@@ -379,9 +392,25 @@ export const Route = createFileRoute("/api/public/student-auth")({
               );
             }
 
-            if (sessionData.status === "CLOSED" || sessionData.is_active === false) {
+            const passedMidnight = hasPassedLocalMidnight(sessionData);
+            if (sessionData.status === "CLOSED" || sessionData.is_active === false || passedMidnight) {
+              if (passedMidnight && sessionData.status === "OPEN") {
+                setDocRest(
+                  "attendance_sessions",
+                  session_id,
+                  {
+                    status: "CLOSED",
+                    ends_at: new Date().toISOString(),
+                  },
+                  true,
+                ).catch(() => {});
+              }
               return Response.json(
-                { error: "This attendance session has already been closed by the lecturer." },
+                {
+                  error: passedMidnight
+                    ? "This attendance session closed at 12:00 AM midnight. Please ask your lecturer for today's new session."
+                    : "This attendance session has already been closed by the lecturer.",
+                },
                 { status: 400 },
               );
             }

@@ -2,8 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
-import { collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
+import { collection, query, where, getDocs, onSnapshot, updateDoc, doc } from "firebase/firestore";
 import { firestoreDb, firebaseAuth } from "@/integrations/firebase/config";
+import { hasPassedLocalMidnight } from "@/lib/session-lifecycle";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -77,10 +78,19 @@ function Dashboard() {
         where("status", "==", "OPEN"),
       ),
       (snap) => {
-        const list: SessionItem[] = snap.docs.map((d) => {
+        const list: SessionItem[] = [];
+        for (const d of snap.docs) {
           const data = d.data() as any;
+          if (hasPassedLocalMidnight(data)) {
+            // Auto-close expired sessions from past 12:00 AM midnight
+            updateDoc(doc(firestoreDb, "attendance_sessions", d.id), {
+              status: "CLOSED",
+              ends_at: new Date().toISOString(),
+            }).catch(() => {});
+            continue;
+          }
           const course = data.course_id ? coursesMap.get(data.course_id) : null;
-          return {
+          list.push({
             id: d.id,
             course_code: course?.code || data.course_code || "PE 258",
             course_title: course?.title || data.course_title || "Lecture",
@@ -89,8 +99,8 @@ function Dashboard() {
             start_time: data.start_time || "10:00",
             duration: data.duration || "2 hrs",
             status: data.status || "OPEN",
-          };
-        });
+          });
+        }
 
         // Find active open session or first available session
         const live = list.find((s) => s.status === "OPEN") || list[0] || null;
