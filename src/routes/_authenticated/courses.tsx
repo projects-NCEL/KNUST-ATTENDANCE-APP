@@ -109,9 +109,10 @@ function CoursesPage() {
     queryKey: ["courses", currentUid, depts, years],
     queryFn: async () => {
       if (!currentUid) return [];
-      const [coursesSnap, studSnap, regsSnap] = await Promise.all([
+      const [coursesSnap, studSnap, univStudSnap, regsSnap] = await Promise.all([
         getDocs(query(collection(firestoreDb, "courses"), where("owner_id", "==", currentUid))),
         getDocs(query(collection(firestoreDb, "students"), where("owner_id", "==", currentUid))),
+        getDocs(query(collection(firestoreDb, "students"), where("owner_id", "==", "universal"))),
         getDocs(
           query(
             collection(firestoreDb, "course_registrations"),
@@ -122,11 +123,17 @@ function CoursesPage() {
 
       const deptMap = new Map((depts ?? []).map((d: any) => [d.id, d.name]));
       const yearMap = new Map((years ?? []).map((y: any) => [y.id, y.name]));
+      const deptIds = new Set((depts ?? []).map((d: any) => d.id));
 
-      const students = studSnap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as any),
-      }));
+      const mergedStudentsMap = new Map<string, any>();
+      studSnap.docs.forEach((d) => mergedStudentsMap.set(d.id, { id: d.id, ...d.data() }));
+      univStudSnap.docs.forEach((d) => {
+        const dt = d.data() as any;
+        if (!dt.department_id || deptIds.has(dt.department_id) || deptIds.size === 0) {
+          mergedStudentsMap.set(d.id, { id: d.id, ...dt });
+        }
+      });
+      const students = Array.from(mergedStudentsMap.values());
 
       const regsByCourse = new Map<string, Set<string>>();
       regsSnap.docs.forEach((d) => {

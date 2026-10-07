@@ -62,7 +62,7 @@ self.addEventListener("push", (event) => {
   const badge = payload.badge || "/qmark_icon_standalone.png";
   const url = payload.url || "/";
   const cleanId = payload.entityId || (payload.title ? payload.title.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 32) : "notice");
-  const tag = payload.tag || `${payload.type || "qmark"}_${cleanId}`;
+  const tag = payload.tag || `${payload.type || "qmark"}_${cleanId}_${Date.now()}`;
 
   const options = {
     body,
@@ -76,15 +76,21 @@ self.addEventListener("push", (event) => {
       timestamp: payload.timestamp || Date.now(),
     },
     tag,
-    renotify: false,
-    requireInteraction: payload.type === "ATTENDANCE", // keep attendance on screen till actioned
-    vibrate: [200, 100, 200],
-    actions: payload.actions || [
-      { action: "open", title: "View Update" },
-    ],
+    renotify: true,
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration
+      .showNotification(title, options)
+      .catch((err) => {
+        console.warn("[SW] Standard showNotification failed, attempting minimal fallback:", err);
+        return self.registration.showNotification(title, {
+          body,
+          icon,
+          tag,
+        });
+      })
+  );
 });
 
 // Notification Click: Focus existing app window or open target deep-link

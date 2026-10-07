@@ -204,8 +204,9 @@ export function AnnouncementsAndAssignmentsPage() {
       fetch("/api/push/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        keepalive: true,
         body: JSON.stringify({
-          courseId: announceCourseId === "all" ? undefined : announceCourseId,
+          courseId: announceCourseId,
           payload: {
             type: "ANNOUNCEMENT",
             title: `Notice: ${announceTitle.trim()}`,
@@ -254,8 +255,9 @@ export function AnnouncementsAndAssignmentsPage() {
       fetch("/api/push/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        keepalive: true,
         body: JSON.stringify({
-          courseId: assignCourseId === "all" ? undefined : assignCourseId,
+          courseId: assignCourseId,
           payload: {
             type: "ASSIGNMENT",
             title: `Assignment: ${assignTitle.trim()}`,

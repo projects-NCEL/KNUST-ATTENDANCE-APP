@@ -197,6 +197,7 @@ function SessionsPage() {
       fetch("/api/push/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        keepalive: true,
         body: JSON.stringify({
           courseId: form.course_id,
           payload: {
@@ -243,6 +244,7 @@ function SessionsPage() {
         fetch("/api/push/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          keepalive: true,
           body: JSON.stringify({
             courseId: s.course_id,
             payload: {

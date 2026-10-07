@@ -50,6 +50,8 @@ import { toast } from "sonner";
 import { StudentQrPassCard } from "@/components/StudentQrPassCard";
 import { QmarkTitleBar } from "@/components/QmarkTitleBar";
 import { PushNotificationManager } from "@/components/PushNotificationManager";
+import { NotificationPermissionModal } from "@/components/NotificationPermissionModal";
+import { syncPushSubscriptionIfGranted } from "@/lib/push-client";
 
 export const Route = createFileRoute("/student")({
   ssr: false,
@@ -162,7 +164,7 @@ interface AssignmentItem {
   created_at: string;
 }
 
-type StudentAuthTab = "signin" | "activate" | "reset" | "register";
+type StudentAuthTab = "signin" | "activate" | "reset";
 type PortalTabType = "qr" | "attendance" | "courses" | "notices" | "notifications" | "settings";
 
 const ACADEMIC_LEVELS = [
@@ -313,6 +315,40 @@ function StudentPortalPage() {
       setActiveSession(data.active_sessions.length > 0 ? data.active_sessions[0] : null);
     }
   }, []);
+
+  // Push Notification auto-sync & prompt for student
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+
+  useEffect(() => {
+    if (!me?.id) return;
+    const studentUserContext = {
+      userId: me.index_number || me.id,
+      userRole: "student" as const,
+      studentId: me.id,
+      indexNumber: me.index_number,
+    };
+
+    // If permission already granted, silently ensure backend has this device registered
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      void syncPushSubscriptionIfGranted(studentUserContext);
+      return;
+    }
+
+    // If not yet granted or denied, prompt user with modal
+    try {
+      const promptShown =
+        localStorage.getItem(`qmark_notification_prompt_shown_${me.index_number}`) ||
+        localStorage.getItem(`qmark_notification_prompt_shown_${me.id}`);
+      if (!promptShown && typeof Notification !== "undefined" && Notification.permission === "default") {
+        const timer = setTimeout(() => {
+          setShowNotificationModal(true);
+        }, 1200);
+        return () => clearTimeout(timer);
+      }
+    } catch {
+      // ignore storage error
+    }
+  }, [me?.id, me?.index_number]);
 
   const loadingDataRef = useRef(false);
   const loadStudentData = useCallback(
@@ -775,7 +811,7 @@ function StudentPortalPage() {
             {/* ------------------------------------------------------------- */}
             <div className="md:col-span-7 bg-[#FAF8F5] dark:bg-[#0A1F44]/90 p-5 sm:p-7 flex flex-col justify-between">
               <div>
-                {/* 4 Tabs Segmented Capsule in requested order: Sign In -> Activate -> Reset -> Register */}
+                {/* 3 Tabs Segmented Capsule: Sign In -> Activate -> Reset */}
                 <div className="p-1 bg-[#ECEAE4] dark:bg-muted/80 rounded-full flex items-center justify-between text-xs font-semibold select-none border border-border/50">
                   <button
                     type="button"
@@ -812,19 +848,6 @@ function StudentPortalPage() {
                   >
                     Reset
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveAuthTab("register")}
-                    className={`flex-1 py-2 rounded-full transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${
-                      activeAuthTab === "register"
-                        ? "bg-white dark:bg-card text-foreground font-bold shadow-xs"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <UserPlus className="size-3.5" />
-                    <span>Register</span>
-                  </button>
                 </div>
 
                 {/* --------------------------------------------------------- */}
@@ -843,28 +866,6 @@ function StudentPortalPage() {
                       <p className="text-xs text-muted-foreground max-w-xs mx-auto">
                         Enter your student index number and portal password to view your pass.
                       </p>
-                    </div>
-
-                    {/* First Time Student Banner */}
-                    <div className="p-3.5 rounded-2xl border border-[#D4AF37]/45 bg-[#D4AF37]/10 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="size-9 rounded-full bg-[#0A1F44] text-[#D4AF37] flex items-center justify-center shrink-0">
-                          <UserPlus className="size-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-foreground">First time student?</p>
-                          <p className="text-[11px] text-muted-foreground truncate">Register to get your digital QR pass</p>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setActiveAuthTab("register")}
-                        className="px-3.5 py-1.5 rounded-full border border-border bg-white dark:bg-card text-foreground font-bold text-xs shadow-xs hover:bg-muted transition flex items-center gap-1 shrink-0 cursor-pointer"
-                      >
-                        <span>Register</span>
-                        <ArrowRight className="size-3.5" />
-                      </button>
                     </div>
 
                     {/* Sign In Form */}
@@ -1164,185 +1165,6 @@ function StudentPortalPage() {
                         >
                           Back to sign in
                         </button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-
-                {/* --------------------------------------------------------- */}
-                {/* SCREENSHOT 4: REGISTER VIEW                               */}
-                {/* --------------------------------------------------------- */}
-                {activeAuthTab === "register" && (
-                  <div className="mt-5 space-y-3.5">
-                    <div className="text-center space-y-1">
-                      <div className="size-10 rounded-2xl bg-[#0A1F44] text-[#D4AF37] border border-[#D4AF37]/40 flex items-center justify-center mx-auto shadow-xs">
-                        <UserPlus className="size-4.5" />
-                      </div>
-                      <h3 className="text-lg sm:text-xl font-extrabold text-foreground tracking-tight">
-                        New Student Registration
-                      </h3>
-                      <p className="text-[11px] text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                        Qmark Academic Network. Register once to create your student account and get your digital QR pass.
-                      </p>
-                    </div>
-
-                    <form onSubmit={handleRegister} className="space-y-2.5">
-                      <div className="space-y-0.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
-                          Full Legal Name
-                        </Label>
-                        <Input
-                          placeholder="e.g. Kwame Mensah"
-                          value={regFullName}
-                          onChange={(e) => setRegFullName(e.target.value)}
-                          className="h-9.5 rounded-xl border border-border bg-white dark:bg-background text-xs"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-0.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
-                          Student Index Number
-                        </Label>
-                        <Input
-                          placeholder="E.G. 2084931"
-                          value={regIndex}
-                          onChange={(e) => setRegIndex(e.target.value.toUpperCase())}
-                          className="h-9.5 rounded-xl border border-border bg-white dark:bg-background font-mono text-xs uppercase"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-0.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
-                          Academic Level
-                        </Label>
-                        <Select value={regLevel} onValueChange={setRegLevel}>
-                          <SelectTrigger className="h-9.5 rounded-xl border border-border bg-white dark:bg-background text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ACADEMIC_LEVELS.map((lvl) => (
-                              <SelectItem key={lvl.value} value={lvl.value} className="text-xs">
-                                {lvl.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-0.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
-                          Department / Faculty
-                        </Label>
-                        <Select value={regDepartment} onValueChange={setRegDepartment}>
-                          <SelectTrigger className="h-9.5 rounded-xl border border-border bg-white dark:bg-background text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {FACULTY_DEPARTMENTS.map((dept) => (
-                              <SelectItem key={dept} value={dept} className="text-xs">
-                                {dept}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-0.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
-                          Program of Study (Major)
-                        </Label>
-                        <Input
-                          placeholder="e.g. BSc Computer Science"
-                          value={regProgram}
-                          onChange={(e) => setRegProgram(e.target.value)}
-                          className="h-9.5 rounded-xl border border-border bg-white dark:bg-background text-xs"
-                        />
-                      </div>
-
-                      <div className="space-y-0.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
-                          Email Address
-                        </Label>
-                        <Input
-                          type="email"
-                          placeholder="student@example.com"
-                          value={regEmail}
-                          onChange={(e) => setRegEmail(e.target.value)}
-                          className="h-9.5 rounded-xl border border-border bg-white dark:bg-background text-xs"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-0.5">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
-                            Create Password
-                          </Label>
-                          <button
-                            type="button"
-                            onClick={() => setShowRegPassword(!showRegPassword)}
-                            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
-                          >
-                            <Eye className="size-3" />
-                            <span>{showRegPassword ? "Hide" : "Show"}</span>
-                          </button>
-                        </div>
-                        <Input
-                          type={showRegPassword ? "text" : "password"}
-                          placeholder="Minimum 6 characters"
-                          value={regPassword}
-                          onChange={(e) => setRegPassword(e.target.value)}
-                          className="h-9.5 rounded-xl border border-border bg-white dark:bg-background text-xs"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-0.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">
-                          Confirm Password
-                        </Label>
-                        <Input
-                          type="password"
-                          placeholder="Re-enter password"
-                          value={regConfirmPassword}
-                          onChange={(e) => setRegConfirmPassword(e.target.value)}
-                          className="h-9.5 rounded-xl border border-border bg-white dark:bg-background text-xs"
-                          required
-                        />
-                      </div>
-
-                      {/* Notice Pill matching Screenshot */}
-                      <div className="p-2.5 rounded-xl border border-[#D4AF37]/35 bg-[#D4AF37]/10 flex items-start gap-2 text-[11px] text-foreground">
-                        <div className="size-4 rounded-full border border-[#D4AF37] flex items-center justify-center shrink-0 mt-0.5">
-                          <Check className="size-2 text-[#D4AF37] stroke-[3]" />
-                        </div>
-                        <p className="leading-tight">
-                          Upon registration, your personal QR attendance pass will be generated instantly for all enrolled courses.
-                        </p>
-                      </div>
-
-                      <Button
-                        type="submit"
-                        disabled={regBusy}
-                        className="w-full h-11 rounded-2xl bg-[#B8861B] hover:bg-[#A37415] text-white font-bold text-xs shadow-md cursor-pointer flex items-center justify-center gap-2 mt-2"
-                      >
-                        <UserPlus className="size-4" />
-                        <span>{regBusy ? "Generating Pass..." : "Register & Generate QR Pass"}</span>
-                      </Button>
-
-                      <div className="text-center pt-1">
-                        <p className="text-xs text-muted-foreground">
-                          Already registered?{" "}
-                          <button
-                            type="button"
-                            onClick={() => setActiveAuthTab("signin")}
-                            className="text-foreground font-bold hover:underline cursor-pointer ml-1"
-                          >
-                            Sign In
-                          </button>
-                        </p>
                       </div>
                     </form>
                   </div>
@@ -2578,8 +2400,10 @@ function StudentPortalPage() {
               <CardContent className="pt-2">
                 <PushNotificationManager
                   userContext={{
-                    userId: me.id,
+                    userId: me.index_number || me.id,
                     userRole: "student",
+                    studentId: me.id,
+                    indexNumber: me.index_number,
                     studentIndex: me.index_number,
                   }}
                   hideHistory={true}
@@ -2642,6 +2466,29 @@ function StudentPortalPage() {
           </div>
         )}
       </div>
+
+      {me && (
+        <NotificationPermissionModal
+          open={showNotificationModal}
+          onClose={() => setShowNotificationModal(false)}
+          onSuccess={() => {
+            if (me) {
+              void syncPushSubscriptionIfGranted({
+                userId: me.index_number || me.id,
+                userRole: "student",
+                studentId: me.id,
+                indexNumber: me.index_number,
+              });
+            }
+          }}
+          userContext={{
+            userId: me.index_number || me.id,
+            userRole: "student",
+            studentId: me.id,
+            indexNumber: me.index_number,
+          }}
+        />
+      )}
     </div>
   );
 }

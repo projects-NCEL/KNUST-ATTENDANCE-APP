@@ -208,20 +208,20 @@ async function sendToSubscriptionRecord(
 ): Promise<{ success: boolean; expired?: boolean; error?: string; skippedDuplicate?: boolean }> {
   cleanRecentDispatches();
 
-  // Deduplication key: combination of endpoint and notification title + type
-  const dedupKey = `${sub.endpoint}::${payload.type}::${payload.title}`;
+  // Deduplication key: combination of endpoint and notification title + entityId
+  const cleanEntityId = payload.entityId || (payload.title ? payload.title.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 32) : "notice");
+  const dedupKey = `${sub.endpoint}::${payload.type}::${cleanEntityId}::${payload.title}`;
   const lastSent = recentDispatches.get(dedupKey);
   const now = Date.now();
 
-  if (lastSent && now - lastSent < 15000) {
-    console.log(`[WebPush] Dropped duplicate push dispatch to ${sub.id} (within 15s debounce window)`);
+  if (lastSent && now - lastSent < 1200) {
+    console.log(`[WebPush] Dropped duplicate push dispatch to ${sub.id} (within 1.2s debounce window)`);
     return { success: true, skippedDuplicate: true };
   }
 
   recentDispatches.set(dedupKey, now);
 
-  const cleanEntityId = payload.entityId || (payload.title ? payload.title.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 32) : "notice");
-  const deterministicTag = payload.tag || `${payload.type || "qmark"}_${cleanEntityId}`;
+  const deterministicTag = payload.tag || `${payload.type || "qmark"}_${cleanEntityId}_${now}`;
 
   const pushPayload = JSON.stringify({
     title: payload.title,
@@ -441,34 +441,74 @@ export async function sendNotificationToUser(
 }
 
 /**
- * Send notification to a list of users concurrently with bounded batches
+ * Send notification to a list of users concurrently with instant subscription lookup
  */
 export async function sendNotificationToUsers(
   userIds: string[],
   payload: NotificationPayload,
 ): Promise<{ totalUsers: number; totalDelivered: number }> {
-  const uniqueIds = Array.from(new Set(userIds.filter(Boolean).map((id) => String(id).trim())));
-  if (uniqueIds.length === 0) return { totalUsers: 0, totalDelivered: 0 };
+  const targetIdSet = new Set(userIds.filter(Boolean).map((id) => String(id).trim()));
+  if (targetIdSet.size === 0) return { totalUsers: 0, totalDelivered: 0 };
 
-  console.log(`[WebPush] Broadcasting "${payload.title}" to ${uniqueIds.length} users`);
+  console.log(`[WebPush] Broadcasting "${payload.title}" to ${targetIdSet.size} user ID(s)`);
 
-  let totalDelivered = 0;
-  const batchSize = 10;
+  // Persist In-App notifications for all target users
+  const uniqueRecipientList = Array.from(targetIdSet);
+  Promise.all(
+    uniqueRecipientList.map((uid) => saveInAppNotification(uid, payload).catch(() => {})),
+  ).catch(() => {});
 
-  for (let i = 0; i < uniqueIds.length; i += batchSize) {
-    const chunk = uniqueIds.slice(i, i + batchSize);
-    const results = await Promise.all(
-      chunk.map((uid) =>
-        sendNotificationToUser(uid, payload).catch((err) => {
-          console.error(`[WebPush] Error dispatching to user ${uid}:`, err);
-          return { targetDevices: 0, successful: 0, failed: 0 };
-        }),
-      ),
-    );
-    totalDelivered += results.reduce((acc, r) => acc + r.successful, 0);
+  // Fetch all active subscriptions in ONE query instead of looping over every user
+  let activeSubs: any[] = [];
+  try {
+    activeSubs = await queryCollectionRest("push_subscriptions", {
+      where: [{ field: "isActive", op: "EQUAL", value: true }],
+    });
+  } catch (err) {
+    console.warn("[WebPush] Failed to query active push subscriptions:", err);
   }
 
-  return { totalUsers: uniqueIds.length, totalDelivered };
+  // Filter subscriptions matching any target userId, indexNumber, or studentId
+  const matchingSubs = activeSubs.filter((sub: any) => {
+    const uid = String(sub.userId || "").trim();
+    const idx = String(sub.indexNumber || "").trim();
+    const sid = String(sub.studentId || "").trim();
+    return (
+      (uid && targetIdSet.has(uid)) ||
+      (idx && targetIdSet.has(idx)) ||
+      (sid && targetIdSet.has(sid))
+    );
+  });
+
+  // Deduplicate by endpoint to prevent double alerts
+  const dedupMap = new Map<string, StoredPushSubscription>();
+  for (const sub of matchingSubs) {
+    if (!sub.endpoint) continue;
+    const existing = dedupMap.get(sub.endpoint);
+    if (!existing || (sub.updatedAt || "") > (existing.updatedAt || "")) {
+      dedupMap.set(sub.endpoint, sub as StoredPushSubscription);
+    }
+  }
+
+  const finalDevices = Array.from(dedupMap.values());
+  let totalDelivered = 0;
+
+  await Promise.all(
+    finalDevices.map(async (sub) => {
+      try {
+        const res = await sendToSubscriptionRecord(sub, payload);
+        if (res.success) totalDelivered++;
+      } catch (err) {
+        console.warn(`[WebPush] Device dispatch error for ${sub.id}:`, err);
+      }
+    }),
+  );
+
+  console.log(
+    `[WebPush] Delivered "${payload.title}" to ${totalDelivered}/${finalDevices.length} matching device(s)`,
+  );
+
+  return { totalUsers: targetIdSet.size, totalDelivered };
 }
 
 /**
@@ -488,15 +528,14 @@ export async function sendNotificationToCourseStudents(
 
     const studentIds = registrations.map((r: any) => r.student_id).filter(Boolean);
 
-    // 2. Fetch student records and resolve to exactly ONE canonical ID per student
+    // 2. Fetch student records and resolve to canonical IDs (both document ID and index_number)
     const studentUserIds = new Set<string>();
 
     for (const sid of studentIds) {
+      studentUserIds.add(String(sid).trim());
       const studentDoc = await getDocRest("students", sid).catch(() => null);
       if (studentDoc && studentDoc.index_number) {
         studentUserIds.add(studentDoc.index_number.trim());
-      } else {
-        studentUserIds.add(sid);
       }
     }
 
@@ -511,22 +550,19 @@ export async function sendNotificationToCourseStudents(
       });
 
       for (const s of cohortStudents) {
-        if (s.index_number) {
-          studentUserIds.add(s.index_number.trim());
-        } else {
-          studentUserIds.add(s.id);
-        }
+        if (s.id) studentUserIds.add(String(s.id).trim());
+        if (s.index_number) studentUserIds.add(String(s.index_number).trim());
       }
     }
 
     const recipientList = Array.from(studentUserIds);
     console.log(
-      `[WebPush] Resolved ${recipientList.length} canonical student(s) for course ${cleanCourseId}`,
+      `[WebPush] Resolved ${recipientList.length} canonical student ID(s) for course ${cleanCourseId}`,
     );
 
     if (recipientList.length === 0) {
       console.log(
-        `[WebPush] No direct course registrations found for course ${cleanCourseId}. Falling back to active student devices.`,
+        `[WebPush] No course registrations found for course ${cleanCourseId}. Falling back to active student devices.`,
       );
       const broadcastRes = await sendNotificationToAllActive(payload, "student");
       return { studentsCount: broadcastRes.totalDevices, delivered: broadcastRes.totalDelivered };

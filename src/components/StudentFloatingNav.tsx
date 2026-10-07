@@ -42,18 +42,18 @@ export function StudentFloatingNav({
       initial={{ y: 80, opacity: 0, scale: 0.96 }}
       animate={{ y: 0, opacity: 1, scale: 1 }}
       transition={{ type: "spring", stiffness: 280, damping: 24 }}
-      className="fixed bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-40 max-w-[96vw] pointer-events-auto select-none"
+      className="md:hidden fixed bottom-2.5 left-1/2 -translate-x-1/2 z-40 max-w-[95vw] pointer-events-auto select-none"
       aria-label="Student Floating Navigation"
     >
-      <div className="relative flex items-center gap-1.5 sm:gap-2.5 px-3.5 sm:px-6 py-2.5 sm:py-3 rounded-full backdrop-blur-3xl bg-white/95 dark:bg-[#07162c]/95 border-[2.5px] border-[#D4AF37]/50 dark:border-[#D4AF37]/45 shadow-[0_16px_44px_-6px_rgba(0,0,0,0.32)] dark:shadow-[0_20px_48px_-6px_rgba(0,0,0,0.75)]">
+      <div className="relative flex items-center gap-1 px-2.5 py-1.5 rounded-full backdrop-blur-3xl bg-white/95 dark:bg-[#07162c]/95 border-[2px] border-[#D4AF37]/50 dark:border-[#D4AF37]/45 shadow-[0_12px_36px_-6px_rgba(0,0,0,0.35)] dark:shadow-[0_16px_40px_-6px_rgba(0,0,0,0.75)]">
         {/* Top gold hairline */}
-        <div className="pointer-events-none absolute inset-x-8 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#D4AF37]/80 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-6 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#D4AF37]/80 to-transparent" />
 
         {/* Animated Curved Notch Scoop (Curved In) Cradling the Projecting Home Button */}
-        <div className="pointer-events-none absolute -top-[16px] left-1/2 -translate-x-1/2 w-28 sm:w-32 h-5 overflow-visible flex items-center justify-center">
+        <div className="pointer-events-none absolute -top-[14px] left-1/2 -translate-x-1/2 w-22 h-4 overflow-visible flex items-center justify-center">
           <svg
-            className="w-28 sm:w-32 h-5 overflow-visible"
-            viewBox="0 0 120 20"
+            className="w-22 h-4 overflow-visible"
+            viewBox="0 0 88 16"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
@@ -66,21 +66,21 @@ export function StudentFloatingNav({
             </defs>
             {/* Curved-in concave scoop fill seamlessly matching navbar glass */}
             <path
-              d="M 0,0 C 26,0 34,18 60,18 C 86,18 94,0 120,0"
-              className="fill-transparent stroke-[#D4AF37]/60 dark:stroke-[#D4AF37]/55 stroke-[2.5]"
+              d="M 0,0 C 18,0 24,14 44,14 C 64,14 70,0 88,0"
+              className="fill-transparent stroke-[#D4AF37]/60 dark:stroke-[#D4AF37]/55 stroke-[2]"
               strokeLinecap="round"
             />
             {/* Glowing animated accent beam continuously running across the curved notch */}
             <motion.path
-              d="M 0,0 C 26,0 34,18 60,18 C 86,18 94,0 120,0"
+              d="M 0,0 C 18,0 24,14 44,14 C 64,14 70,0 88,0"
               fill="none"
               stroke="url(#goldBeamStudent)"
-              strokeWidth="3.5"
+              strokeWidth="2.5"
               strokeLinecap="round"
               initial={{ pathLength: 0.35, pathOffset: 0 }}
               animate={{ pathOffset: [0, 1] }}
               transition={{ duration: 3.2, repeat: Infinity, ease: "linear" }}
-              className="drop-shadow-[0_0_8px_rgba(212,175,55,0.85)]"
+              className="drop-shadow-[0_0_6px_rgba(212,175,55,0.85)]"
             />
           </svg>
         </div>
@@ -94,15 +94,15 @@ export function StudentFloatingNav({
             return (
               <Link key={item.id} to={item.to as string} className="relative group">
                 <motion.div
-                  whileHover={{ scale: 1.07 }}
-                  whileTap={{ scale: 0.93 }}
-                  className="relative flex flex-col items-center justify-center px-3.5 sm:px-4.5 py-1.5 sm:py-2 rounded-full transition-all duration-200 cursor-pointer text-muted-foreground hover:text-foreground hover:bg-[#D4AF37]/15 min-w-[56px] sm:min-w-[70px]"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.94 }}
+                  className="relative flex flex-col items-center justify-center px-2 py-1 rounded-full transition-all duration-200 cursor-pointer text-muted-foreground hover:text-foreground hover:bg-[#D4AF37]/15 min-w-[44px]"
                 >
                   {item.isLive && (
-                    <span className="absolute top-1 right-2 size-2.5 rounded-full bg-[#B8861B] ring-2 ring-white dark:ring-[#0A1F44] animate-pulse" />
+                    <span className="absolute top-1 right-2 size-2 rounded-full bg-[#B8861B] ring-2 ring-white dark:ring-[#0A1F44] animate-pulse" />
                   )}
-                  <Icon className="size-6 sm:size-6.5 shrink-0 stroke-[3.2]" />
-                  <span className="text-[12px] sm:text-[13px] font-black leading-tight mt-0.5 tracking-tight uppercase">
+                  <Icon className="size-5 shrink-0 stroke-[2.5]" />
+                  <span className="text-[10px] font-bold leading-tight mt-0.5 tracking-tight uppercase">
                     {item.label}
                   </span>
                 </motion.div>
@@ -118,9 +118,9 @@ export function StudentFloatingNav({
               className="relative group cursor-pointer"
             >
               <motion.div
-                whileHover={{ scale: 1.07 }}
-                whileTap={{ scale: 0.93 }}
-                className={`relative flex flex-col items-center justify-center px-3.5 sm:px-4.5 py-1.5 sm:py-2 rounded-full transition-all duration-200 min-w-[56px] sm:min-w-[70px] ${
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.94 }}
+                className={`relative flex flex-col items-center justify-center px-2 py-1 rounded-full transition-all duration-200 min-w-[44px] ${
                   isActive
                     ? "text-[#0A1F44] dark:text-[#E2BD56] font-black"
                     : "text-muted-foreground hover:text-foreground hover:bg-[#D4AF37]/15 font-bold"
@@ -129,12 +129,12 @@ export function StudentFloatingNav({
                 {isActive && (
                   <motion.div
                     layoutId="student-nav-indicator"
-                    className="absolute inset-0 rounded-full bg-[#D4AF37]/25 dark:bg-[#D4AF37]/30 border-[2px] border-[#D4AF37]/65 shadow-xs"
+                    className="absolute inset-0 rounded-full bg-[#D4AF37]/25 dark:bg-[#D4AF37]/30 border-[1.5px] border-[#D4AF37]/65 shadow-xs"
                     transition={{ type: "spring", stiffness: 380, damping: 28 }}
                   />
                 )}
-                <Icon className={`size-6 sm:size-6.5 shrink-0 z-10 ${isActive ? "stroke-[3.2]" : "stroke-[2.9]"}`} />
-                <span className="text-[12px] sm:text-[13px] font-black leading-tight mt-0.5 tracking-tight z-10 uppercase">
+                <Icon className={`size-5 shrink-0 z-10 ${isActive ? "stroke-[2.8]" : "stroke-[2.4]"}`} />
+                <span className="text-[10px] font-bold leading-tight mt-0.5 tracking-tight z-10 uppercase">
                   {item.label}
                 </span>
               </motion.div>
@@ -146,27 +146,27 @@ export function StudentFloatingNav({
         <button
           type="button"
           onClick={() => onTabChange("attendance")}
-          className="relative group mx-2 sm:mx-3 cursor-pointer"
+          className="relative group mx-1.5 cursor-pointer"
         >
           <motion.div
-            whileHover={{ scale: 1.1, y: -28 }}
-            whileTap={{ scale: 0.92, y: -20 }}
-            animate={{ y: -22 }}
+            whileHover={{ scale: 1.08, y: -20 }}
+            whileTap={{ scale: 0.92, y: -14 }}
+            animate={{ y: -16 }}
             transition={{ type: "spring", stiffness: 450, damping: 22 }}
             className="relative flex flex-col items-center justify-center cursor-pointer"
           >
             {/* Pulsing ambient gold aura */}
-            <span className="absolute -inset-1.5 rounded-full bg-[#D4AF37]/35 blur-md animate-pulse" />
+            <span className="absolute -inset-1 rounded-full bg-[#D4AF37]/35 blur-md animate-pulse" />
 
             <div
-              className={`size-15 sm:size-16 rounded-full flex flex-col items-center justify-center transition-all duration-300 relative border-[3px] ${
+              className={`size-12 rounded-full flex flex-col items-center justify-center transition-all duration-300 relative border-[2.5px] ${
                 isHomeActive
-                  ? "bg-[#0A1F44] text-[#E2BD56] border-[#D4AF37] ring-4 ring-[#D4AF37]/45 shadow-[0_12px_28px_rgba(212,175,55,0.55)]"
-                  : "bg-[#0A1F44] text-[#F3DB8B] border-[#D4AF37]/85 ring-2 ring-[#D4AF37]/30 shadow-[0_10px_24px_rgba(0,0,0,0.4)] hover:border-[#D4AF37]"
+                  ? "bg-[#0A1F44] text-[#E2BD56] border-[#D4AF37] ring-3 ring-[#D4AF37]/45 shadow-[0_8px_20px_rgba(212,175,55,0.55)]"
+                  : "bg-[#0A1F44] text-[#F3DB8B] border-[#D4AF37]/85 ring-2 ring-[#D4AF37]/30 shadow-[0_6px_18px_rgba(0,0,0,0.4)] hover:border-[#D4AF37]"
               }`}
             >
-              <Home className="size-6.5 sm:size-7 stroke-[3.2] drop-shadow-sm" />
-              <span className="text-[10px] sm:text-[11px] font-black leading-none mt-0.5 tracking-wider uppercase text-[#E2BD56]">
+              <Home className="size-5 stroke-[2.8] drop-shadow-sm" />
+              <span className="text-[9px] font-black leading-none mt-0.5 tracking-wider uppercase text-[#E2BD56]">
                 Home
               </span>
             </div>
@@ -186,9 +186,9 @@ export function StudentFloatingNav({
               className="relative group cursor-pointer"
             >
               <motion.div
-                whileHover={{ scale: 1.07 }}
-                whileTap={{ scale: 0.93 }}
-                className={`relative flex flex-col items-center justify-center px-3.5 sm:px-4.5 py-1.5 sm:py-2 rounded-full transition-all duration-200 min-w-[56px] sm:min-w-[70px] ${
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.94 }}
+                className={`relative flex flex-col items-center justify-center px-2 py-1 rounded-full transition-all duration-200 min-w-[44px] ${
                   isActive
                     ? "text-[#0A1F44] dark:text-[#E2BD56] font-black"
                     : "text-muted-foreground hover:text-foreground hover:bg-[#D4AF37]/15 font-bold"
@@ -197,12 +197,12 @@ export function StudentFloatingNav({
                 {isActive && (
                   <motion.div
                     layoutId="student-nav-indicator-right"
-                    className="absolute inset-0 rounded-full bg-[#D4AF37]/25 dark:bg-[#D4AF37]/30 border-[2px] border-[#D4AF37]/65 shadow-xs"
+                    className="absolute inset-0 rounded-full bg-[#D4AF37]/25 dark:bg-[#D4AF37]/30 border-[1.5px] border-[#D4AF37]/65 shadow-xs"
                     transition={{ type: "spring", stiffness: 380, damping: 28 }}
                   />
                 )}
-                <Icon className={`size-6 sm:size-6.5 shrink-0 z-10 ${isActive ? "stroke-[3.2]" : "stroke-[2.9]"}`} />
-                <span className="text-[12px] sm:text-[13px] font-black leading-tight mt-0.5 tracking-tight z-10 uppercase">
+                <Icon className={`size-5 shrink-0 z-10 ${isActive ? "stroke-[2.8]" : "stroke-[2.4]"}`} />
+                <span className="text-[10px] font-bold leading-tight mt-0.5 tracking-tight z-10 uppercase">
                   {item.label}
                 </span>
               </motion.div>

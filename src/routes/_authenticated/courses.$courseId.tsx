@@ -113,10 +113,14 @@ function CourseDetail() {
     queryKey: ["all-students-course", currentUid],
     queryFn: async () => {
       if (!currentUid) return [];
-      const snap = await getDocs(
-        query(collection(firestoreDb, "students"), where("owner_id", "==", currentUid)),
-      );
-      return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      const [snap, univSnap] = await Promise.all([
+        getDocs(query(collection(firestoreDb, "students"), where("owner_id", "==", currentUid))),
+        getDocs(query(collection(firestoreDb, "students"), where("owner_id", "==", "universal"))),
+      ]);
+      const map = new Map<string, any>();
+      snap.docs.forEach((d) => map.set(d.id, { id: d.id, ...(d.data() as any) }));
+      univSnap.docs.forEach((d) => map.set(d.id, { id: d.id, ...(d.data() as any) }));
+      return Array.from(map.values());
     },
     enabled: !!currentUid,
   });

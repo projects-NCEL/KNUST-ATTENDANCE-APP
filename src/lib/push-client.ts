@@ -6,6 +6,8 @@ export interface PushUserContext {
   userRole: "student" | "lecturer" | "admin";
   token?: string; // Session token or Firebase Auth ID Token
   studentId?: string;
+  indexNumber?: string;
+  studentIndex?: string;
 }
 
 export type PushPermissionStatus =
@@ -236,6 +238,11 @@ export async function subscribeDeviceToPush(userContext: PushUserContext): Promi
       userContext: {
         userId: userContext.userId,
         userRole: userContext.userRole,
+        studentId: userContext.studentId,
+        indexNumber:
+          userContext.indexNumber ||
+          userContext.studentIndex ||
+          (userContext.userRole === "student" ? userContext.userId : undefined),
       },
       device,
     }),
@@ -257,6 +264,63 @@ export async function subscribeDeviceToPush(userContext: PushUserContext): Promi
     message: "Notifications enabled successfully!",
     subscription: sub,
   };
+}
+
+/**
+ * Silently synchronize device push subscription with the backend if permission is already granted
+ */
+export async function syncPushSubscriptionIfGranted(
+  userContext: PushUserContext,
+): Promise<boolean> {
+  if (typeof window === "undefined" || !isPushSupported()) return false;
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return false;
+  if (isIOS() && !isStandalone()) return false;
+
+  try {
+    const reg = await registerPushServiceWorker();
+    if (!reg) return false;
+
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const publicKey = await getVapidPublicKey();
+      const appServerKey = urlBase64ToUint8Array(publicKey);
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: appServerKey,
+      });
+    }
+
+    if (sub) {
+      const subJSON = sub.toJSON();
+      const device = getDeviceDetails();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (userContext.token) {
+        headers["Authorization"] = `Bearer ${userContext.token}`;
+      }
+
+      const res = await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          subscription: subJSON,
+          userContext: {
+            userId: userContext.userId,
+            userRole: userContext.userRole,
+            studentId: userContext.studentId,
+            indexNumber:
+              userContext.indexNumber ||
+              userContext.studentIndex ||
+              (userContext.userRole === "student" ? userContext.userId : undefined),
+          },
+          device,
+        }),
+      });
+      return res.ok;
+    }
+  } catch (err) {
+    console.warn("[WebPush] Silent sync error:", err);
+  }
+  return false;
 }
 
 /**

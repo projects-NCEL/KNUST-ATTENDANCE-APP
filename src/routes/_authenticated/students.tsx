@@ -114,14 +114,23 @@ function StudentsPage() {
     queryKey: ["students", currentUid, depts],
     queryFn: async () => {
       if (!currentUid) return [];
-      const snap = await getDocs(
-        query(collection(firestoreDb, "students"), where("owner_id", "==", currentUid)),
-      );
+      const deptIds = new Set((depts ?? []).map((d: any) => d.id));
+      const [ownerSnap, univSnap] = await Promise.all([
+        getDocs(query(collection(firestoreDb, "students"), where("owner_id", "==", currentUid))),
+        getDocs(query(collection(firestoreDb, "students"), where("owner_id", "==", "universal"))),
+      ]);
       const deptMap = new Map((depts ?? []).map((d: any) => [d.id, d.name]));
-      const list = snap.docs.map((d) => {
-        const data = d.data() as any;
+      const mergedMap = new Map<string, any>();
+      ownerSnap.docs.forEach((d) => mergedMap.set(d.id, { id: d.id, ...(d.data() as any) }));
+      univSnap.docs.forEach((d) => {
+        const dt = d.data() as any;
+        if (!dt.department_id || deptIds.has(dt.department_id) || deptIds.size === 0) {
+          mergedMap.set(d.id, { id: d.id, ...dt });
+        }
+      });
+      const list = Array.from(mergedMap.values()).map((data) => {
         return {
-          id: d.id,
+          id: data.id,
           ...data,
           departments:
             data.department_id && deptMap.has(data.department_id)
