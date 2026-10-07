@@ -109,14 +109,14 @@ function TutorFloatingNav() {
 
                   {/* Projected Circular Button */}
                   <div
-                    className={`size-[52px] sm:size-14 rounded-full flex flex-col items-center justify-center transition-all duration-300 relative border-[2.5px] ${
+                    className={`size-[56px] sm:size-[60px] rounded-full flex flex-col items-center justify-center transition-all duration-300 relative border-[2.5px] ${
                       isActive
                         ? "bg-[#0A1F44] text-[#E2BD56] border-[#D4AF37] ring-4 ring-[#D4AF37]/45 shadow-[0_12px_28px_rgba(212,175,55,0.55)]"
                         : "bg-[#0A1F44] text-[#F3DB8B] border-[#D4AF37]/85 ring-2 ring-[#D4AF37]/30 shadow-[0_10px_24px_rgba(0,0,0,0.4)] hover:border-[#D4AF37]"
                     }`}
                   >
-                    <Icon className="size-5 sm:size-6 stroke-[3] drop-shadow-sm" />
-                    <span className="text-[9px] sm:text-[10px] font-black uppercase leading-none mt-0.5 tracking-wider text-[#E2BD56]">
+                    <Icon className="size-6 sm:size-7 stroke-[2.8] drop-shadow-sm" />
+                    <span className="text-[9.5px] sm:text-[10px] font-black uppercase leading-none mt-0.5 tracking-wider text-[#E2BD56]">
                       Home
                     </span>
                   </div>
