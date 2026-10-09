@@ -175,8 +175,22 @@ function SessionsPage() {
   const courseSessions = (sessions ?? []).filter((s: any) => s.course_id === form.course_id);
   const nextSessionNum = computeNextSessionNumber(courseSessions);
 
+  // Today's session for a course (not yet past 12:00 AM midnight), if any
+  const findTodaysSession = (courseId: string) =>
+    (sessions ?? [])
+      .filter((s: any) => s.course_id === courseId && !hasPassedLocalMidnight(s))
+      .sort((a: any, b: any) => String(b.starts_at || "").localeCompare(String(a.starts_at || "")))[0];
+
   const create = async () => {
     if (!form.course_id) return toast.error("Pick a course");
+
+    // Same day = same session: reopen today's session instead of creating a new one
+    const todays = findTodaysSession(form.course_id);
+    if (todays) {
+      setOpen(false);
+      toast.info(`Today's Session ${todays.session_number || ""} for this course is reopened. A new session starts after 12:00 AM midnight.`);
+      return reopenExistingSession(todays);
+    }
     const lat = form.latitude ?? null;
     const lng = form.longitude ?? null;
     const currentUid = firebaseAuth.currentUser?.uid;
@@ -257,6 +271,9 @@ function SessionsPage() {
   };
 
   const reopenExistingSession = async (s: any) => {
+    if (hasPassedLocalMidnight(s)) {
+      return toast.error("This session closed at 12:00 AM midnight. Use Open New Session.");
+    }
     try {
       await updateDoc(doc(firestoreDb, "attendance_sessions", s.id), {
         status: "OPEN",
@@ -275,6 +292,10 @@ function SessionsPage() {
     const uid = currentUid || firebaseAuth.currentUser?.uid;
     if (!uid) return toast.error("Please sign in first");
     if (!s.course_id) return toast.error("Course not found for this session");
+
+    // Never create a second session for the same course on the same day
+    const todays = findTodaysSession(s.course_id);
+    if (todays) return reopenExistingSession(todays);
 
     const matchedSessions = (sessions ?? []).filter((item: any) => item.course_id === s.course_id);
     const nextSessionNum = computeNextSessionNumber(matchedSessions);
@@ -435,7 +456,11 @@ function SessionsPage() {
                     Succession Number
                   </div>
                   <div className="text-base font-bold text-primary">
-                    {form.course_id ? `Session ${nextSessionNum}` : "Select a course to auto-number"}
+                    {form.course_id
+                      ? findTodaysSession(form.course_id)
+                        ? `Session ${findTodaysSession(form.course_id)?.session_number ?? ""} (today's, will reopen)`
+                        : `Session ${nextSessionNum}`
+                      : "Select a course to auto-number"}
                   </div>
                 </div>
                 <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">
@@ -465,7 +490,7 @@ function SessionsPage() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Each session automatically closes at 12:00 AM midnight. Reopening or starting next class will create a fresh session for that same course.
+                  Each session stays the same all day: closing and reopening keeps the same session. At 12:00 AM midnight it closes, and the button changes to Open New Session.
                 </p>
               </div>
               <div>
