@@ -8,7 +8,7 @@ import {
   ShieldCheck,
   Download,
 } from "lucide-react";
-import { InstallAppModal } from "@/components/InstallAppModal";
+import { InstallAppModal, isInstallPopupSnoozed } from "@/components/InstallAppModal";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { firebaseAuth, onAuthStateChanged } from "@/integrations/firebase/config";
@@ -39,6 +39,17 @@ function HomePage() {
   const navigate = useNavigate();
   const [hasLecturerSession, setHasLecturerSession] = useState(false);
   const [lecturerEmail, setLecturerEmail] = useState<string | null>(null);
+  const [showInstall, setShowInstall] = useState(false);
+  const { isInstalled, isInstallable, isMounted, browserInfo } = usePWAInstall();
+
+  // Install pop-up: opens by itself once, a moment after the page loads
+  // (phones always; computers only when the browser can install).
+  useEffect(() => {
+    if (!isMounted || isInstalled || isInstallPopupSnoozed()) return;
+    if (!browserInfo.isMobile && !isInstallable) return;
+    const timer = setTimeout(() => setShowInstall(true), 1500);
+    return () => clearTimeout(timer);
+  }, [isMounted, isInstalled, isInstallable, browserInfo.isMobile]);
 
   useEffect(() => {
     // If user previously chose a portal and hasn't explicitly signed out, route accordingly
@@ -157,6 +168,18 @@ function HomePage() {
               </button>
             )}
 
+            {isMounted && !isInstalled && (
+              <button
+                type="button"
+                onClick={() => setShowInstall(true)}
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-xs font-bold text-[#0A1F44] dark:text-[#E2BD56] border border-[#D4AF37]/40 hover:bg-[#D4AF37]/10 transition-colors cursor-pointer"
+                aria-label="Install the Qmark app"
+              >
+                <Download className="size-3.5" />
+                <span className="hidden sm:inline">Install app</span>
+              </button>
+            )}
+
             <ThemeToggle className="hover:bg-[#D4AF37]/10 border border-[#D4AF37]/30" />
           </div>
         </div>
@@ -263,11 +286,10 @@ function HomePage() {
           </motion.div>
         </div>
 
-        {/* PWA Home Screen Installation Capsule */}
-        <div className="pt-2">
-          <AddToHomeScreenBanner />
-        </div>
       </main>
+
+      {/* Install app pop-up (same style as the notification pop-up) */}
+      <InstallAppModal open={showInstall} onClose={() => setShowInstall(false)} />
 
       {/* Institutional Glass Footer */}
       <footer className="py-4 px-6 border-t border-[#D4AF37]/25 backdrop-blur-2xl bg-white/30 dark:bg-[#07162b]/50 text-center text-xs text-muted-foreground">
