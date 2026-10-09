@@ -528,6 +528,7 @@ function StudentPortalPage() {
           duration: 8000,
         });
       }
+      localStorage.setItem("qmark_student_has_activated", "true");
       saveStudentSession(upperIdx, regPassword);
       localStorage.setItem("qroll_student_session", "true");
       localStorage.setItem("qroll_active_gateway", "student");
@@ -625,6 +626,7 @@ function StudentPortalPage() {
       }
 
       toast.success("Password reset successfully! Logging you in...");
+      localStorage.setItem("qmark_student_has_activated", "true");
       saveStudentSession(upperIdx, resetNewPassword);
       localStorage.setItem("qroll_student_session", "true");
       localStorage.setItem("qroll_active_gateway", "student");
@@ -639,6 +641,8 @@ function StudentPortalPage() {
 
   const handleSignOut = () => {
     clearStudentSession();
+    // This device has an activated account, so show Sign In next time
+    setActiveAuthTab("signin");
     setMe(null);
     setCourses([]);
     setHistory([]);
