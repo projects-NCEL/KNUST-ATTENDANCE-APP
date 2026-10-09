@@ -26,6 +26,14 @@ export interface BrowserDetection {
   isDesktop: boolean;
   supportsNativePrompt: boolean;
   displayName: string;
+  /** WhatsApp, Instagram, Facebook etc. built-in browsers: they cannot install apps */
+  isInAppBrowser: boolean;
+  /**
+   * On Android, only Chrome installs a Google-signed app (WebAPK) that Play Protect trusts.
+   * Samsung Internet, Opera, Edge and other browsers build their own app package targeting
+   * an old Android version, which Play Protect blocks as "Unsafe app".
+   */
+  mustOpenInChrome: boolean;
 }
 
 declare global {
@@ -45,6 +53,8 @@ export function detectBrowserAndOS(): BrowserDetection {
       isDesktop: true,
       supportsNativePrompt: false,
       displayName: "Browser",
+      isInAppBrowser: false,
+      mustOpenInChrome: false,
     };
   }
 
@@ -91,6 +101,10 @@ export function detectBrowserAndOS(): BrowserDetection {
 
   const displayName = `${browser} on ${os}`;
 
+  const isInAppBrowser =
+    /; wv\)/.test(uaLower) || /fban|fbav|instagram|line\/|whatsapp|snapchat|twitter|tiktok/.test(uaLower);
+  const mustOpenInChrome = isAndroid && (browser !== "Chrome" || isInAppBrowser);
+
   return {
     browser,
     os,
@@ -100,7 +114,20 @@ export function detectBrowserAndOS(): BrowserDetection {
     isDesktop,
     supportsNativePrompt,
     displayName,
+    isInAppBrowser,
+    mustOpenInChrome,
   };
+}
+
+/**
+ * Android intent link that opens the current page in Google Chrome
+ * (falls back to the normal page if Chrome is not installed).
+ */
+export function getOpenInChromeUrl(): string {
+  if (typeof window === "undefined") return "/";
+  const { host, pathname, search } = window.location;
+  const fallback = encodeURIComponent(window.location.href);
+  return `intent://${host}${pathname}${search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${fallback};end`;
 }
 
 export const DEFAULT_BROWSER_DETECTION: BrowserDetection = {
@@ -112,6 +139,8 @@ export const DEFAULT_BROWSER_DETECTION: BrowserDetection = {
   isDesktop: true,
   supportsNativePrompt: false,
   displayName: "Browser",
+  isInAppBrowser: false,
+  mustOpenInChrome: false,
 };
 
 export function usePWAInstall() {
