@@ -9,6 +9,7 @@ import {
   Download,
 } from "lucide-react";
 import { InstallAppModal, isInstallPopupSnoozed } from "@/components/InstallAppModal";
+import { onSplashDone } from "@/components/SplashScreen";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { firebaseAuth, onAuthStateChanged } from "@/integrations/firebase/config";
@@ -42,13 +43,12 @@ function HomePage() {
   const [showInstall, setShowInstall] = useState(false);
   const { isInstalled, isInstallable, isMounted, browserInfo } = usePWAInstall();
 
-  // Install pop-up: opens by itself once, a moment after the page loads
+  // Install pop-up: opens the moment the launch animation finishes
   // (phones always; computers only when the browser can install).
   useEffect(() => {
     if (!isMounted || isInstalled || isInstallPopupSnoozed()) return;
     if (!browserInfo.isMobile && !isInstallable) return;
-    const timer = setTimeout(() => setShowInstall(true), 1500);
-    return () => clearTimeout(timer);
+    return onSplashDone(() => setShowInstall(true));
   }, [isMounted, isInstalled, isInstallable, browserInfo.isMobile]);
 
   useEffect(() => {
