@@ -41,15 +41,14 @@ function HomePage() {
   const [hasLecturerSession, setHasLecturerSession] = useState(false);
   const [lecturerEmail, setLecturerEmail] = useState<string | null>(null);
   const [showInstall, setShowInstall] = useState(false);
-  const { isInstalled, isInstallable, isMounted, browserInfo } = usePWAInstall();
+  const { isInstalled, isMounted } = usePWAInstall();
 
-  // Install pop-up: opens the moment the launch animation finishes
-  // (phones always; computers only when the browser can install).
+  // Install pop-up: opens by itself the moment the launch animation finishes,
+  // on every device, unless Qmark is already running as an installed app.
   useEffect(() => {
     if (!isMounted || isInstalled || isInstallPopupSnoozed()) return;
-    if (!browserInfo.isMobile && !isInstallable) return;
     return onSplashDone(() => setShowInstall(true));
-  }, [isMounted, isInstalled, isInstallable, browserInfo.isMobile]);
+  }, [isMounted, isInstalled]);
 
   useEffect(() => {
     // If user previously chose a portal and hasn't explicitly signed out, route accordingly
@@ -186,7 +185,12 @@ function HomePage() {
       </header>
 
       {/* Main Content Area: Simplified, focused layout with 2 Gateways + Install Banner */}
-      <main className="flex-1 flex flex-col justify-center w-full max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-7 sm:space-y-8">
+      <main
+        aria-hidden={showInstall}
+        className={`flex-1 flex flex-col justify-center w-full max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-7 sm:space-y-8 transition-opacity duration-300 ${
+          showInstall ? "opacity-0 pointer-events-none" : "opacity-100"
+        }`}
+      >
         {/* Simple Title Section */}
         <div className="text-center space-y-3 max-w-2xl mx-auto">
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-[#0A1F44] dark:text-white leading-[1.1]">
