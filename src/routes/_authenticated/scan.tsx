@@ -1,23 +1,24 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState, useCallback } from "react";
-import jsQR from "jsqr";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { firebaseAuth, firestoreDb } from "@/integrations/firebase/config";
+import { useAuth } from "@/lib/auth";
 import {
   collection,
-  doc,
-  getDoc,
   getDocs,
-  setDoc,
-  query,
-  where,
   addDoc,
   updateDoc,
-  onSnapshot,
+  deleteDoc,
+  doc,
+  writeBatch,
+  query,
+  where,
 } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -25,7 +26,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,1651 +44,645 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  CheckCircle2,
-  Camera,
-  Square,
-  AlertTriangle,
-  RefreshCw,
-  SwitchCamera,
-  Lock,
   Plus,
-  UserCheck,
-  Upload,
-  Image as ImageIcon,
+  ScanLine,
+  Lock,
+  Unlock,
+  Projector,
+  MapPin,
+  Trash2,
+  AlertTriangle,
   RotateCcw,
 } from "lucide-react";
+
+import QRCode from "qrcode";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth";
+import { getPublicOrigin } from "@/lib/public-origin";
 import {
   hasPassedLocalMidnight,
-  getSessionLocalMidnight,
-  computeNextSessionNumber,
   formatMidnightClosureLabel,
+  computeNextSessionNumber,
+  getSessionLocalMidnight,
   getDetectedLocalTimezone,
 } from "@/lib/session-lifecycle";
 
-type Search = { session?: string };
-
-export const Route = createFileRoute("/_authenticated/scan")({
-  head: () => ({ meta: [{ title: "Attendance Scanner — Qmark" }] }),
-  validateSearch: (s: Record<string, unknown>): Search => ({
-    session: typeof s.session === "string" ? s.session : undefined,
-  }),
-  component: ScanPage,
+export const Route = createFileRoute("/_authenticated/sessions")({
+  head: () => ({ meta: [{ title: "Sessions — Qmark" }] }),
+  component: SessionsPage,
 });
 
-// Audio chime for immediate feedback
-function playScanSound(type: "success" | "duplicate" | "error" = "success") {
-  try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    void ctx.resume();
-
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    if (type === "success") {
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(880, now);
-      osc.frequency.exponentialRampToValueAtTime(1320, now + 0.09);
-      gain.gain.setValueAtTime(0.15, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.18);
-    } else if (type === "duplicate") {
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(520, now);
-      osc.frequency.setValueAtTime(440, now + 0.1);
-      gain.gain.setValueAtTime(0.12, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.22);
-    } else {
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(220, now);
-      gain.gain.setValueAtTime(0.1, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.2);
-    }
-  } catch {
-    // Audio optional
-  }
-}
-
-function triggerHaptic(type: "success" | "duplicate" | "error" = "success") {
-  try {
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      if (type === "success") {
-        navigator.vibrate([100, 40, 100]);
-      } else if (type === "duplicate") {
-        navigator.vibrate([80, 40, 80]);
-      } else {
-        navigator.vibrate([200]);
-      }
-    }
-  } catch {
-    // Haptics optional
-  }
-}
-
-/**
- * High-speed multi-pass QR decoder helper:
- * 1. Checks native BarcodeDetector if available
- * 2. Checks standard jsQR
- * 3. Runs contrast-enhanced binarization pass for low-contrast/gold/dim QR codes
- */
-async function decodeImageToQr(
-  source: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement,
-  barcodeDetectorInstance: any | null,
-): Promise<string | null> {
-  // 1. Try native hardware BarcodeDetector if available
-  if (barcodeDetectorInstance) {
-    try {
-      const results = await barcodeDetectorInstance.detect(source);
-      if (results && results.length > 0 && results[0]?.rawValue) {
-        return results[0].rawValue;
-      }
-    } catch {
-      // Fallback to jsQR
-    }
-  }
-
-  // 2. Prepare off-screen canvas (scale down to max 640 for rapid sub-millisecond processing)
-  const srcWidth = source instanceof HTMLVideoElement ? source.videoWidth : source.width;
-  const srcHeight = source instanceof HTMLVideoElement ? source.videoHeight : source.height;
-  if (!srcWidth || !srcHeight) return null;
-
-  const maxDimension = 640;
-  let targetW = srcWidth;
-  let targetH = srcHeight;
-  if (targetW > maxDimension || targetH > maxDimension) {
-    const scale = Math.min(maxDimension / targetW, maxDimension / targetH);
-    targetW = Math.round(targetW * scale);
-    targetH = Math.round(targetH * scale);
-  }
-
-  const canvas = document.createElement("canvas");
-  canvas.width = targetW;
-  canvas.height = targetH;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) return null;
-
-  ctx.drawImage(source, 0, 0, targetW, targetH);
-  const imgData = ctx.getImageData(0, 0, targetW, targetH);
-
-  // 3. Try standard jsQR pass
-  try {
-    const directResult = jsQR(imgData.data, targetW, targetH, {
-      inversionAttempts: "attemptBoth",
-    });
-    if (directResult && directResult.data) {
-      return directResult.data;
-    }
-  } catch {
-    // continue to enhanced pass
-  }
-
-  // 4. Try contrast-enhanced binarization pass
-  // Detects gold-on-white, washed out, low-contrast, or dim screen QR codes
-  try {
-    const data = imgData.data;
-    const enhanced = new Uint8ClampedArray(data.length);
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      // Perceptual luminance calculation
-      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-      // High-contrast cutoff threshold
-      const val = lum < 225 ? 0 : 255;
-      enhanced[i] = val;
-      enhanced[i + 1] = val;
-      enhanced[i + 2] = val;
-      enhanced[i + 3] = 255;
-    }
-    const enhancedResult = jsQR(enhanced, targetW, targetH, {
-      inversionAttempts: "attemptBoth",
-    });
-    if (enhancedResult && enhancedResult.data) {
-      return enhancedResult.data;
-    }
-  } catch {
-    // ignore
-  }
-
-  return null;
-}
-
-// Class levels can be stored as "200", "L200" or "Level 200"; compare the numbers
-function normalizeLevel(val: any): string {
-  if (!val) return "";
-  const str = String(val).trim().toUpperCase();
-  return str.replace(/^(LEVEL|LVL|L)\s*/i, "").trim() || str;
-}
-
-function levelMatches(a: any, b: any): boolean {
-  const x = normalizeLevel(a);
-  const y = normalizeLevel(b);
-  if (!x || !y) return true;
-  return x === y || x.replace(/\D/g, "") === y.replace(/\D/g, "");
-}
-
-function ScanPage() {
-  const { session: sessionId } = Route.useSearch();
+function SessionsPage() {
   const qc = useQueryClient();
-  const [activeSession, setActiveSession] = useState<string | undefined>(sessionId);
-  const [scanning, setScanning] = useState(false);
-  const [isStartingCam, setIsStartingCam] = useState(false);
-  const [status, setStatus] = useState<string>("Ready to scan student QR codes");
-  const [camError, setCamError] = useState<string | null>(null);
-  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
-  const [availableCameras, setAvailableCameras] = useState<Array<{ id: string; label: string }>>([]);
-  const [selectedCameraId, setSelectedCameraId] = useState<string>("");
-  const [manual, setManual] = useState("");
-  const [lastScan, setLastScan] = useState<{ name: string; status: string; time?: string } | null>(null);
-  const [creatingQuick, setCreatingQuick] = useState(false);
-  const [scanPulse, setScanPulse] = useState(false);
-  const [recentRecords, setRecentRecords] = useState<any[]>([]);
-  const [showCloseDialog, setShowCloseDialog] = useState(false);
-  const [isClosingSession, setIsClosingSession] = useState(false);
-
-  // Direct React-managed video & stream refs
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const scanLoopTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isDecodingRef = useRef(false);
-  const barcodeDetectorRef = useRef<any | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const sessionRef = useRef<any>(null);
-  const activeSessionRef = useRef<string | undefined>(sessionId);
-  const inFlight = useRef<Set<string>>(new Set());
-  const recentScans = useRef<Map<string, number>>(new Map());
-  const studentRosterCache = useRef<Map<string, any>>(new Map());
-  const scannedRecordsSet = useRef<Set<string>>(new Set());
+  const [open, setOpen] = useState(false);
+  const [deleting, setDeleting] = useState<any | null>(null);
+  const [form, setForm] = useState<{
+    course_id: string;
+    title: string;
+    mode: string;
+    latitude: number | null;
+    longitude: number | null;
+    radius_m: number;
+  }>({
+    course_id: "",
+    title: "",
+    mode: "single",
+    latitude: null,
+    longitude: null,
+    radius_m: 80,
+  });
+  const [locBusy, setLocBusy] = useState(false);
+  const [projecting, setProjecting] = useState<{
+    id: string;
+    code: string;
+    title: string;
+    dataUrl: string;
+    url: string;
+  } | null>(null);
 
   const { user } = useAuth();
   const currentUid = user?.id || firebaseAuth.currentUser?.uid;
 
-  // Initialize native BarcodeDetector if available in browser
-  useEffect(() => {
-    try {
-      if (typeof window !== "undefined" && "BarcodeDetector" in window) {
-        barcodeDetectorRef.current = new (window as any).BarcodeDetector({
-          formats: ["qr_code", "code_128", "data_matrix"],
-        });
-      }
-    } catch {
-      barcodeDetectorRef.current = null;
-    }
-  }, []);
+  const { data: courses, isLoading: coursesLoading } = useQuery({
+    queryKey: ["courses-active", currentUid],
+    queryFn: async () => {
+      const uid = currentUid || firebaseAuth.currentUser?.uid;
+      if (!uid) return [];
+      const snap = await getDocs(
+        query(collection(firestoreDb, "courses"), where("owner_id", "==", uid)),
+      );
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as any) }))
+        .filter((c) => !c.archived);
+      return list.sort((a, b) => (a.code || "").localeCompare(b.code || ""));
+    },
+    enabled: !!(currentUid || firebaseAuth.currentUser?.uid),
+  });
 
-  useEffect(() => {
-    activeSessionRef.current = activeSession;
-    scannedRecordsSet.current = new Set();
-  }, [activeSession]);
-
-  // Pre-load student roster in-memory cache for instant sub-millisecond lookups
-  // Only this lecturer's own students are loaded, so the scanner can tell who is in the class
-  useEffect(() => {
-    if (!currentUid) return;
-    let active = true;
-    getDocs(query(collection(firestoreDb, "students"), where("owner_id", "==", currentUid)))
-      .then((snap) => {
-        if (!active) return;
-        const cache = new Map<string, any>();
-        snap.docs.forEach((d) => {
-          const dt = { id: d.id, ...d.data() } as any;
-          cache.set(d.id.toUpperCase(), dt);
-          cache.set(d.id.toLowerCase(), dt);
-          const rawId = d.id.replace(/^stud_/i, "").toUpperCase();
-          cache.set(rawId, dt);
-          if (dt.index_number) {
-            const rawIdx = String(dt.index_number).trim();
-            cache.set(rawIdx.toUpperCase(), dt);
-            cache.set(rawIdx.toLowerCase(), dt);
-            cache.set(rawIdx.replace(/[^a-zA-Z0-9]/g, "").toUpperCase(), dt);
-          }
-          if (dt.student_id) {
-            const sId = String(dt.student_id).trim();
-            cache.set(sId.toUpperCase(), dt);
-            cache.set(sId.toLowerCase(), dt);
-          }
-          if (dt.qr_uuid) {
-            cache.set(String(dt.qr_uuid).trim().toLowerCase(), dt);
-            cache.set(String(dt.qr_uuid).trim().toUpperCase(), dt);
-          }
-        });
-        studentRosterCache.current = cache;
-      })
-      .catch((err) => {
-        console.warn("Roster cache preload warning:", err);
-      });
-    return () => {
-      active = false;
-    };
-  }, [currentUid]);
-
-  // Open Sessions list
-  const { data: openSessions } = useQuery({
-    queryKey: ["open-sessions", currentUid],
+  const { data: sessions } = useQuery({
+    queryKey: ["sessions", currentUid, courses],
     queryFn: async () => {
       if (!currentUid) return [];
-      const [sessSnap, coursesSnap] = await Promise.all([
-        // Only this lecturer's open sessions and courses (never whole collections)
-        getDocs(
-          query(
-            collection(firestoreDb, "attendance_sessions"),
-            where("owner_id", "==", currentUid),
-            where("status", "==", "OPEN"),
-          ),
-        ),
-        getDocs(query(collection(firestoreDb, "courses"), where("owner_id", "==", currentUid))),
-      ]);
-      const courseMap = new Map(coursesSnap.docs.map((d) => [d.id, d.data() as any]));
-      const validOpen: any[] = [];
-
-      for (const d of sessSnap.docs) {
-        const data = d.data() as any;
-        const passedMidnight = hasPassedLocalMidnight(data);
-        if (passedMidnight) {
-          // Automatic 12:00 AM midnight closure in local timezone
-          try {
-            await updateDoc(doc(firestoreDb, "attendance_sessions", d.id), {
-              status: "CLOSED",
-              ends_at: new Date().toISOString(),
-            });
-          } catch {
-            // ignore
-          }
-        } else {
-          validOpen.push({
-            id: d.id,
-            ...data,
-            courses: data.course_id ? courseMap.get(data.course_id) : null,
-          });
-        }
-      }
-
-      return validOpen;
-    },
-    enabled: !!currentUid,
-    staleTime: 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
-
-  // Current session details
-  const { data: session } = useQuery({
-    queryKey: ["session", activeSession],
-    queryFn: async () => {
-      if (!activeSession) return null;
-      const sSnap = await getDoc(doc(firestoreDb, "attendance_sessions", activeSession));
-      if (!sSnap.exists()) return null;
-      const data = { id: sSnap.id, ...(sSnap.data() as any) };
-
-      // Automatic 12:00 AM midnight closure
-      const passedMidnight = hasPassedLocalMidnight(data);
-      if (data.status === "OPEN" && passedMidnight) {
-        try {
-          await updateDoc(doc(firestoreDb, "attendance_sessions", activeSession), {
-            status: "CLOSED",
-            ends_at: new Date().toISOString(),
-          });
-          data.status = "CLOSED";
-          data.ends_at = new Date().toISOString();
-        } catch {
-          // ignore
-        }
-      }
-
-      if (data.course_id) {
-        try {
-          const cSnap = await getDoc(doc(firestoreDb, "courses", data.course_id));
-          if (cSnap.exists()) {
-            const cData = cSnap.data() as any;
-            data.courses = { code: cData.code, title: cData.title, level: cData.level };
-          }
-        } catch {
-          // ignore
-        }
-      }
-      return data;
-    },
-    enabled: !!activeSession,
-  });
-
-  useEffect(() => {
-    sessionRef.current = session;
-  }, [session]);
-
-  // Auto-select first open session if none selected
-  useEffect(() => {
-    if (!activeSession && openSessions && openSessions.length > 0) {
-      setActiveSession(openSessions[0].id);
-    }
-  }, [activeSession, openSessions]);
-
-  // Real-time Firestore onSnapshot for Attendance Records in the Active Session
-  useEffect(() => {
-    if (!activeSession) {
-      setRecentRecords([]);
-      return;
-    }
-
-    const q = query(
-      collection(firestoreDb, "attendance_records"),
-      where("session_id", "==", activeSession),
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const list = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as any),
-        }));
-
-        list.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
-
-        // Format and map student names
-        const formatted = list.map((item) => {
-          const cached =
-            studentRosterCache.current.get(item.student_id?.toUpperCase()) ||
-            studentRosterCache.current.get(item.index_number?.toUpperCase()) ||
-            studentRosterCache.current.get(item.index_number);
-          const fullName = item.student_name || cached?.full_name || "Student";
-          const indexNum = item.index_number || cached?.index_number || "";
-          return {
-            ...item,
-            students: {
-              full_name: fullName,
-              index_number: indexNum,
-            },
-          };
-        });
-
-        setRecentRecords(formatted);
-
-        // Update in-memory scanned set to prevent duplicate alerts
-        const set = new Set<string>();
-        formatted.forEach((r: any) => {
-          if (r.student_id) set.add(String(r.student_id).toUpperCase());
-          if (r.index_number) set.add(String(r.index_number).toUpperCase());
-          if (r.students?.index_number) set.add(String(r.students.index_number).toUpperCase());
-        });
-        scannedRecordsSet.current = set;
-      },
-      (err) => {
-        console.warn("Attendance onSnapshot warning:", err);
-      },
-    );
-
-    return () => unsubscribe();
-  }, [activeSession]);
-
-  // Start Next Sequential Session for a Course
-  const handleStartNextSession = useCallback(
-    async (courseIdParam?: string | null): Promise<string | null> => {
-      if (!currentUid) {
-        toast.error("Please sign in first");
-        return null;
-      }
-      try {
-        let targetCourseId = courseIdParam || sessionRef.current?.course_id || null;
-        if (!targetCourseId) {
-          const coursesSnap = await getDocs(
-            query(collection(firestoreDb, "courses"), where("owner_id", "==", currentUid)),
-          );
-          if (coursesSnap.docs.length > 0) {
-            targetCourseId = coursesSnap.docs[0].id;
-          }
-        }
-        if (!targetCourseId) {
-          toast.error("Please create a course before starting attendance");
-          return null;
-        }
-
-        // Compute next succession number for this course
-        const existingSnap = await getDocs(
-          query(
-            collection(firestoreDb, "attendance_sessions"),
-            where("course_id", "==", targetCourseId),
-          ),
-        );
-        const existingList = existingSnap.docs.map((d) => d.data() as any);
-        const nextNum = computeNextSessionNumber(existingList);
-
-        const now = new Date();
-        const nextMidnight = getSessionLocalMidnight(now.toISOString());
-        const tz = getDetectedLocalTimezone();
-
-        let courseCode = "Course";
-        let courseLevel: string | undefined = undefined;
-        try {
-          const cSnap = await getDoc(doc(firestoreDb, "courses", targetCourseId));
-          if (cSnap.exists()) {
-            const cData = cSnap.data() as any;
-            courseCode = cData.code || "Course";
-            courseLevel = cData.level;
-          }
-        } catch {
-          // ignore
-        }
-
-        const newSessionDoc = await addDoc(collection(firestoreDb, "attendance_sessions"), {
-          owner_id: currentUid,
-          created_by: currentUid,
-          course_id: targetCourseId,
-          session_number: nextNum,
-          title: `Session ${nextNum}`,
-          status: "OPEN",
-          mode: sessionRef.current?.mode || "single",
-          latitude: sessionRef.current?.latitude ?? null,
-          longitude: sessionRef.current?.longitude ?? null,
-          radius_m: sessionRef.current?.radius_m || 80,
-          starts_at: now.toISOString(),
-          created_at: now.toISOString(),
-          auto_closes_at: nextMidnight?.toISOString() || null,
-          timezone: tz,
-        });
-
-        toast.success(`Session ${nextNum} created for ${courseCode}! Ready for today's scans.`);
-
-        // Dispatch level-targeted notification to enrolled students
-        fetch("/api/push/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          keepalive: true,
-          body: JSON.stringify({
-            courseId: targetCourseId,
-            level: courseLevel,
-            payload: {
-              type: "ATTENDANCE",
-              title: `Session ${nextNum} Active`,
-              body: `Attendance for ${courseCode} (Session ${nextNum}) is now open. Tap to check in.`,
-              url: `/check-in?session=${newSessionDoc.id}`,
-              entityId: newSessionDoc.id,
-              entityType: "attendance_session",
-            },
-          }),
-        }).catch((e) => console.warn("Push notification warning:", e));
-
-        setActiveSession(newSessionDoc.id);
-        activeSessionRef.current = newSessionDoc.id;
-        qc.invalidateQueries({ queryKey: ["open-sessions"] });
-        qc.invalidateQueries({ queryKey: ["sessions"] });
-        qc.invalidateQueries({ queryKey: ["session", newSessionDoc.id] });
-        return newSessionDoc.id;
-      } catch (err: any) {
-        toast.error(err?.message || "Failed to start next session");
-        return null;
-      }
-    },
-    [currentUid, qc],
-  );
-
-  // Create Quick Session if none exists
-  const handleCreateQuickSession = useCallback(async (): Promise<string | null> => {
-    return handleStartNextSession(null);
-  }, [handleStartNextSession]);
-
-  // Reopen the exact same session if closed today before midnight
-  const handleReopenSameSession = useCallback(
-    async (sessionId: string) => {
-      try {
-        await updateDoc(doc(firestoreDb, "attendance_sessions", sessionId), {
-          status: "OPEN",
-          ends_at: null,
-        });
-        toast.success("Session reopened! Ready to continue roll call.");
-        qc.invalidateQueries({ queryKey: ["open-sessions"] });
-        qc.invalidateQueries({ queryKey: ["sessions"] });
-        qc.invalidateQueries({ queryKey: ["session", sessionId] });
-        setActiveSession(sessionId);
-        activeSessionRef.current = sessionId;
-      } catch (err: any) {
-        toast.error(err?.message || "Failed to reopen session");
-      }
-    },
-    [qc],
-  );
-
-  // Process Scanned QR code with instant zero-latency feedback & non-blocking background persistence
-  const processQr = useCallback(async (rawInput: string): Promise<boolean> => {
-    if (!rawInput) return false;
-    let code = String(rawInput).trim();
-
-    // 1. Unpack JSON payloads (e.g., student pass object)
-    try {
-      if ((code.startsWith("{") && code.endsWith("}")) || (code.startsWith("[") && code.endsWith("]"))) {
-        const parsed = JSON.parse(code);
-        code =
-          parsed.indexNumber ||
-          parsed.index_number ||
-          parsed.index ||
-          parsed.qrPayload ||
-          parsed.qr_uuid ||
-          parsed.qr ||
-          parsed.token ||
-          parsed.student_id ||
-          parsed.id ||
-          code;
-      }
-    } catch {
-      // plain string
-    }
-
-    // 2. Unpack URLs (e.g. /student?index=4076024 or /check-in?token=...)
-    if (code.startsWith("http://") || code.startsWith("https://")) {
-      try {
-        const parsedUrl = new URL(code);
-        const param =
-          parsedUrl.searchParams.get("index") ||
-          parsedUrl.searchParams.get("indexNumber") ||
-          parsedUrl.searchParams.get("index_number") ||
-          parsedUrl.searchParams.get("qr") ||
-          parsedUrl.searchParams.get("token") ||
-          parsedUrl.searchParams.get("id");
-        if (param) {
-          code = param;
-        } else {
-          const parts = parsedUrl.pathname.split("/").filter(Boolean);
-          if (parts.length > 0) code = parts[parts.length - 1];
-        }
-      } catch {
-        // ignore url parse error
-      }
-    }
-
-    // 3. Clean string prefixes, quotation marks and trailing punctuation
-    code = String(code)
-      .replace(/^["']|["']$/g, "")
-      .replace(/^(STUDENT|INDEX|ID|PASS)[:\s-]+/i, "")
-      .trim();
-
-    if (!code) return false;
-
-    // Resolve target session
-    let sess = sessionRef.current;
-    if (!sess) {
-      const currentActiveId = activeSessionRef.current || activeSession;
-      if (currentActiveId) {
-        sess = openSessions?.find((s: any) => s.id === currentActiveId) || {
-          id: currentActiveId,
-          owner_id: currentUid,
-        };
-      } else if (openSessions && openSessions.length > 0) {
-        sess = openSessions[0];
-        setActiveSession(sess.id);
-        activeSessionRef.current = sess.id;
-      }
-    }
-
-    if (!sess) {
-      const autoId = await handleCreateQuickSession();
-      if (autoId) {
-        sess = { id: autoId, owner_id: currentUid };
-        activeSessionRef.current = autoId;
-      } else {
-        toast.error("Please select or create an active class session first.");
-        return false;
-      }
-    }
-
-    // Auto-advance if target session reached 12:00 AM midnight, or reopen if closed today
-    if (sess && (sess.status === "CLOSED" || hasPassedLocalMidnight(sess))) {
-      if (hasPassedLocalMidnight(sess)) {
-        toast.info("Previous session closed at 12:00 AM midnight. Starting today's new session for this course...");
-        const nextId = await handleStartNextSession(sess.course_id);
-        if (nextId) {
-          sess = { id: nextId, course_id: sess.course_id, owner_id: currentUid };
-          activeSessionRef.current = nextId;
-        } else {
-          toast.error("Please start a new session for this course.");
-          return false;
-        }
-      } else {
-        // Reopen same session before midnight
-        try {
-          await updateDoc(doc(firestoreDb, "attendance_sessions", sess.id), {
-            status: "OPEN",
-            ends_at: null,
-          });
-          sess.status = "OPEN";
-          qc.invalidateQueries({ queryKey: ["open-sessions"] });
-          qc.invalidateQueries({ queryKey: ["sessions"] });
-          qc.invalidateQueries({ queryKey: ["session", sess.id] });
-          toast.success("Session reopened! Recording attendance.");
-        } catch {
-          // ignore
-        }
-      }
-    }
-
-    // Debounce duplicate scans within 1.0 second for rapid queue processing
-    const now = Date.now();
-    const lastTime = recentScans.current.get(code) ?? 0;
-    if (now - lastTime < 1000) return false;
-    recentScans.current.set(code, now);
-
-    if (inFlight.current.has(code)) return false;
-    inFlight.current.add(code);
-
-    try {
-      const cleanUpper = code.toUpperCase();
-      const cleanLower = code.toLowerCase();
-      const sanitizedUpper = cleanUpper.replace(/[^a-zA-Z0-9_-]/g, "_");
-      const today = new Date().toISOString().slice(0, 10);
-      const nowTimeStr = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      });
-
-      // 1. Instant check if already recorded in active session from in-memory set (0ms response)
-      if (
-        scannedRecordsSet.current.has(cleanUpper) ||
-        scannedRecordsSet.current.has(code) ||
-        scannedRecordsSet.current.has(`STUD_${sanitizedUpper}`) ||
-        scannedRecordsSet.current.has(cleanLower)
-      ) {
-        playScanSound("duplicate");
-        triggerHaptic("duplicate");
-        const cached =
-          studentRosterCache.current.get(cleanUpper) ||
-          studentRosterCache.current.get(code) ||
-          studentRosterCache.current.get(`STUD_${sanitizedUpper}`);
-        const dupName = cached?.full_name || `Student (${cleanUpper})`;
-        toast.info(`Already recorded: ${dupName} (${cleanUpper})`);
-        setLastScan({
-          name: `${dupName} (${cleanUpper})`,
-          status: "ALREADY RECORDED",
-          time: nowTimeStr,
-        });
-        setStatus(`Already recorded: ${dupName}`);
-        return true;
-      }
-
-      // 2. Synchronous student resolution from in-memory cache (<0.01ms lookup)
-      let studentData: any =
-        studentRosterCache.current.get(cleanUpper) ||
-        studentRosterCache.current.get(cleanLower) ||
-        studentRosterCache.current.get(code) ||
-        studentRosterCache.current.get(`STUD_${sanitizedUpper}`) ||
-        studentRosterCache.current.get(cleanUpper.replace(/[^a-zA-Z0-9]/g, ""));
-
-      let studentId: string = studentData?.id || `stud_${sanitizedUpper}`;
-      const resolvedName = studentData?.full_name || `Student (${cleanUpper})`;
-      const resolvedIndex = studentData?.index_number || cleanUpper;
-
-      // Class rule: the student must be on this lecturer's list and at the course's level
-      const courseLevel = sess?.courses?.level;
-      const notInClass = !studentData
-        ? `${cleanUpper} is not on your class list`
-        : courseLevel && studentData.level && !levelMatches(courseLevel, studentData.level)
-          ? `${resolvedName} is Level ${normalizeLevel(studentData.level)}, this session is Level ${normalizeLevel(courseLevel)}`
-          : null;
-      if (notInClass) {
-        playScanSound("error");
-        triggerHaptic("error");
-        toast.error(`Not recorded: ${notInClass}`);
-        setLastScan({
-          name: `${resolvedName} (${resolvedIndex})`,
-          status: "NOT IN THIS CLASS",
-          time: nowTimeStr,
-        });
-        setStatus(`Not recorded: ${notInClass}`);
-        return false;
-      }
-
-      // 3. Mark in-memory set IMMEDIATELY (<1ms) to eliminate duplicate race conditions
-      scannedRecordsSet.current.add(cleanUpper);
-      scannedRecordsSet.current.add(cleanLower);
-      scannedRecordsSet.current.add(code);
-      scannedRecordsSet.current.add(`STUD_${sanitizedUpper}`);
-      if (studentId) scannedRecordsSet.current.add(studentId.toUpperCase());
-      scannedRecordsSet.current.add(resolvedIndex.toUpperCase());
-
-      // 4. ZERO-LATENCY USER FEEDBACK (<2ms): Instant audio chime, haptics, viewfinder pulse, and toast
-      playScanSound("success");
-      triggerHaptic("success");
-      setScanPulse(true);
-      setTimeout(() => setScanPulse(false), 500);
-      toast.success(`✓ Recorded: ${resolvedName} (${resolvedIndex})`);
-      setLastScan({
-        name: `${resolvedName} (${resolvedIndex})`,
-        status: "PRESENT",
-        time: nowTimeStr,
-      });
-      setStatus(`✓ Recorded: ${resolvedName}`);
-
-      // 5. Asynchronous persistence & roster refinement in background without blocking video stream
-      (async () => {
-        try {
-          if (!studentData) {
+      const snap = await getDocs(
+        query(collection(firestoreDb, "attendance_sessions"), where("owner_id", "==", currentUid)),
+      );
+      const courseMap = new Map((courses ?? []).map((c: any) => [c.id, c]));
+      const list = await Promise.all(
+        snap.docs.map(async (d) => {
+          const data = d.data() as any;
+          const passedMidnight = hasPassedLocalMidnight(data);
+          if (data.status === "OPEN" && passedMidnight) {
             try {
-              const [directSnap, qSnap, uuidSnap] = await Promise.all([
-                getDoc(doc(firestoreDb, "students", `stud_${sanitizedUpper}`)).catch(() => null),
-                getDocs(
-                  query(
-                    collection(firestoreDb, "students"),
-                    where("index_number", "==", cleanUpper),
-                  ),
-                ).catch(() => null),
-                getDocs(
-                  query(collection(firestoreDb, "students"), where("qr_uuid", "==", code)),
-                ).catch(() => null),
-              ]);
-              if (directSnap && directSnap.exists()) {
-                studentId = directSnap.id;
-                studentData = directSnap.data();
-                studentRosterCache.current.set(cleanUpper, { id: directSnap.id, ...studentData });
-              } else if (qSnap && !qSnap.empty) {
-                studentId = qSnap.docs[0].id;
-                studentData = qSnap.docs[0].data();
-                studentRosterCache.current.set(cleanUpper, { id: qSnap.docs[0].id, ...studentData });
-              } else if (uuidSnap && !uuidSnap.empty) {
-                studentId = uuidSnap.docs[0].id;
-                studentData = uuidSnap.docs[0].data();
-                studentRosterCache.current.set(cleanUpper, {
-                  id: uuidSnap.docs[0].id,
-                  ...studentData,
-                });
-              } else {
-                const autoDoc = {
-                  full_name: resolvedName,
-                  index_number: cleanUpper,
-                  owner_id: sess.owner_id || currentUid || "universal",
-                  created_at: new Date().toISOString(),
-                };
-                void setDoc(doc(firestoreDb, "students", studentId), autoDoc, {
-                  merge: true,
-                }).catch(() => {});
-              }
-            } catch (err) {
-              console.warn("Background student lookup warning:", err);
+              await updateDoc(doc(firestoreDb, "attendance_sessions", d.id), {
+                status: "CLOSED",
+                ends_at: new Date().toISOString(),
+              });
+              data.status = "CLOSED";
+              data.ends_at = new Date().toISOString();
+            } catch {
+              // ignore
             }
           }
-
-          const safeOwnerId = sess.owner_id || currentUid || firebaseAuth.currentUser?.uid || "faculty";
-          const safeScannedBy = currentUid || firebaseAuth.currentUser?.uid || "faculty";
-
-          const recordPayload = {
-            session_id: sess.id,
-            course_id: sess.course_id || null,
-            student_id: studentId || `stud_${sanitizedUpper}`,
-            student_name: studentData?.full_name || resolvedName || "Student",
-            index_number: studentData?.index_number || resolvedIndex || cleanUpper,
-            session_date: today,
-            check_in_at: new Date().toISOString(),
-            status: "PRESENT",
-            scanned_by: safeScannedBy,
-            owner_id: safeOwnerId,
-            created_at: new Date().toISOString(),
+          const c = courseMap.get(data.course_id);
+          return {
+            id: d.id,
+            ...data,
+            courses: c ? { code: c.code, title: c.title, level: c.level } : null,
           };
+        }),
+      );
+      return list.sort((a, b) => (b.starts_at || "").localeCompare(a.starts_at || ""));
+    },
+    enabled: !!currentUid,
+  });
 
-          // The live listener picks up the new record; no need to re-read sessions and courses
-          await addDoc(collection(firestoreDb, "attendance_records"), recordPayload);
-        } catch (saveErr) {
-          console.error("Async attendance save error:", saveErr);
-          scannedRecordsSet.current.delete(cleanUpper);
-          toast.error("Failed to sync attendance record to cloud.");
-        }
-      })();
+  const useMyLocation = () => {
+    if (!navigator.geolocation) return toast.error("Geolocation not supported");
+    setLocBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setForm((f) => ({ ...f, latitude: pos.coords.latitude, longitude: pos.coords.longitude }));
+        setLocBusy(false);
+        toast.success("Class location captured");
+      },
+      (err) => {
+        setLocBusy(false);
+        toast.error(err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
-      return true;
+  const courseSessions = (sessions ?? []).filter((s: any) => s.course_id === form.course_id);
+  const nextSessionNum = computeNextSessionNumber(courseSessions);
+
+  // Today's session for a course (not yet past 12:00 AM midnight), if any
+  const findTodaysSession = (courseId: string) =>
+    (sessions ?? [])
+      .filter((s: any) => s.course_id === courseId && !hasPassedLocalMidnight(s))
+      .sort((a: any, b: any) => String(b.starts_at || "").localeCompare(String(a.starts_at || "")))[0];
+
+  const create = async () => {
+    if (!form.course_id) return toast.error("Pick a course");
+
+    // Same day = same session: reopen today's session instead of creating a new one
+    const todays = findTodaysSession(form.course_id);
+    if (todays) {
+      setOpen(false);
+      toast.info(`Today's Session ${todays.session_number || ""} for this course is reopened. A new session starts after 12:00 AM midnight.`);
+      return reopenExistingSession(todays);
+    }
+    const lat = form.latitude ?? null;
+    const lng = form.longitude ?? null;
+    const currentUid = firebaseAuth.currentUser?.uid;
+
+    const matchedSessions = (sessions ?? []).filter((s: any) => s.course_id === form.course_id);
+    const successionNum = computeNextSessionNumber(matchedSessions);
+    const autoTitle = form.title?.trim() || `Session ${successionNum}`;
+
+    const now = new Date();
+    const nextMidnight = getSessionLocalMidnight(now.toISOString());
+    const tz = getDetectedLocalTimezone();
+
+    try {
+      const docRef = await addDoc(collection(firestoreDb, "attendance_sessions"), {
+        course_id: form.course_id,
+        session_number: successionNum,
+        title: autoTitle,
+        mode: form.mode,
+        latitude: lat,
+        longitude: lng,
+        radius_m: form.radius_m,
+        created_by: currentUid ?? null,
+        owner_id: currentUid ?? null,
+        status: "OPEN",
+        starts_at: now.toISOString(),
+        created_at: now.toISOString(),
+        auto_closes_at: nextMidnight?.toISOString() || null,
+        timezone: tz,
+      });
+      toast.success(`Session ${successionNum} created`);
+      const chosenCourse = courses?.find((c: any) => c.id === form.course_id);
+      fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({
+          courseId: form.course_id,
+          level: chosenCourse?.level,
+          payload: {
+            type: "ATTENDANCE",
+            title: `Session ${successionNum} Active`,
+            body: `Attendance for ${chosenCourse?.code || "your class"} (Session ${successionNum}) is now open. Tap to check in.`,
+            url: `/check-in?session=${docRef.id}`,
+            entityId: docRef.id,
+            entityType: "attendance_session",
+          },
+        }),
+      }).catch((e) => console.warn("Push notification warning:", e));
+
+      setOpen(false);
+      setForm({
+        course_id: "",
+        title: "",
+        mode: "single",
+        latitude: null,
+        longitude: null,
+        radius_m: 80,
+      });
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+      window.location.href = `/scan?session=${docRef.id}`;
     } catch (err: any) {
-      console.error("Scan processing error:", err);
-      playScanSound("error");
-      triggerHaptic("error");
-      toast.error(err?.message || "Failed to record scan");
-      setStatus("Scan error. Please try again.");
-      return false;
-    } finally {
-      inFlight.current.delete(code);
+      toast.error(err?.message || "Failed to create session");
     }
-  }, [activeSession, currentUid, handleCreateQuickSession, handleStartNextSession, openSessions]);
+  };
 
-  // Clean, fail-safe camera shutdown
-  const stopCamera = useCallback(() => {
-    if (scanLoopTimerRef.current) {
-      clearInterval(scanLoopTimerRef.current);
-      scanLoopTimerRef.current = null;
-    }
-    isDecodingRef.current = false;
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => {
-        try {
-          track.stop();
-        } catch {
-          // ignore
-        }
-      });
-      streamRef.current = null;
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-
-    setScanning(false);
-    setIsStartingCam(false);
-    setStatus("Camera stopped. Ready to scan.");
-  }, []);
-
-  // Clean, resilient camera start using native getUserMedia (zero FSM transition crashes)
-  const startCamera = async (preferredFacing?: "environment" | "user", overrideCamId?: string) => {
-    if (isStartingCam) return;
-    setIsStartingCam(true);
-    setCamError(null);
-    setStatus("Opening camera stream…");
-
-    // Ensure session exists
-    let currentSess = activeSession;
-    if (!currentSess) {
-      if (openSessions && openSessions.length > 0) {
-        currentSess = openSessions[0].id;
-        setActiveSession(currentSess);
-      } else {
-        toast.info("Setting up attendance session to start camera...");
-        const newId = await handleCreateQuickSession();
-        if (!newId) {
-          setIsStartingCam(false);
-          return;
-        }
-        currentSess = newId;
-      }
-    }
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      const msg = "Camera access is not supported on this browser or requires HTTPS.";
-      setCamError(msg);
-      toast.error(msg);
-      setIsStartingCam(false);
-      return;
-    }
-
-    stopCamera();
-
-    const targetFacing = preferredFacing ?? facingMode;
-    setFacingMode(targetFacing);
-
-    // Enumerate camera devices for device selector
+  const closeSession = async (s: any) => {
     try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices
-        .filter((d) => d.kind === "videoinput")
-        .map((d, i) => ({ id: d.deviceId, label: d.label || `Camera ${i + 1}` }));
-      if (videoDevices.length > 0) {
-        setAvailableCameras(videoDevices);
-      }
-    } catch {
-      // Device enumeration failure non-blocking
-    }
-
-    // Try camera constraints with graceful fallbacks
-    const chosenId = overrideCamId || selectedCameraId;
-    const constraintCandidates: MediaStreamConstraints[] = [];
-
-    if (chosenId) {
-      constraintCandidates.push({
-        video: { deviceId: { exact: chosenId }, width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-      constraintCandidates.push({ video: { deviceId: { exact: chosenId } } });
-    }
-
-    constraintCandidates.push({
-      video: { facingMode: { ideal: targetFacing }, width: { ideal: 1280 }, height: { ideal: 720 } },
-    });
-    constraintCandidates.push({
-      video: { facingMode: targetFacing },
-    });
-    constraintCandidates.push({
-      video: { facingMode: targetFacing === "environment" ? "user" : "environment" },
-    });
-    constraintCandidates.push({
-      video: true,
-    });
-
-    let activeStream: MediaStream | null = null;
-    let lastError: any = null;
-
-    for (const constraints of constraintCandidates) {
-      try {
-        activeStream = await navigator.mediaDevices.getUserMedia(constraints);
-        if (activeStream && activeStream.getVideoTracks().length > 0) {
-          break;
-        }
-      } catch (err: any) {
-        lastError = err;
-        // Continue to next fallback constraint
-      }
-    }
-
-    if (!activeStream) {
-      console.error("Failed to acquire camera stream:", lastError);
-      const msg =
-        lastError?.name === "NotAllowedError" || lastError?.name === "PermissionDeniedError"
-          ? "Camera permission denied. Please allow camera permissions in your browser address bar."
-          : lastError?.name === "NotFoundError" || lastError?.name === "DevicesNotFoundError"
-            ? "No camera device detected on this device."
-            : lastError?.name === "NotReadableError" || lastError?.name === "TrackStartError"
-              ? "Camera is in use by another tab or app. Please close other camera apps and retry."
-              : lastError?.message || "Failed to start camera";
-      setCamError(msg);
-      toast.error(msg);
-      setIsStartingCam(false);
-      setStatus("Camera error");
-      return;
-    }
-
-    streamRef.current = activeStream;
-
-    // Attach to video element
-    const video = videoRef.current;
-    if (video) {
-      video.srcObject = activeStream;
-      try {
-        await video.play();
-      } catch (playErr) {
-        console.warn("Video play warning:", playErr);
-      }
-    }
-
-    setScanning(true);
-    setIsStartingCam(false);
-    setStatus("Camera active. Point student QR code at camera.");
-
-    // Start high-performance frame scanning loop (~100ms / 10 FPS cadence)
-    if (scanLoopTimerRef.current) {
-      clearInterval(scanLoopTimerRef.current);
-    }
-
-    scanLoopTimerRef.current = setInterval(async () => {
-      if (isDecodingRef.current) return;
-      const v = videoRef.current;
-      if (!v || v.readyState < 2 || v.videoWidth === 0 || v.videoHeight === 0) return;
-
-      isDecodingRef.current = true;
-      try {
-        const decoded = await decodeImageToQr(v, barcodeDetectorRef.current);
-        if (decoded) {
-          void processQr(decoded);
-        }
-      } catch (decodeErr) {
-        console.debug("Frame decode error:", decodeErr);
-      } finally {
-        isDecodingRef.current = false;
-      }
-    }, 90);
-  };
-
-  const flipCamera = async () => {
-    const next = facingMode === "environment" ? "user" : "environment";
-    setFacingMode(next);
-    setSelectedCameraId("");
-    if (scanning) {
-      await startCamera(next);
-    }
-  };
-
-  const handleOpenCloseDialog = () => {
-    const targetId = activeSession || activeSessionRef.current || session?.id;
-    if (!targetId) {
-      toast.error("No active session found to close");
-      return;
-    }
-    setShowCloseDialog(true);
-  };
-
-  const executeCloseSession = async () => {
-    const targetId = activeSession || activeSessionRef.current || session?.id;
-    if (!targetId) {
-      toast.error("No active session found to close");
-      setShowCloseDialog(false);
-      return;
-    }
-    setIsClosingSession(true);
-    stopCamera();
-    try {
-      await updateDoc(doc(firestoreDb, "attendance_sessions", targetId), {
+      await updateDoc(doc(firestoreDb, "attendance_sessions", s.id), {
         status: "CLOSED",
         ends_at: new Date().toISOString(),
       });
-      toast.success("Attendance session closed successfully");
-      setShowCloseDialog(false);
-      qc.invalidateQueries({ queryKey: ["open-sessions"] });
+      toast.success("Session closed");
       qc.invalidateQueries({ queryKey: ["sessions"] });
-      qc.invalidateQueries({ queryKey: ["session", targetId] });
+      qc.invalidateQueries({ queryKey: ["open-sessions"] });
     } catch (err: any) {
       toast.error(err?.message || "Failed to close session");
-    } finally {
-      setIsClosingSession(false);
     }
   };
 
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (manual.trim()) {
-      void processQr(manual.trim());
-      setManual("");
+  const reopenExistingSession = async (s: any) => {
+    if (hasPassedLocalMidnight(s)) {
+      return toast.error("This session closed at 12:00 AM midnight. Use Open New Session.");
+    }
+    try {
+      await updateDoc(doc(firestoreDb, "attendance_sessions", s.id), {
+        status: "OPEN",
+        ends_at: null,
+      });
+      toast.success(`Session reopened! Continuing roll call.`);
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+      qc.invalidateQueries({ queryKey: ["open-sessions"] });
+      window.location.href = `/scan?session=${s.id}`;
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to reopen session");
     }
   };
 
-  // Image Upload / Drag-and-drop QR scan handler
-  const handleImageFile = async (file: File) => {
-    if (!file || !file.type.startsWith("image/")) {
-      toast.error("Please select a valid image file");
-      return;
+  const startNextSessionForCourse = async (s: any) => {
+    const uid = currentUid || firebaseAuth.currentUser?.uid;
+    if (!uid) return toast.error("Please sign in first");
+    if (!s.course_id) return toast.error("Course not found for this session");
+
+    // Never create a second session for the same course on the same day
+    const todays = findTodaysSession(s.course_id);
+    if (todays) return reopenExistingSession(todays);
+
+    const matchedSessions = (sessions ?? []).filter((item: any) => item.course_id === s.course_id);
+    const nextSessionNum = computeNextSessionNumber(matchedSessions);
+    const courseCode = s.courses?.code || "Class";
+    const autoTitle = `Session ${nextSessionNum}`;
+
+    const now = new Date();
+    const nextMidnight = getSessionLocalMidnight(now.toISOString());
+    const tz = getDetectedLocalTimezone();
+
+    try {
+      const docRef = await addDoc(collection(firestoreDb, "attendance_sessions"), {
+        course_id: s.course_id,
+        session_number: nextSessionNum,
+        title: autoTitle,
+        mode: s.mode || "single",
+        latitude: s.latitude ?? null,
+        longitude: s.longitude ?? null,
+        radius_m: s.radius_m || 80,
+        created_by: uid,
+        owner_id: uid,
+        status: "OPEN",
+        starts_at: now.toISOString(),
+        created_at: now.toISOString(),
+        auto_closes_at: nextMidnight?.toISOString() || null,
+        timezone: tz,
+      });
+
+      toast.success(`Session ${nextSessionNum} created for ${courseCode}! Opening scanner...`);
+
+      // Dispatch push notification to students
+      const matchedCourse = courses?.find((c: any) => c.id === s.course_id);
+      fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({
+          courseId: s.course_id,
+          level: s.courses?.level || matchedCourse?.level,
+          payload: {
+            type: "ATTENDANCE",
+            title: `Session ${nextSessionNum} Active`,
+            body: `Attendance for ${courseCode} (Session ${nextSessionNum}) is now open. Tap to check in.`,
+            url: `/check-in?session=${docRef.id}`,
+            entityId: docRef.id,
+            entityType: "attendance_session",
+          },
+        }),
+      }).catch((e) => console.warn("Push notification warning:", e));
+
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+      qc.invalidateQueries({ queryKey: ["open-sessions"] });
+      window.location.href = `/scan?session=${docRef.id}`;
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to start new session");
     }
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const img = new Image();
-      img.onload = async () => {
-        toast.info("Scanning uploaded image for QR pass…");
-        const decoded = await decodeImageToQr(img, barcodeDetectorRef.current);
-        if (decoded) {
-          void processQr(decoded);
-        } else {
-          toast.error("No valid QR code detected in this image. Please try a clearer screenshot.");
-        }
-      };
-      img.src = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
   };
 
-  // Cleanup stream on unmount
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, [stopCamera]);
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    try {
+      await deleteDoc(doc(firestoreDb, "attendance_sessions", deleting.id));
+      setDeleting(null);
+      toast.success("Session deleted");
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to delete session");
+    }
+  };
+
+  const projectQr = async (s: any) => {
+    try {
+      const url = `${getPublicOrigin()}/check-in?session=${s.id}`;
+      const dataUrl = await QRCode.toDataURL(url, {
+        width: 800,
+        margin: 2,
+        color: { dark: "#D4AF37", light: "#ffffff" },
+      });
+      setProjecting({
+        id: s.id,
+        code: s.courses?.code ?? "Class",
+        title: s.title || s.courses?.title || "Attendance Session",
+        dataUrl,
+        url,
+      });
+    } catch {
+      toast.error("Failed to generate projection QR code");
+    }
+  };
+
+  const openInNewWindow = () => {
+    if (!projecting) return;
+    const w = window.open("", "_blank");
+    if (!w) return toast.error("Allow popups to project in a new window");
+    w.document.write(
+      `<html><head><title>Project Check-in QR</title><meta name="viewport" content="width=device-width,initial-scale=1" /><style>body{margin:0;background:#fff;font-family:system-ui;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;color:#12294a;padding:24px;box-sizing:border-box}h1{margin:8px 0;font-size:28px}p{color:#555;margin:4px 0 16px;font-size:18px;text-align:center}img{max-width:80vmin;max-height:65vmin;box-shadow:0 4px 20px rgba(0,0,0,0.08);border-radius:12px;padding:8px}button{margin-top:20px;background:#12294a;color:#fff;border:0;padding:12px 24px;font-size:16px;border-radius:8px;cursor:pointer}button.close-x{position:fixed;top:12px;right:12px;background:#c00;padding:8px 14px;margin:0;font-weight:bold}</style></head><body><button class="close-x" onclick="window.close()">✕ Close</button><h1>${projecting.code} — Scan to Check In</h1><p>Point your phone camera, tap the link, allow location, and enter your index number.</p><img src="${projecting.dataUrl}" /><p style="margin-top:16px;font-size:14px;word-break:break-all;color:#777">${projecting.url}</p><button onclick="window.close()">Close Window</button></body></html>`,
+    );
+    w.document.close();
+  };
 
   return (
     <AppShell>
-      <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 pb-20 space-y-6">
-        {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
-              <span>Attendance Scanner</span>
-              {scanning && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                  <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
-                  LIVE
-                </span>
-              )}
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              Ultra-fast camera scanner with instant audio confirmation and live cloud sync.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {openSessions && openSessions.length === 0 && (
-              <Button
-                size="sm"
-                onClick={handleCreateQuickSession}
-                disabled={creatingQuick}
-                className="h-9 text-xs font-bold gap-1.5 cursor-pointer bg-[#0A1F44] text-white hover:bg-[#0A1F44]/90 dark:bg-white dark:text-[#0A1F44]"
-              >
-                <Plus className="size-3.5" />
-                <span>{creatingQuick ? "Creating..." : "Start Quick Session"}</span>
-              </Button>
-            )}
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div>
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Attendance Sessions</h1>
+          <p className="text-xs text-muted-foreground font-medium mt-1">
+            Create, schedule, and launch live lecture roll-call sessions
+          </p>
         </div>
-
-        {/* Two-Column Responsive Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Scanner Viewport Card: Spans 7 columns on desktop */}
-          <Card className="lg:col-span-7 xl:col-span-7 border-2 border-border shadow-md bg-card rounded-2xl overflow-hidden flex flex-col">
-            <CardHeader className="pb-3 border-b border-border/50 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <span>Scanner Viewport</span>
-              </CardTitle>
-
-              {/* Upload Pass Button */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void handleImageFile(f);
-                }}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                className="h-8 text-xs font-semibold gap-1.5 cursor-pointer border-border"
-                title="Upload screenshot or photo of student pass"
-              >
-                <Upload className="size-3.5 text-primary" />
-                <span className="hidden sm:inline">Upload Image</span>
-              </Button>
-            </CardHeader>
-
-            <CardContent className="space-y-4 pt-4 flex-1">
-              {/* Session Picker */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    Target Course Session
-                  </label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleStartNextSession(session?.course_id || null)}
-                    className="h-6 text-[11px] font-bold text-primary hover:text-primary/80 gap-1 p-0 px-1 cursor-pointer"
-                    title="Start the next sequential session for this course"
-                  >
-                    <Plus className="size-3" />
-                    + New Session
-                  </Button>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="size-4 mr-1" />
+              New session
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create session</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label>Course</Label>
+                  {(!courses || courses.length === 0) && (
+                    <Link to="/courses" className="text-xs text-primary underline">
+                      + Add Course
+                    </Link>
+                  )}
                 </div>
                 <Select
-                  value={activeSession ?? ""}
-                  onValueChange={(val) => {
-                    setActiveSession(val);
-                  }}
+                  value={form.course_id}
+                  onValueChange={(v) => setForm({ ...form, course_id: v })}
                 >
-                  <SelectTrigger className="h-10 text-xs font-medium">
-                    <SelectValue placeholder="Select an open session to record attendance" />
+                  <SelectTrigger className="mt-1">
+                    <SelectValue
+                      placeholder={coursesLoading ? "Loading courses..." : "Pick a course"}
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {(openSessions ?? []).map((s: any) => (
-                      <SelectItem key={s.id} value={s.id} className="text-xs font-medium">
-                        {s.courses?.code ? `${s.courses.code} — ` : ""}
-                        {s.session_number ? `Session ${s.session_number}` : s.title || "Session"} (
-                        {new Date(s.starts_at).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                        )
-                      </SelectItem>
-                    ))}
+                    {courses && courses.length > 0 ? (
+                      courses.map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.code} — {c.title}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-3 text-xs text-center text-muted-foreground">
+                        No courses found. Please add a course first.
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
-
-              {session && (
-                <div
-                  className={`p-3 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                    session.status === "CLOSED" || hasPassedLocalMidnight(session)
-                      ? "border-amber-500/40 bg-amber-500/10 text-amber-950 dark:text-amber-200"
-                      : "border-[#D4AF37]/35 bg-[#D4AF37]/5 dark:bg-[#D4AF37]/10"
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-extrabold text-foreground text-sm">
-                        {session.courses?.code || "Course"}{" "}
-                        {session.courses?.title ? `· ${session.courses.title}` : ""}
-                      </span>
-                      <span className="text-[11px] px-2 py-0.5 rounded font-semibold bg-primary/10 text-primary">
-                        {session.session_number
-                          ? `Session ${session.session_number}`
-                          : session.title || "Session"}
-                      </span>
-                      {session.status === "CLOSED" && hasPassedLocalMidnight(session) && (
-                        <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300">
-                          Closed at 12:00 AM Midnight
-                        </span>
-                      )}
-                      {session.status === "CLOSED" && !hasPassedLocalMidnight(session) && (
-                        <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300">
-                          Closed (Paused)
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {session.status === "CLOSED" && hasPassedLocalMidnight(session)
-                        ? "This session closed at 12:00 AM midnight. Yesterday's scans are saved. Start the next session to scan today."
-                        : session.status === "CLOSED" && !hasPassedLocalMidnight(session)
-                          ? "This session is paused. Tap 'Reopen Session' to continue scanning today's roll call."
-                          : formatMidnightClosureLabel(session)}
-                    </p>
+              <div className="rounded-lg border bg-muted/40 p-3 flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">
+                    Succession Number
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {session.status === "CLOSED" ? (
-                      hasPassedLocalMidnight(session) ? (
-                        <Button
-                          size="sm"
-                          onClick={() => handleStartNextSession(session.course_id)}
-                          className="h-8 text-xs font-bold bg-[#B8861B] hover:bg-[#A37415] text-white shadow-xs cursor-pointer"
-                          title="Start the next sequential session for this course"
-                        >
-                          <Plus className="size-3.5 mr-1" />
-                          Open New Session
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => handleReopenSameSession(session.id)}
-                          className="h-8 text-xs font-bold bg-[#0A1F44] hover:bg-[#0A1F44]/90 text-[#E2BD56] border border-[#D4AF37]/60 shadow-xs cursor-pointer"
-                          title="Reopen and resume today's session"
-                        >
-                          <RotateCcw className="size-3.5 mr-1" />
-                          Reopen Session
-                        </Button>
-                      )
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleOpenCloseDialog}
-                        disabled={isClosingSession}
-                        className="h-8 text-[11px] font-bold text-destructive hover:bg-destructive/10 border-destructive/30 cursor-pointer"
-                      >
-                        <Lock className="size-3 mr-1" />
-                        {isClosingSession ? "Closing..." : "Close Session"}
-                      </Button>
-                    )}
+                  <div className="text-base font-bold text-primary">
+                    {form.course_id
+                      ? findTodaysSession(form.course_id)
+                        ? `Session ${findTodaysSession(form.course_id)?.session_number ?? ""} (today's, will reopen)`
+                        : `Session ${nextSessionNum}`
+                      : "Select a course to auto-number"}
                   </div>
                 </div>
-              )}
-
-              {/* Camera Device Selector if multiple cameras exist */}
-              {availableCameras.length > 1 && (
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                    Selected Camera Device
-                  </label>
-                  <Select
-                    value={selectedCameraId}
-                    onValueChange={(camId) => {
-                      setSelectedCameraId(camId);
-                      if (scanning) {
-                        void startCamera(facingMode, camId);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue placeholder="Choose camera device" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableCameras.map((cam, idx) => (
-                        <SelectItem key={cam.id} value={cam.id} className="text-xs">
-                          {cam.label || `Camera ${idx + 1}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Viewport: Clean HTML5 Video stream with targeting reticle */}
-              <div className="relative w-full flex justify-center py-2">
-                <div
-                  className={`w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl mx-auto rounded-2xl overflow-hidden bg-black relative border-2 shadow-lg min-h-[320px] flex items-center justify-center transition-all duration-200 ${
-                    scanPulse
-                      ? "border-emerald-500 ring-4 ring-emerald-500/50 shadow-[0_0_35px_rgba(16,185,129,0.5)]"
-                      : "border-[#D4AF37]/50"
-                  }`}
-                  style={{ minHeight: "320px" }}
-                >
-                  {/* Clean native video element */}
-                  <video
-                    ref={videoRef}
-                    playsInline
-                    muted
-                    autoPlay
-                    className={`w-full h-full object-cover min-h-[320px] max-h-[480px] ${
-                      scanning ? "block" : "hidden"
-                    }`}
-                  />
-
-                  {/* Targeting reticle and laser indicator */}
-                  {scanning && !isStartingCam && (
-                    <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
-                      {/* Corner targeting brackets */}
-                      <div className="absolute inset-6 sm:inset-10 pointer-events-none">
-                        <div className="absolute top-0 left-0 size-8 sm:size-10 border-t-[3px] border-l-[3px] border-[#D4AF37] rounded-tl-md shadow-[0_0_10px_#D4AF37]" />
-                        <div className="absolute top-0 right-0 size-8 sm:size-10 border-t-[3px] border-r-[3px] border-[#D4AF37] rounded-tr-md shadow-[0_0_10px_#D4AF37]" />
-                        <div className="absolute bottom-0 left-0 size-8 sm:size-10 border-b-[3px] border-l-[3px] border-[#D4AF37] rounded-bl-md shadow-[0_0_10px_#D4AF37]" />
-                        <div className="absolute bottom-0 right-0 size-8 sm:size-10 border-b-[3px] border-r-[3px] border-[#D4AF37] rounded-br-md shadow-[0_0_10px_#D4AF37]" />
-                        {/* Rapid laser scanline */}
-                        <div className="absolute inset-x-2 top-1/2 -translate-y-1/2 h-[2px] bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent shadow-[0_0_12px_#D4AF37] animate-pulse" />
-                      </div>
-
-                      {/* Success scan confirmation flash */}
-                      {scanPulse && (
-                        <div className="absolute inset-0 bg-emerald-500/30 backdrop-blur-[1px] flex items-center justify-center transition-opacity">
-                          <div className="size-20 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xl animate-in zoom-in-75 duration-150">
-                            <CheckCircle2 className="size-12 stroke-[2.5]" />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Idle Overlay */}
-                  {!scanning && !isStartingCam && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white/80 select-none bg-black/85 z-10">
-                      <div className="size-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center mx-auto text-[#D4AF37] mb-3 shadow-inner">
-                        <Camera className="size-8" />
-                      </div>
-                      <p className="text-base font-bold text-white">Camera Viewfinder Ready</p>
-                      <p className="text-xs text-white/70 max-w-xs mt-1">
-                        Click "Start Camera Scanner" below. Point student QR code at camera for instant detection.
-                      </p>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="mt-4 h-8 text-xs font-semibold gap-1.5 cursor-pointer bg-white/15 hover:bg-white/25 text-white border border-white/20"
-                      >
-                        <ImageIcon className="size-3.5 text-[#D4AF37]" />
-                        Or scan from image file
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Starting Camera Loading Overlay */}
-                  {isStartingCam && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white select-none bg-black/90 z-10">
-                      <RefreshCw className="size-8 text-[#D4AF37] animate-spin mb-3" />
-                      <p className="text-xs font-bold tracking-wide uppercase">Initializing camera hardware...</p>
-                      <p className="text-[11px] text-white/70 mt-1">
-                        Optimizing video stream for instant sub-second decoding
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Status Indicator */}
-              <div className="text-center text-xs">
-                <span
-                  className={
-                    scanning
-                      ? "text-emerald-600 dark:text-emerald-400 font-bold"
-                      : "text-muted-foreground font-medium"
-                  }
-                >
-                  {status}
+                <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">
+                  Auto-Numbered
                 </span>
               </div>
-
-              {/* Last Scan Feedback */}
-              {lastScan && (
-                <div className="p-3.5 rounded-xl border-2 border-emerald-500/40 bg-emerald-500/10 text-xs flex items-center justify-between shadow-xs animate-in fade-in-50 duration-200">
-                  <div className="flex items-center gap-2.5">
-                    <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <div className="text-left">
-                      <p className="font-bold text-foreground text-sm leading-tight">{lastScan.name}</p>
-                      <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold">
-                        {lastScan.status}
-                      </p>
-                    </div>
-                  </div>
-                  {lastScan.time && (
-                    <span className="text-[10px] text-muted-foreground font-mono">{lastScan.time}</span>
-                  )}
-                </div>
-              )}
-
-              {/* Error Message */}
-              {camError && (
-                <div className="p-3 rounded-xl border border-destructive/40 bg-destructive/10 text-destructive text-xs space-y-1">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-                    <span className="font-bold">Camera Notice</span>
-                  </div>
-                  <p className="text-[11px] pl-6">{camError}</p>
-                </div>
-              )}
-
-              {/* Camera Action Buttons */}
-              <div className="flex items-center gap-2 pt-1">
-                {!scanning ? (
-                  <Button
-                    onClick={() => void startCamera()}
-                    className="flex-1 h-11 text-xs font-bold cursor-pointer bg-[#0A1F44] text-white hover:bg-[#0A1F44]/90 dark:bg-white dark:text-[#0A1F44] border-2 border-[#D4AF37]/60 shadow-md"
-                    disabled={isStartingCam}
-                  >
-                    {isStartingCam ? (
-                      <>
-                        <RefreshCw className="size-4 mr-2 animate-spin" />
-                        Initializing Camera...
-                      </>
-                    ) : (
-                      <>
-                        <Camera className="size-4 mr-2" />
-                        Start Camera Scanner
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={stopCamera}
-                    variant="destructive"
-                    className="flex-1 h-11 text-xs font-bold cursor-pointer shadow-md"
-                  >
-                    <Square className="size-4 mr-2" />
-                    Stop Camera
-                  </Button>
-                )}
-
-                {scanning && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void flipCamera()}
-                      title="Switch Camera (Front/Back)"
-                      className="h-11 px-4 cursor-pointer border-2 border-[#D4AF37]/40"
-                    >
-                      <SwitchCamera className="size-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void startCamera()}
-                      title="Restart Camera"
-                      className="h-11 px-4 cursor-pointer border-2 border-[#D4AF37]/40"
-                    >
-                      <RefreshCw className="size-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
-
-              {/* Manual Input Fallback */}
-              <form onSubmit={handleManualSubmit} className="pt-3 border-t border-border flex gap-2">
+              <div>
+                <Label>Topic / Description (optional)</Label>
                 <Input
-                  placeholder="Enter Student Index Number (e.g. 4076024)"
-                  value={manual}
-                  onChange={(e) => setManual(e.target.value)}
-                  className="h-10 text-xs font-mono"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder={form.course_id ? `e.g. Session ${nextSessionNum} or Lecture topic` : "e.g. Logic Gates"}
                 />
-                <Button
-                  type="submit"
-                  variant="outline"
-                  size="sm"
-                  className="h-10 text-xs font-bold cursor-pointer border-2 border-[#D4AF37]/50"
-                >
-                  <UserCheck className="size-4 mr-1.5" />
-                  Check In
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Sessions are automatically numbered in order (Session 1, 2, 3...) for tracking and reports.
+                </p>
+              </div>
+              <div>
+                <Label>Attendance method</Label>
+                <Select value={form.mode} onValueChange={(v) => setForm({ ...form, mode: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single">Scan once = present</SelectItem>
+                    <SelectItem value="inout">Sign in + sign out (two scans)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Each session stays the same all day: closing and reopening keeps the same session. At 12:00 AM midnight it closes, and the button changes to Open New Session.
+                </p>
+              </div>
+              <div>
+                <Label>Geofence radius (m)</Label>
+                <Input
+                  type="number"
+                  value={form.radius_m}
+                  onChange={(e) => setForm({ ...form, radius_m: Number(e.target.value) })}
+                />
+              </div>
 
-          {/* Today's Scanned Records: Spans 5 columns on desktop */}
-          <Card className="lg:col-span-5 xl:col-span-5 border-2 border-border shadow-md bg-card rounded-2xl overflow-hidden flex flex-col">
-            <CardHeader className="pb-3 border-b border-border/50">
-              <CardTitle className="text-base font-bold flex items-center justify-between">
-                <span>Verified Scans in Session</span>
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#0A1F44]/10 dark:bg-white/10 text-foreground">
-                  {recentRecords.length} Students
+              <div>
+                <Label>Classroom location (GPS anti-cheat)</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full mt-1"
+                  onClick={useMyLocation}
+                  disabled={locBusy}
+                >
+                  <MapPin className="size-4 mr-1" />
+                  {form.latitude != null
+                    ? `Captured (${form.latitude.toFixed(4)}, ${form.longitude!.toFixed(4)})`
+                    : locBusy
+                      ? "Getting location..."
+                      : "Use my current location"}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Stand in the classroom and tap this. Students outside the radius can't self
+                  check-in.
+                </p>
+              </div>
+              <Button onClick={create} className="w-full">
+                Create & open scanner
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="grid gap-3">
+        {(sessions ?? []).map((s: any) => (
+          <Card key={s.id}>
+            <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <div className="font-semibold flex items-center gap-2 flex-wrap">
+                  <span>
+                    {s.courses?.code} · {s.courses?.title}
+                    {s.courses?.level ? ` · L${s.courses.level}` : ""}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                    {s.session_number
+                      ? `Session ${s.session_number}`
+                      : s.title && s.title.toLowerCase().startsWith("session")
+                        ? s.title
+                        : "Session"}
+                  </span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {s.title ?? "—"} · started {new Date(s.starts_at).toLocaleString()} ·{" "}
+                  <span className={s.status === "OPEN" ? "text-primary font-medium" : "text-muted-foreground"}>
+                    {formatMidnightClosureLabel(s.starts_at)}
+                  </span>
+                  {s.latitude != null ? ` · geofence ${s.radius_m}m` : ""}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span
+                  className={`text-xs px-2 py-1 rounded font-medium ${s.status === "OPEN" ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}
+                >
+                  {s.status}
                 </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 flex-1">
-              <div className="divide-y divide-border/60 max-h-[640px] overflow-y-auto">
-                {recentRecords.map((r: any) => (
-                  <div
-                    key={r.id}
-                    className="p-3.5 px-4 flex items-center justify-between text-xs hover:bg-muted/40 transition-colors animate-in fade-in-50 duration-150"
+                {s.status === "OPEN" ? (
+                  <Button size="sm" variant="outline" onClick={() => closeSession(s)}>
+                    <Lock className="size-3 mr-1" />
+                    Close
+                  </Button>
+                ) : hasPassedLocalMidnight(s) ? (
+                  <Button
+                    size="sm"
+                    className="bg-[#B8861B] hover:bg-[#A37415] text-white font-bold cursor-pointer shadow-xs"
+                    onClick={() => startNextSessionForCourse(s)}
+                    title="This session closed at 12:00 AM midnight. Start the next session for this course."
                   >
-                    <div>
-                      <p className="font-extrabold text-foreground text-sm">
-                        {r.students?.full_name || r.student_name || "Student"}
-                      </p>
-                      <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                        {r.students?.index_number || r.index_number}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <span className="inline-flex items-center text-emerald-600 dark:text-emerald-400 font-bold text-xs gap-1">
-                        <CheckCircle2 className="size-3.5" />
-                        <span>PRESENT</span>
-                      </span>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {new Date(r.check_in_at || r.created_at).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                {recentRecords.length === 0 && (
-                  <div className="p-12 text-center text-xs text-muted-foreground space-y-2">
-                    <p className="font-bold text-foreground">No scans recorded yet</p>
-                    <p>
-                      Start the camera and point a student QR pass, enter an index number above, or upload a pass image.
-                    </p>
-                  </div>
+                    <Plus className="size-3.5 mr-1" />
+                    Open New Session
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="bg-[#0A1F44] hover:bg-[#0A1F44]/90 text-[#E2BD56] border border-[#D4AF37]/60 font-bold cursor-pointer shadow-xs"
+                    onClick={() => reopenExistingSession(s)}
+                    title="Reopen today's session to continue roll call"
+                  >
+                    <RotateCcw className="size-3.5 mr-1" />
+                    Reopen
+                  </Button>
                 )}
+                {s.status === "OPEN" && (
+                  <Button size="sm" variant="outline" onClick={() => projectQr(s)}>
+                    <Projector className="size-3 mr-1" />
+                    Project
+                  </Button>
+                )}
+                {s.status === "OPEN" && (
+                  <Link to={"/scan" as string} search={{ session: s.id } as any}>
+                    <Button size="sm">
+                      <ScanLine className="size-3 mr-1" />
+                      Scan
+                    </Button>
+                  </Link>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setDeleting(s)}
+                  title="Delete session"
+                >
+                  <Trash2 className="size-4 text-destructive" />
+                </Button>
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Confirm Close Session Dialog */}
-        <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-          <AlertDialogContent className="border-2 border-[#D4AF37]/50 max-w-md bg-card">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-base sm:text-lg font-bold flex items-center gap-2 text-foreground">
-                <Lock className="size-5 text-destructive" />
-                Close Attendance Session?
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-xs sm:text-sm text-muted-foreground space-y-2 pt-1">
-                <span>
-                  Are you sure you want to close this session? Closing locks attendance records for this lecture so no further scans can be recorded for it.
-                </span>
-                <span className="block font-semibold text-foreground pt-1">
-                  Next time you open the scanner or click "+ New Session", a fresh new session will be created automatically for this course!
-                </span>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="gap-2 sm:gap-0 pt-2">
-              <AlertDialogCancel
-                disabled={isClosingSession}
-                onClick={() => setShowCloseDialog(false)}
-                className="cursor-pointer"
-              >
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={(e) => {
-                  e.preventDefault();
-                  void executeCloseSession();
-                }}
-                disabled={isClosingSession}
-                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground cursor-pointer font-bold"
-              >
-                {isClosingSession ? (
-                  <>
-                    <RefreshCw className="size-3.5 mr-1.5 animate-spin" />
-                    Closing Session...
-                  </>
-                ) : (
-                  <>
-                    <Lock className="size-3.5 mr-1.5" />
-                    Yes, Close Session
-                  </>
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        ))}
+        {!sessions?.length && (
+          <Card>
+            <CardContent className="p-8 text-center text-muted-foreground">
+              No sessions yet
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      <AlertDialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-destructive" />
+              Delete this session?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes <b>every class day recorded under this session</b> — all
+              weeks of attendance for {deleting?.courses?.code}. Please open <b>Reports</b> and
+              export (Excel / CSV / PDF) the overall and daily reports first. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel — let me save the reports</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmDelete}
+            >
+              Delete without saving
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Parent QR Code Classroom Projector Dialog */}
+      <Dialog open={!!projecting} onOpenChange={(v) => !v && setProjecting(null)}>
+        <DialogContent className="max-w-lg text-center">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              {projecting?.code} — Projector Check-In QR
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2 flex flex-col items-center">
+            <p className="text-sm text-muted-foreground mb-4 max-w-sm">
+              Project this QR onto the screen. Students scan it, verify their location inside the
+              classroom, and check in.
+            </p>
+            {projecting?.dataUrl && (
+              <div className="p-3 bg-white rounded-2xl shadow-sm border border-border/50 max-w-xs w-full flex items-center justify-center">
+                <img
+                  src={projecting.dataUrl}
+                  alt="Class Check-in QR"
+                  className="w-full h-auto aspect-square rounded-lg"
+                />
+              </div>
+            )}
+            <p className="mt-3 text-xs text-muted-foreground font-mono break-all px-4">
+              {projecting?.url}
+            </p>
+          </div>
+          <div className="flex gap-2 justify-end mt-2">
+            <Button variant="outline" onClick={openInNewWindow}>
+              Open in Separate Tab
+            </Button>
+            <Button onClick={() => setProjecting(null)}>Done</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
