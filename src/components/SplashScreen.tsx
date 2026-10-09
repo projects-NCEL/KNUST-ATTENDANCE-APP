@@ -1,5 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 
+declare global {
+  interface Window {
+    __qmarkSplashDone?: boolean;
+  }
+}
+
+const SPLASH_DONE_EVENT = "qmark:splash-done";
+
+/** Runs `cb` as soon as the launch animation has finished (right away if it already has). */
+export function onSplashDone(cb: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  if (window.__qmarkSplashDone) {
+    cb();
+    return () => {};
+  }
+  const handler = () => cb();
+  window.addEventListener(SPLASH_DONE_EVENT, handler, { once: true });
+  return () => window.removeEventListener(SPLASH_DONE_EVENT, handler);
+}
+
+function markSplashDone() {
+  if (typeof window === "undefined") return;
+  window.__qmarkSplashDone = true;
+  window.dispatchEvent(new Event(SPLASH_DONE_EVENT));
+}
+
 /**
  * Snappy Qmark Animated Splash Screen.
  * Fast, crisp presentation that launches smoothly and quickly.
@@ -105,6 +131,7 @@ export function SplashScreen() {
         // Exit complete: unmount after exit duration
         timerRef.current = setTimeout(() => {
           setVisible(false);
+          markSplashDone();
         }, DURATIONS[phase]);
         return;
       }
@@ -130,6 +157,7 @@ export function SplashScreen() {
     if (markWrap) markWrap.classList.add("scale-exit");
     setTimeout(() => {
       setVisible(false);
+      markSplashDone();
     }, 280);
   };
 
@@ -143,12 +171,16 @@ export function SplashScreen() {
       onClick={dismiss}
       style={{
         position: "fixed",
-        inset: 0,
+        top: 0,
+        left: 0,
+        width: "100%",
+        // Visible screen height (excludes the browser address bar), so "middle" is the real middle
+        height: "100dvh",
         zIndex: 9999,
         background: "var(--navy, #0A1F44)",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "space-between",
+        justifyContent: "center",
         alignItems: "center",
         overflow: "hidden",
         cursor: "pointer",
@@ -165,7 +197,8 @@ export function SplashScreen() {
         }
 
         .splash-inner {
-          flex: 1;
+          position: absolute;
+          inset: 0;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -185,7 +218,7 @@ export function SplashScreen() {
           position: absolute;
           inset: 0;
           pointer-events: none;
-          background: radial-gradient(ellipse 280px 280px at 50% 44%, rgba(212,175,55,0.07) 0%, transparent 70%);
+          background: radial-gradient(ellipse 280px 280px at 50% 50%, rgba(212,175,55,0.07) 0%, transparent 70%);
           opacity: 0;
           transition: opacity 0.6s ease;
         }
@@ -273,9 +306,12 @@ export function SplashScreen() {
         }
 
         .splash-loader-track {
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: calc(28px + env(safe-area-inset-bottom, 0px));
           display: flex;
           justify-content: center;
-          padding: 0 0 28px;
         }
         .splash-loader {
           width: 100px;
@@ -349,9 +385,6 @@ export function SplashScreen() {
         }
       `}</style>
 
-      {/* Top spacer (skip button removed) */}
-      <div style={{ width: "100%", height: 28 }} />
-
       {/* Splash Inner Container */}
       <div ref={innerRef} className="splash-inner">
         <div ref={glowRef} className="splash-glow" />
@@ -360,7 +393,7 @@ export function SplashScreen() {
           <svg
             ref={animRef}
             id="qmark-anim"
-            viewBox="0 0 100 100"
+            viewBox="4 -3 100 100"
             width="100"
             height="100"
             fill="none"
