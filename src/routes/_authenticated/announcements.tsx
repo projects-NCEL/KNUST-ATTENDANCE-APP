@@ -207,6 +207,7 @@ export function AnnouncementsAndAssignmentsPage() {
         keepalive: true,
         body: JSON.stringify({
           courseId: announceCourseId,
+          levels: announceLevels && announceLevels.length > 0 ? announceLevels : undefined,
           payload: {
             type: "ANNOUNCEMENT",
             title: `Notice: ${announceTitle.trim()}`,
@@ -258,6 +259,7 @@ export function AnnouncementsAndAssignmentsPage() {
         keepalive: true,
         body: JSON.stringify({
           courseId: assignCourseId,
+          levels: assignLevels && assignLevels.length > 0 ? assignLevels : undefined,
           payload: {
             type: "ASSIGNMENT",
             title: `Assignment: ${assignTitle.trim()}`,

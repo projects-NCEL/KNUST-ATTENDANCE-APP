@@ -192,8 +192,17 @@ const FACULTY_DEPARTMENTS = [
 ];
 
 function StudentPortalPage() {
-  // Unauthenticated Auth States matching the 4 screenshots
-  const [activeAuthTab, setActiveAuthTab] = useState<StudentAuthTab>("signin");
+  // Check if this device has activated or signed into a student account before
+  const [activeAuthTab, setActiveAuthTab] = useState<StudentAuthTab>(() => {
+    if (typeof window !== "undefined") {
+      const hasActivated =
+        localStorage.getItem("qmark_student_has_activated") === "true" ||
+        Boolean(localStorage.getItem(STORE)) ||
+        localStorage.getItem("qroll_student_session") === "true";
+      return hasActivated ? "signin" : "activate";
+    }
+    return "activate";
+  });
 
   // Sign In Form State
   const [signInIndex, setSignInIndex] = useState("");
@@ -326,6 +335,7 @@ function StudentPortalPage() {
       userRole: "student" as const,
       studentId: me.id,
       indexNumber: me.index_number,
+      level: me.level,
     };
 
     // If permission already granted, silently ensure backend has this device registered
@@ -348,7 +358,7 @@ function StudentPortalPage() {
     } catch {
       // ignore storage error
     }
-  }, [me?.id, me?.index_number]);
+  }, [me?.id, me?.index_number, me?.level]);
 
   const loadingDataRef = useRef(false);
   const loadStudentData = useCallback(
@@ -436,6 +446,7 @@ function StudentPortalPage() {
           return;
         }
 
+        localStorage.setItem("qmark_student_has_activated", "true");
         saveStudentSession(cleanIdx, loginPass);
         localStorage.setItem("qroll_student_session", "true");
         localStorage.setItem("qroll_active_gateway", "student");
@@ -565,6 +576,7 @@ function StudentPortalPage() {
       }
 
       toast.success("Account activated successfully! Entering portal...");
+      localStorage.setItem("qmark_student_has_activated", "true");
       saveStudentSession(upperIdx, actPassword);
       localStorage.setItem("qroll_student_session", "true");
       localStorage.setItem("qroll_active_gateway", "student");
@@ -2478,6 +2490,7 @@ function StudentPortalPage() {
                 userRole: "student",
                 studentId: me.id,
                 indexNumber: me.index_number,
+                level: me.level,
               });
             }
           }}
@@ -2486,6 +2499,7 @@ function StudentPortalPage() {
             userRole: "student",
             studentId: me.id,
             indexNumber: me.index_number,
+            level: me.level,
           }}
         />
       )}

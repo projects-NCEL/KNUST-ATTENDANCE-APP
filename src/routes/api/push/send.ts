@@ -13,14 +13,18 @@ export const Route = createFileRoute("/api/push/send")({
       POST: async ({ request }) => {
         try {
           const body = await request.json();
-          const { userId, userIds, courseId, broadcast, role, payload } = body as {
+          const { userId, userIds, courseId, levels, level, broadcast, role, payload } = body as {
             userId?: string;
             userIds?: string[];
             courseId?: string;
+            levels?: string[];
+            level?: string;
             broadcast?: boolean;
             role?: "student" | "lecturer" | "admin";
             payload: NotificationPayload;
           };
+
+          const targetLevels = levels || (level ? [level] : undefined);
 
           if (!payload || !payload.title) {
             return Response.json(
@@ -29,9 +33,13 @@ export const Route = createFileRoute("/api/push/send")({
             );
           }
 
-          // Case 1: Send to a specific course's enrolled students
+          // Case 1: Send to a specific course's enrolled students (strictly level-enforced)
           if (courseId && courseId !== "all") {
-            const res = await sendNotificationToCourseStudents(courseId, payload);
+            const res = await sendNotificationToCourseStudents(
+              courseId,
+              payload,
+              level || (levels && levels.length === 1 ? levels[0] : undefined),
+            );
             return Response.json({
               success: true,
               mode: "course",
@@ -63,9 +71,9 @@ export const Route = createFileRoute("/api/push/send")({
             });
           }
 
-          // Case 4: Broadcast to all active users (e.g. institution announcements, course "all")
+          // Case 4: Broadcast to active users (filtered by role and target levels if specified)
           if (broadcast || courseId === "all" || (!courseId && !userId && !userIds)) {
-            const res = await sendNotificationToAllActive(payload, role);
+            const res = await sendNotificationToAllActive(payload, role, targetLevels);
             return Response.json({
               success: true,
               mode: "broadcast",

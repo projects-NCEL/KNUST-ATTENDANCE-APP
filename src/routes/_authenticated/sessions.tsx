@@ -52,6 +52,7 @@ import {
   MapPin,
   Trash2,
   AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
 
 import QRCode from "qrcode";
@@ -213,6 +214,7 @@ function SessionsPage() {
         keepalive: true,
         body: JSON.stringify({
           courseId: form.course_id,
+          level: chosenCourse?.level,
           payload: {
             type: "ATTENDANCE",
             title: `Session ${successionNum} Active`,
@@ -254,6 +256,21 @@ function SessionsPage() {
     }
   };
 
+  const reopenExistingSession = async (s: any) => {
+    try {
+      await updateDoc(doc(firestoreDb, "attendance_sessions", s.id), {
+        status: "OPEN",
+        ends_at: null,
+      });
+      toast.success(`Session reopened! Continuing roll call.`);
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+      qc.invalidateQueries({ queryKey: ["open-sessions"] });
+      window.location.href = `/scan?session=${s.id}`;
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to reopen session");
+    }
+  };
+
   const startNextSessionForCourse = async (s: any) => {
     const uid = currentUid || firebaseAuth.currentUser?.uid;
     if (!uid) return toast.error("Please sign in first");
@@ -289,12 +306,14 @@ function SessionsPage() {
       toast.success(`Session ${nextSessionNum} created for ${courseCode}! Opening scanner...`);
 
       // Dispatch push notification to students
+      const matchedCourse = courses?.find((c: any) => c.id === s.course_id);
       fetch("/api/push/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         keepalive: true,
         body: JSON.stringify({
           courseId: s.course_id,
+          level: s.courses?.level || matchedCourse?.level,
           payload: {
             type: "ATTENDANCE",
             title: `Session ${nextSessionNum} Active`,
@@ -524,14 +543,25 @@ function SessionsPage() {
                     <Lock className="size-3 mr-1" />
                     Close
                   </Button>
-                ) : (
+                ) : hasPassedLocalMidnight(s) ? (
                   <Button
                     size="sm"
                     className="bg-[#B8861B] hover:bg-[#A37415] text-white font-bold cursor-pointer shadow-xs"
                     onClick={() => startNextSessionForCourse(s)}
+                    title="This session closed at 12:00 AM midnight. Start the next session for this course."
                   >
                     <Plus className="size-3.5 mr-1" />
-                    Reopen (New Session)
+                    Open New Session
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="bg-[#0A1F44] hover:bg-[#0A1F44]/90 text-[#E2BD56] border border-[#D4AF37]/60 font-bold cursor-pointer shadow-xs"
+                    onClick={() => reopenExistingSession(s)}
+                    title="Reopen today's session to continue roll call"
+                  >
+                    <RotateCcw className="size-3.5 mr-1" />
+                    Reopen
                   </Button>
                 )}
                 {s.status === "OPEN" && (

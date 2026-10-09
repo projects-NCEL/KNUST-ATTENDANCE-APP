@@ -6,6 +6,7 @@ import {
   isFirestoreQuotaError,
 } from "@/integrations/firebase/firestore-rest";
 import { hasPassedLocalMidnight } from "@/lib/session-lifecycle";
+import { inferLevelFromCourse } from "@/lib/class-matching";
 import { pbkdf2Sync, randomBytes, timingSafeEqual } from "crypto";
 
 const DEFAULT_KNUST_DEPARTMENTS = [
@@ -1140,12 +1141,23 @@ export const Route = createFileRoute("/api/public/student-auth")({
               )
             ).flat();
 
-            // Open sessions of the student's own lecturers, for their class only
+            // Open sessions of the student's own lecturers, for their class & level only
             const activeSessions = (
               await Promise.all(lecturerList.map((lecturerId) => getOpenSessions(lecturerId)))
             )
               .flat()
-              .filter((sess: any) => sess.course_id && enrolledCourseIds.includes(sess.course_id))
+              .filter((sess: any) => {
+                if (!sess.course_id || !enrolledCourseIds.includes(sess.course_id)) return false;
+                const c = coursesMap.get(sess.course_id);
+                if (c) {
+                  const sLvl = normalizeLevel(studentLevelFor(sess.owner_id) || level);
+                  const cLvl = normalizeLevel(c.level || inferLevelFromCourse(c));
+                  if (sLvl && cLvl && sLvl !== cLvl) {
+                    return false;
+                  }
+                }
+                return true;
+              })
               .map((sess: any) => {
                 const c = coursesMap.get(sess.course_id);
                 return {

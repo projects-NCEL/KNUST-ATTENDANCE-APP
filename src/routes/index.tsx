@@ -6,8 +6,10 @@ import {
   Building2,
   ArrowRight,
   ShieldCheck,
+  Download,
 } from "lucide-react";
-import { AddToHomeScreenBanner } from "@/components/AddToHomeScreenBanner";
+import { InstallAppModal } from "@/components/InstallAppModal";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { firebaseAuth, onAuthStateChanged } from "@/integrations/firebase/config";
 

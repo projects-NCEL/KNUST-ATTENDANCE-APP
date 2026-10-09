@@ -51,9 +51,9 @@ function TutorFloatingNav() {
         <div className="pointer-events-none absolute inset-x-8 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#D4AF37]/80 to-transparent" />
 
         {/* Animated Curved Notch Scoop (Curved In) Cradling the Projecting Home Button */}
-        <div className="pointer-events-none absolute -top-[14px] left-1/2 -translate-x-1/2 w-24 sm:w-28 h-4 overflow-visible flex items-center justify-center">
+        <div className="pointer-events-none absolute -top-[16px] left-1/2 -translate-x-1/2 w-28 sm:w-32 h-5 overflow-visible flex items-center justify-center">
           <svg
-            className="w-24 sm:w-28 h-4 overflow-visible"
+            className="w-28 sm:w-32 h-5 overflow-visible"
             viewBox="0 0 120 20"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -98,25 +98,25 @@ function TutorFloatingNav() {
               <Link key={item.to} to={item.to as string} className="relative group mx-1.5 sm:mx-2.5">
                 {/* Home Button Projecting Out Above Navbar on the Curved Scoop */}
                 <motion.div
-                  whileHover={{ scale: 1.08, y: -22 }}
+                  whileHover={{ scale: 1.08, y: -24 }}
                   whileTap={{ scale: 0.92, y: -16 }}
-                  animate={{ y: -18 }}
+                  animate={{ y: -20 }}
                   transition={{ type: "spring", stiffness: 450, damping: 22 }}
                   className="relative cursor-pointer flex flex-col items-center justify-center"
                 >
                   {/* Pulsing gold ambient glow ring */}
-                  <span className="absolute -inset-1.5 rounded-full bg-[#D4AF37]/35 blur-md animate-pulse" />
+                  <span className="absolute -inset-2 rounded-full bg-[#D4AF37]/35 blur-md animate-pulse" />
 
                   {/* Projected Circular Button */}
                   <div
-                    className={`size-[56px] sm:size-[60px] rounded-full flex flex-col items-center justify-center transition-all duration-300 relative border-[2.5px] ${
+                    className={`size-[64px] sm:size-[68px] rounded-full flex flex-col items-center justify-center transition-all duration-300 relative border-[2.5px] ${
                       isActive
-                        ? "bg-[#0A1F44] text-[#E2BD56] border-[#D4AF37] ring-4 ring-[#D4AF37]/45 shadow-[0_12px_28px_rgba(212,175,55,0.55)]"
-                        : "bg-[#0A1F44] text-[#F3DB8B] border-[#D4AF37]/85 ring-2 ring-[#D4AF37]/30 shadow-[0_10px_24px_rgba(0,0,0,0.4)] hover:border-[#D4AF37]"
+                        ? "bg-[#0A1F44] text-[#E2BD56] border-[#D4AF37] ring-4 ring-[#D4AF37]/45 shadow-[0_12px_28px_rgba(212,175,55,0.65)]"
+                        : "bg-[#0A1F44] text-[#F3DB8B] border-[#D4AF37]/85 ring-2 ring-[#D4AF37]/30 shadow-[0_10px_24px_rgba(0,0,0,0.5)] hover:border-[#D4AF37]"
                     }`}
                   >
-                    <Icon className="size-6 sm:size-7 stroke-[2.8] drop-shadow-sm" />
-                    <span className="text-[9.5px] sm:text-[10px] font-black uppercase leading-none mt-0.5 tracking-wider text-[#E2BD56]">
+                    <Icon className="size-7 sm:size-8 stroke-[2.8] drop-shadow-sm" />
+                    <span className="text-[10px] sm:text-[10.5px] font-black uppercase leading-none mt-0.5 tracking-wider text-[#E2BD56]">
                       Home
                     </span>
                   </div>

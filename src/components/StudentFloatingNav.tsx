@@ -50,10 +50,10 @@ export function StudentFloatingNav({
         <div className="pointer-events-none absolute inset-x-6 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#D4AF37]/80 to-transparent" />
 
         {/* Animated Curved Notch Scoop (Curved In) Cradling the Projecting Home Button */}
-        <div className="pointer-events-none absolute -top-[15px] left-1/2 -translate-x-1/2 w-26 h-4.5 overflow-visible flex items-center justify-center">
+        <div className="pointer-events-none absolute -top-[16px] left-1/2 -translate-x-1/2 w-30 h-5 overflow-visible flex items-center justify-center">
           <svg
-            className="w-26 h-4.5 overflow-visible"
-            viewBox="0 0 104 18"
+            className="w-30 h-5 overflow-visible"
+            viewBox="0 0 120 20"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
@@ -66,13 +66,13 @@ export function StudentFloatingNav({
             </defs>
             {/* Curved-in concave scoop fill seamlessly matching navbar glass */}
             <path
-              d="M 0,0 C 22,0 30,16 52,16 C 74,16 82,0 104,0"
-              className="fill-transparent stroke-[#D4AF37]/60 dark:stroke-[#D4AF37]/55 stroke-[2]"
+              d="M 0,0 C 26,0 34,18 60,18 C 86,18 94,0 120,0"
+              className="fill-transparent stroke-[#D4AF37]/60 dark:stroke-[#D4AF37]/55 stroke-[2.5]"
               strokeLinecap="round"
             />
             {/* Glowing animated accent beam continuously running across the curved notch */}
             <motion.path
-              d="M 0,0 C 22,0 30,16 52,16 C 74,16 82,0 104,0"
+              d="M 0,0 C 26,0 34,18 60,18 C 86,18 94,0 120,0"
               fill="none"
               stroke="url(#goldBeamStudent)"
               strokeWidth="2.5"
@@ -146,27 +146,27 @@ export function StudentFloatingNav({
         <button
           type="button"
           onClick={() => onTabChange("attendance")}
-          className="relative group mx-2 cursor-pointer"
+          className="relative group mx-1.5 sm:mx-2 cursor-pointer"
         >
           <motion.div
-            whileHover={{ scale: 1.08, y: -22 }}
-            whileTap={{ scale: 0.92, y: -15 }}
-            animate={{ y: -18 }}
+            whileHover={{ scale: 1.08, y: -24 }}
+            whileTap={{ scale: 0.92, y: -16 }}
+            animate={{ y: -20 }}
             transition={{ type: "spring", stiffness: 450, damping: 22 }}
             className="relative flex flex-col items-center justify-center cursor-pointer"
           >
             {/* Pulsing ambient gold aura */}
-            <span className="absolute -inset-1.5 rounded-full bg-[#D4AF37]/35 blur-md animate-pulse" />
+            <span className="absolute -inset-2 rounded-full bg-[#D4AF37]/35 blur-md animate-pulse" />
 
             <div
-              className={`size-[54px] rounded-full flex flex-col items-center justify-center transition-all duration-300 relative border-[2.5px] ${
+              className={`size-[62px] rounded-full flex flex-col items-center justify-center transition-all duration-300 relative border-[2.5px] ${
                 isHomeActive
-                  ? "bg-[#0A1F44] text-[#E2BD56] border-[#D4AF37] ring-4 ring-[#D4AF37]/45 shadow-[0_10px_24px_rgba(212,175,55,0.6)]"
-                  : "bg-[#0A1F44] text-[#F3DB8B] border-[#D4AF37]/85 ring-2 ring-[#D4AF37]/30 shadow-[0_8px_20px_rgba(0,0,0,0.45)] hover:border-[#D4AF37]"
+                  ? "bg-[#0A1F44] text-[#E2BD56] border-[#D4AF37] ring-4 ring-[#D4AF37]/45 shadow-[0_12px_28px_rgba(212,175,55,0.65)]"
+                  : "bg-[#0A1F44] text-[#F3DB8B] border-[#D4AF37]/85 ring-2 ring-[#D4AF37]/30 shadow-[0_10px_24px_rgba(0,0,0,0.5)] hover:border-[#D4AF37]"
               }`}
             >
-              <Home className="size-6 stroke-[2.8] drop-shadow-sm" />
-              <span className="text-[9.5px] font-black leading-none mt-0.5 tracking-wider uppercase text-[#E2BD56]">
+              <Home className="size-7 stroke-[2.8] drop-shadow-sm" />
+              <span className="text-[10px] font-black leading-none mt-0.5 tracking-wider uppercase text-[#E2BD56]">
                 Home
               </span>
             </div>

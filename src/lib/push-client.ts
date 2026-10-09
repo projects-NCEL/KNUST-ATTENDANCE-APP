@@ -8,6 +8,7 @@ export interface PushUserContext {
   studentId?: string;
   indexNumber?: string;
   studentIndex?: string;
+  level?: string;
 }
 
 export type PushPermissionStatus =
@@ -243,6 +244,7 @@ export async function subscribeDeviceToPush(userContext: PushUserContext): Promi
           userContext.indexNumber ||
           userContext.studentIndex ||
           (userContext.userRole === "student" ? userContext.userId : undefined),
+        level: userContext.level,
       },
       device,
     }),
@@ -311,6 +313,7 @@ export async function syncPushSubscriptionIfGranted(
               userContext.indexNumber ||
               userContext.studentIndex ||
               (userContext.userRole === "student" ? userContext.userId : undefined),
+            level: userContext.level,
           },
           device,
         }),

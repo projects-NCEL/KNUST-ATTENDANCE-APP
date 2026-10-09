@@ -8,6 +8,7 @@ import {
   deleteDocRest,
   queryCollectionRest,
 } from "@/integrations/firebase/firestore-rest";
+import { normalizeLevel, inferLevelFromCourse } from "@/lib/class-matching";
 
 // VAPID Credentials configuration (Production keypair with fallback)
 export const VAPID_PUBLIC_KEY =
@@ -56,6 +57,7 @@ export interface StoredPushSubscription {
   userRole: "student" | "lecturer" | "admin";
   studentId?: string | null;
   indexNumber?: string | null;
+  level?: string | null;
   endpoint: string;
   keys: {
     p256dh: string;
@@ -94,6 +96,7 @@ export async function savePushSubscription(
     isStandalone?: boolean;
     studentId?: string;
     indexNumber?: string;
+    level?: string;
   } = {},
 ): Promise<StoredPushSubscription> {
   if (!subscription || !subscription.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
@@ -107,6 +110,25 @@ export async function savePushSubscription(
   // Check if existing record exists
   const existing = await getDocRest("push_subscriptions", docId);
 
+  // Resolve student class level for strict targeted notification delivery
+  let resolvedLevel = deviceInfo.level ? normalizeLevel(deviceInfo.level) : existing?.level ? normalizeLevel(existing.level) : null;
+  if (userRole === "student" && !resolvedLevel) {
+    try {
+      const sid = deviceInfo.studentId || cleanUserId;
+      let sDoc = await getDocRest("students", sid).catch(() => null);
+      if (!sDoc && deviceInfo.indexNumber) {
+        const byIdx = await queryCollectionRest("students", {
+          where: [{ field: "index_number", op: "EQUAL", value: deviceInfo.indexNumber }],
+          limit: 1,
+        });
+        if (byIdx.length > 0) sDoc = byIdx[0];
+      }
+      if (sDoc?.level) resolvedLevel = normalizeLevel(sDoc.level);
+    } catch {
+      // non-blocking lookup
+    }
+  }
+
   const subDoc: StoredPushSubscription = {
     id: docId,
     userId: cleanUserId,
@@ -117,6 +139,7 @@ export async function savePushSubscription(
       (userRole === "student" ? cleanUserId : null) ||
       existing?.indexNumber ||
       null,
+    level: resolvedLevel || null,
     endpoint: subscription.endpoint,
     keys: {
       p256dh: subscription.keys.p256dh,
@@ -446,11 +469,18 @@ export async function sendNotificationToUser(
 export async function sendNotificationToUsers(
   userIds: string[],
   payload: NotificationPayload,
+  enforcedLevel?: string | number,
 ): Promise<{ totalUsers: number; totalDelivered: number }> {
   const targetIdSet = new Set(userIds.filter(Boolean).map((id) => String(id).trim()));
   if (targetIdSet.size === 0) return { totalUsers: 0, totalDelivered: 0 };
 
-  console.log(`[WebPush] Broadcasting "${payload.title}" to ${targetIdSet.size} user ID(s)`);
+  const targetLvl = enforcedLevel ? normalizeLevel(enforcedLevel) : "";
+
+  console.log(
+    `[WebPush] Broadcasting "${payload.title}" to ${targetIdSet.size} user ID(s)${
+      targetLvl ? ` (Target Level: ${targetLvl})` : ""
+    }`,
+  );
 
   // Persist In-App notifications for all target users
   const uniqueRecipientList = Array.from(targetIdSet);
@@ -469,7 +499,13 @@ export async function sendNotificationToUsers(
   }
 
   // Filter subscriptions matching any target userId, indexNumber, or studentId
+  // AND STRICTLY ENFORCE LEVEL ISOLATION: students in another level are never sent notifications
   const matchingSubs = activeSubs.filter((sub: any) => {
+    if (targetLvl && sub.level) {
+      if (normalizeLevel(sub.level) !== targetLvl) {
+        return false;
+      }
+    }
     const uid = String(sub.userId || "").trim();
     const idx = String(sub.indexNumber || "").trim();
     const sid = String(sub.studentId || "").trim();
@@ -512,14 +548,20 @@ export async function sendNotificationToUsers(
 }
 
 /**
- * Send notification to all students registered in a course
+ * Send notification to all students registered in a course (Strict Level-Enforced)
+ * Students in other levels are strictly excluded from receiving session/course alerts.
  */
 export async function sendNotificationToCourseStudents(
   courseId: string,
   payload: NotificationPayload,
+  enforcedLevel?: string | number,
 ): Promise<{ studentsCount: number; delivered: number }> {
   try {
     const cleanCourseId = String(courseId).trim();
+    const courseDoc = await getDocRest("courses", cleanCourseId).catch(() => null);
+    const courseLevel = normalizeLevel(
+      enforcedLevel || courseDoc?.level || inferLevelFromCourse(courseDoc),
+    );
 
     // 1. Fetch registrations for this course
     const registrations = await queryCollectionRest("course_registrations", {
@@ -528,28 +570,52 @@ export async function sendNotificationToCourseStudents(
 
     const studentIds = registrations.map((r: any) => r.student_id).filter(Boolean);
 
-    // 2. Fetch student records and resolve to canonical IDs (both document ID and index_number)
+    // 2. Fetch student records and resolve to canonical IDs with strict Level checking
     const studentUserIds = new Set<string>();
 
     for (const sid of studentIds) {
-      studentUserIds.add(String(sid).trim());
-      const studentDoc = await getDocRest("students", sid).catch(() => null);
-      if (studentDoc && studentDoc.index_number) {
-        studentUserIds.add(studentDoc.index_number.trim());
+      let studentDoc = await getDocRest("students", sid).catch(() => null);
+      if (!studentDoc) {
+        const byIdx = await queryCollectionRest("students", {
+          where: [{ field: "index_number", op: "EQUAL", value: sid }],
+          limit: 1,
+        }).catch(() => []);
+        if (byIdx.length > 0) studentDoc = byIdx[0];
+      }
+
+      if (studentDoc) {
+        // Enforce level match: students in other levels MUST NOT receive this notification
+        if (courseLevel && studentDoc.level) {
+          if (normalizeLevel(studentDoc.level) !== courseLevel) {
+            console.log(
+              `[WebPush] Skipping student ${studentDoc.index_number || sid} (Level ${normalizeLevel(studentDoc.level)} !== Course Level ${courseLevel})`,
+            );
+            continue;
+          }
+        }
+        if (studentDoc.id) studentUserIds.add(String(studentDoc.id).trim());
+        if (studentDoc.index_number) studentUserIds.add(String(studentDoc.index_number).trim());
+      } else if (!courseLevel) {
+        studentUserIds.add(String(sid).trim());
       }
     }
 
-    // 3. In case courses match cohort level and department
-    const courseDoc = await getDocRest("courses", cleanCourseId).catch(() => null);
-    if (courseDoc && courseDoc.owner_id && courseDoc.department_id) {
+    // 3. Match cohort students belonging to this lecturer & course level ONLY when course level is known
+    if (courseDoc && courseDoc.owner_id && courseLevel) {
+      const filters: any[] = [{ field: "owner_id", op: "EQUAL", value: courseDoc.owner_id }];
+      if (courseDoc.department_id) {
+        filters.push({ field: "department_id", op: "EQUAL", value: courseDoc.department_id });
+      }
+
       const cohortStudents = await queryCollectionRest("students", {
-        where: [
-          { field: "owner_id", op: "EQUAL", value: courseDoc.owner_id },
-          { field: "department_id", op: "EQUAL", value: courseDoc.department_id },
-        ],
+        where: filters,
       });
 
       for (const s of cohortStudents) {
+        // Strict Level Check: only include students whose level matches the course level
+        if (s.level && normalizeLevel(s.level) !== courseLevel) {
+          continue;
+        }
         if (s.id) studentUserIds.add(String(s.id).trim());
         if (s.index_number) studentUserIds.add(String(s.index_number).trim());
       }
@@ -557,18 +623,18 @@ export async function sendNotificationToCourseStudents(
 
     const recipientList = Array.from(studentUserIds);
     console.log(
-      `[WebPush] Resolved ${recipientList.length} canonical student ID(s) for course ${cleanCourseId}`,
+      `[WebPush] Resolved ${recipientList.length} canonical student ID(s) for course ${cleanCourseId} (Course Level: ${courseLevel || "all"})`,
     );
 
+    // Strict Rule: NEVER broadcast to all students if 0 students match this level/course
     if (recipientList.length === 0) {
       console.log(
-        `[WebPush] No course registrations found for course ${cleanCourseId}. Falling back to active student devices.`,
+        `[WebPush] No students found matching course ${cleanCourseId} and Level ${courseLevel || "all"}. Will not dispatch to other levels.`,
       );
-      const broadcastRes = await sendNotificationToAllActive(payload, "student");
-      return { studentsCount: broadcastRes.totalDevices, delivered: broadcastRes.totalDelivered };
+      return { studentsCount: 0, delivered: 0 };
     }
 
-    const res = await sendNotificationToUsers(recipientList, payload);
+    const res = await sendNotificationToUsers(recipientList, payload, courseLevel);
     return { studentsCount: recipientList.length, delivered: res.totalDelivered };
   } catch (err) {
     console.error("[WebPush] Failed to send notification to course:", err);
@@ -577,11 +643,12 @@ export async function sendNotificationToCourseStudents(
 }
 
 /**
- * Broadcast notification to all active devices/users (or filtered by role) with endpoint deduplication
+ * Broadcast notification to all active devices/users (or filtered by role and level) with endpoint deduplication
  */
 export async function sendNotificationToAllActive(
   payload: NotificationPayload,
   targetRole?: "student" | "lecturer" | "admin",
+  targetLevels?: string[] | string | null,
 ): Promise<{ totalDevices: number; totalDelivered: number }> {
   try {
     const filters: any[] = [{ field: "isActive", op: "EQUAL", value: true }];
@@ -589,9 +656,25 @@ export async function sendNotificationToAllActive(
       filters.push({ field: "userRole", op: "EQUAL", value: targetRole });
     }
 
-    const rawSubscriptions = await queryCollectionRest("push_subscriptions", {
+    let rawSubscriptions = await queryCollectionRest("push_subscriptions", {
       where: filters,
     });
+
+    if (rawSubscriptions.length === 0) {
+      return { totalDevices: 0, totalDelivered: 0 };
+    }
+
+    // Filter by allowed levels if specified
+    if (targetLevels) {
+      const levelArr = Array.isArray(targetLevels) ? targetLevels : [targetLevels];
+      const allowedLevels = new Set(levelArr.map(normalizeLevel).filter(Boolean));
+      if (allowedLevels.size > 0) {
+        rawSubscriptions = rawSubscriptions.filter((sub: any) => {
+          if (!sub.level) return false;
+          return allowedLevels.has(normalizeLevel(sub.level));
+        });
+      }
+    }
 
     if (rawSubscriptions.length === 0) {
       return { totalDevices: 0, totalDelivered: 0 };

@@ -30,11 +30,13 @@ export const Route = createFileRoute("/api/push/subscribe")({
           const userRole = userContext?.userRole || "student";
           const studentId = (userContext?.studentId || "").trim();
           const indexNumber = (userContext?.indexNumber || userContext?.userId || "").trim();
+          const level = (userContext?.level || "").trim();
 
           const saved = await savePushSubscription(userId, userRole, subscription, {
             ...device,
             studentId,
             indexNumber,
+            level: level || undefined,
           });
 
           return Response.json({

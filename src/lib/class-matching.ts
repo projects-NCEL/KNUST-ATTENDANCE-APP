@@ -112,3 +112,35 @@ export function getCoursePopulation(
     isStudentInCourse(s, course, registeredStudentIds, deptMap),
   );
 }
+
+/**
+ * Robustly detects or infers the academic class level (e.g., "100", "200", "300", "400")
+ * from course object, explicit level field, or course code digits (e.g. "COE 354" -> "300").
+ */
+export function inferLevelFromCourse(course: CourseLike | any): string {
+  if (!course) return "";
+  if (course.level) {
+    const l = normalizeLevel(course.level);
+    if (l) return l;
+  }
+  // Try course code (e.g. "COE 354", "EE 211", "CE 101", "CS 420")
+  const code = String(course.code || "").trim();
+  const threeDigitsMatch = code.match(/\b([1-6])\d{2}\b/);
+  if (threeDigitsMatch && threeDigitsMatch[1]) {
+    return `${threeDigitsMatch[1]}00`;
+  }
+  const generalNum = code.match(/(\d{3})/);
+  if (generalNum && generalNum[1]) {
+    const firstDigit = generalNum[1][0];
+    if (["1", "2", "3", "4", "5", "6"].includes(firstDigit)) {
+      return `${firstDigit}00`;
+    }
+  }
+  // Try title (e.g. "Level 300 Digital Systems" or "Year 2 Calculus")
+  const title = String(course.title || "").trim();
+  const titleMatch = title.match(/(?:LEVEL|LVL|YEAR)\s*([1-6])(?:00)?/i);
+  if (titleMatch && titleMatch[1]) {
+    return `${titleMatch[1]}00`;
+  }
+  return "";
+}

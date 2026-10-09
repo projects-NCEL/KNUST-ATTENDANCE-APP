@@ -27,6 +27,16 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   CheckCircle2,
   Camera,
   Square,
@@ -38,6 +48,7 @@ import {
   UserCheck,
   Upload,
   Image as ImageIcon,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -237,6 +248,8 @@ function ScanPage() {
   const [creatingQuick, setCreatingQuick] = useState(false);
   const [scanPulse, setScanPulse] = useState(false);
   const [recentRecords, setRecentRecords] = useState<any[]>([]);
+  const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [isClosingSession, setIsClosingSession] = useState(false);
 
   // Direct React-managed video & stream refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -509,10 +522,13 @@ function ScanPage() {
         const tz = getDetectedLocalTimezone();
 
         let courseCode = "Course";
+        let courseLevel: string | undefined = undefined;
         try {
           const cSnap = await getDoc(doc(firestoreDb, "courses", targetCourseId));
           if (cSnap.exists()) {
-            courseCode = (cSnap.data() as any).code || "Course";
+            const cData = cSnap.data() as any;
+            courseCode = cData.code || "Course";
+            courseLevel = cData.level;
           }
         } catch {
           // ignore
@@ -537,13 +553,14 @@ function ScanPage() {
 
         toast.success(`Session ${nextNum} created for ${courseCode}! Ready for today's scans.`);
 
-        // Dispatch notification
+        // Dispatch level-targeted notification to enrolled students
         fetch("/api/push/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           keepalive: true,
           body: JSON.stringify({
             courseId: targetCourseId,
+            level: courseLevel,
             payload: {
               type: "ATTENDANCE",
               title: `Session ${nextNum} Active`,
@@ -573,6 +590,27 @@ function ScanPage() {
   const handleCreateQuickSession = useCallback(async (): Promise<string | null> => {
     return handleStartNextSession(null);
   }, [handleStartNextSession]);
+
+  // Reopen the exact same session if closed today before midnight
+  const handleReopenSameSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        await updateDoc(doc(firestoreDb, "attendance_sessions", sessionId), {
+          status: "OPEN",
+          ends_at: null,
+        });
+        toast.success("Session reopened! Ready to continue roll call.");
+        qc.invalidateQueries({ queryKey: ["open-sessions"] });
+        qc.invalidateQueries({ queryKey: ["sessions"] });
+        qc.invalidateQueries({ queryKey: ["session", sessionId] });
+        setActiveSession(sessionId);
+        activeSessionRef.current = sessionId;
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to reopen session");
+      }
+    },
+    [qc],
+  );
 
   // Process Scanned QR code with instant zero-latency feedback & non-blocking background persistence
   const processQr = useCallback(async (rawInput: string): Promise<boolean> => {
@@ -656,16 +694,33 @@ function ScanPage() {
       }
     }
 
-    // Auto-advance if target session reached 12:00 AM midnight or is closed
+    // Auto-advance if target session reached 12:00 AM midnight, or reopen if closed today
     if (sess && (sess.status === "CLOSED" || hasPassedLocalMidnight(sess))) {
-      toast.info("Previous session closed at 12:00 AM midnight. Starting today's new session for this course...");
-      const nextId = await handleStartNextSession(sess.course_id);
-      if (nextId) {
-        sess = { id: nextId, course_id: sess.course_id, owner_id: currentUid };
-        activeSessionRef.current = nextId;
+      if (hasPassedLocalMidnight(sess)) {
+        toast.info("Previous session closed at 12:00 AM midnight. Starting today's new session for this course...");
+        const nextId = await handleStartNextSession(sess.course_id);
+        if (nextId) {
+          sess = { id: nextId, course_id: sess.course_id, owner_id: currentUid };
+          activeSessionRef.current = nextId;
+        } else {
+          toast.error("Please start a new session for this course.");
+          return false;
+        }
       } else {
-        toast.error("Please start a new session for this course.");
-        return false;
+        // Reopen same session before midnight
+        try {
+          await updateDoc(doc(firestoreDb, "attendance_sessions", sess.id), {
+            status: "OPEN",
+            ends_at: null,
+          });
+          sess.status = "OPEN";
+          qc.invalidateQueries({ queryKey: ["open-sessions"] });
+          qc.invalidateQueries({ queryKey: ["sessions"] });
+          qc.invalidateQueries({ queryKey: ["session", sess.id] });
+          toast.success("Session reopened! Recording attendance.");
+        } catch {
+          // ignore
+        }
       }
     }
 
@@ -851,7 +906,7 @@ function ScanPage() {
     } finally {
       inFlight.current.delete(code);
     }
-  }, [activeSession, currentUid, handleCreateQuickSession, handleStartNextSession, openSessions, qc]);
+  }, [activeSession, currentUid, handleCreateQuickSession, handleStartNextSession, openSessions]);
 
   // Clean, fail-safe camera shutdown
   const stopCamera = useCallback(() => {
@@ -1037,20 +1092,38 @@ function ScanPage() {
     }
   };
 
-  const closeSession = async () => {
-    if (!activeSession) return;
-    if (!confirm("Close this attendance session?")) return;
+  const handleOpenCloseDialog = () => {
+    const targetId = activeSession || activeSessionRef.current || session?.id;
+    if (!targetId) {
+      toast.error("No active session found to close");
+      return;
+    }
+    setShowCloseDialog(true);
+  };
+
+  const executeCloseSession = async () => {
+    const targetId = activeSession || activeSessionRef.current || session?.id;
+    if (!targetId) {
+      toast.error("No active session found to close");
+      setShowCloseDialog(false);
+      return;
+    }
+    setIsClosingSession(true);
     stopCamera();
     try {
-      await updateDoc(doc(firestoreDb, "attendance_sessions", activeSession), {
+      await updateDoc(doc(firestoreDb, "attendance_sessions", targetId), {
         status: "CLOSED",
         ends_at: new Date().toISOString(),
       });
-      toast.success("Session closed");
-      setActiveSession(undefined);
+      toast.success("Attendance session closed successfully");
+      setShowCloseDialog(false);
       qc.invalidateQueries({ queryKey: ["open-sessions"] });
+      qc.invalidateQueries({ queryKey: ["sessions"] });
+      qc.invalidateQueries({ queryKey: ["session", targetId] });
     } catch (err: any) {
       toast.error(err?.message || "Failed to close session");
+    } finally {
+      setIsClosingSession(false);
     }
   };
 
@@ -1222,38 +1295,59 @@ function ScanPage() {
                           ? `Session ${session.session_number}`
                           : session.title || "Session"}
                       </span>
-                      {(session.status === "CLOSED" || hasPassedLocalMidnight(session)) && (
+                      {session.status === "CLOSED" && hasPassedLocalMidnight(session) && (
                         <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300">
                           Closed at 12:00 AM Midnight
                         </span>
                       )}
+                      {session.status === "CLOSED" && !hasPassedLocalMidnight(session) && (
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                          Closed (Paused)
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {session.status === "CLOSED" || hasPassedLocalMidnight(session)
+                      {session.status === "CLOSED" && hasPassedLocalMidnight(session)
                         ? "This session closed at 12:00 AM midnight. Yesterday's scans are saved. Start the next session to scan today."
-                        : formatMidnightClosureLabel(session)}
+                        : session.status === "CLOSED" && !hasPassedLocalMidnight(session)
+                          ? "This session is paused. Tap 'Reopen Session' to continue scanning today's roll call."
+                          : formatMidnightClosureLabel(session)}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {session.status === "CLOSED" || hasPassedLocalMidnight(session) ? (
-                      <Button
-                        size="sm"
-                        onClick={() => handleStartNextSession(session.course_id)}
-                        className="h-8 text-xs font-bold bg-[#B8861B] hover:bg-[#A37415] text-white shadow-xs cursor-pointer"
-                      >
-                        <Plus className="size-3.5 mr-1" />
-                        Start Next Session (New)
-                      </Button>
+                    {session.status === "CLOSED" ? (
+                      hasPassedLocalMidnight(session) ? (
+                        <Button
+                          size="sm"
+                          onClick={() => handleStartNextSession(session.course_id)}
+                          className="h-8 text-xs font-bold bg-[#B8861B] hover:bg-[#A37415] text-white shadow-xs cursor-pointer"
+                          title="Start the next sequential session for this course"
+                        >
+                          <Plus className="size-3.5 mr-1" />
+                          Open New Session
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => handleReopenSameSession(session.id)}
+                          className="h-8 text-xs font-bold bg-[#0A1F44] hover:bg-[#0A1F44]/90 text-[#E2BD56] border border-[#D4AF37]/60 shadow-xs cursor-pointer"
+                          title="Reopen and resume today's session"
+                        >
+                          <RotateCcw className="size-3.5 mr-1" />
+                          Reopen Session
+                        </Button>
+                      )
                     ) : (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={closeSession}
+                        onClick={handleOpenCloseDialog}
+                        disabled={isClosingSession}
                         className="h-8 text-[11px] font-bold text-destructive hover:bg-destructive/10 border-destructive/30 cursor-pointer"
                       >
                         <Lock className="size-3 mr-1" />
-                        Close Session
+                        {isClosingSession ? "Closing..." : "Close Session"}
                       </Button>
                     )}
                   </div>
@@ -1538,6 +1632,55 @@ function ScanPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Confirm Close Session Dialog */}
+        <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
+          <AlertDialogContent className="border-2 border-[#D4AF37]/50 max-w-md bg-card">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-base sm:text-lg font-bold flex items-center gap-2 text-foreground">
+                <Lock className="size-5 text-destructive" />
+                Close Attendance Session?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-xs sm:text-sm text-muted-foreground space-y-2 pt-1">
+                <span>
+                  Are you sure you want to close this session? Closing locks attendance records for this lecture so no further scans can be recorded for it.
+                </span>
+                <span className="block font-semibold text-foreground pt-1">
+                  Next time you open the scanner or click "+ New Session", a fresh new session will be created automatically for this course!
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2 sm:gap-0 pt-2">
+              <AlertDialogCancel
+                disabled={isClosingSession}
+                onClick={() => setShowCloseDialog(false)}
+                className="cursor-pointer"
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  void executeCloseSession();
+                }}
+                disabled={isClosingSession}
+                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground cursor-pointer font-bold"
+              >
+                {isClosingSession ? (
+                  <>
+                    <RefreshCw className="size-3.5 mr-1.5 animate-spin" />
+                    Closing Session...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="size-3.5 mr-1.5" />
+                    Yes, Close Session
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AppShell>
   );
