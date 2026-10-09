@@ -10,16 +10,20 @@ interface InstallAppModalProps {
   onClose: () => void;
 }
 
-export const INSTALL_DISMISS_KEY = "qmark_install_modal_dismissed_until";
-export const INSTALL_DONE_KEY = "qmark_install_prompt_completed";
+// New key names, so "Not now" taps saved by the old version no longer hide the pop-up
+export const INSTALL_DISMISS_KEY = "qmark_install_popup_closed_this_visit_v2";
+export const INSTALL_DONE_KEY = "qmark_install_accepted_v2";
 
-/** True when the install pop-up should not open by itself (installed, or dismissed in the last 7 days). */
+/**
+ * True when the install pop-up should not open by itself:
+ * the app was installed from this browser, or it was already closed during this visit
+ * (it opens again on the next visit / next app launch).
+ */
 export function isInstallPopupSnoozed(): boolean {
   if (typeof window === "undefined") return true;
   try {
     if (localStorage.getItem(INSTALL_DONE_KEY) === "true") return true;
-    const until = Number(localStorage.getItem(INSTALL_DISMISS_KEY) || 0);
-    return Date.now() < until;
+    return sessionStorage.getItem(INSTALL_DISMISS_KEY) === "true";
   } catch {
     return false;
   }
@@ -43,8 +47,8 @@ export function InstallAppModal({ open, onClose }: InstallAppModalProps) {
 
   const handleSkip = () => {
     try {
-      // Do not show the pop-up again for 7 days
-      localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now() + 7 * 24 * 60 * 60 * 1000));
+      // Hide it for the rest of this visit only; it opens again next time
+      sessionStorage.setItem(INSTALL_DISMISS_KEY, "true");
     } catch {
       // ignore
     }
@@ -85,7 +89,7 @@ export function InstallAppModal({ open, onClose }: InstallAppModalProps) {
     }
   };
 
-  if (!open || isInstalled) return null;
+  if (!open) return null;
 
   const heading = mustOpenInChrome ? "Install Qmark with Chrome" : "Install the Qmark app";
   const body = mustOpenInChrome
