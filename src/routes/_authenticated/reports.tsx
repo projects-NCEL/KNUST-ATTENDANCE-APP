@@ -1,15 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { firebaseAuth, firestoreDb } from "@/integrations/firebase/config";
 import { useAuth } from "@/lib/auth";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -18,10 +17,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, FileText, FileSpreadsheet, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Download, FileText, FileSpreadsheet, AlertTriangle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { exportToExcel, exportToCSV, exportToPDF } from "@/lib/exporters";
 import { isStudentInCourse } from "@/lib/class-matching";
+import {
+  type CourseAttendanceSummary,
+  getDistinctClassDays,
+  getStudentAttendedDays,
+  rebuildCourseAttendanceSummary,
+  toIndexKey,
+} from "@/lib/course-attendance";
 
 export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({
@@ -58,11 +74,14 @@ function ReportsPage() {
   const [maxMisses, setMaxMisses] = useState<number>(3);
   const [risk, setRisk] = useState<Risk>("all");
   const [presence, setPresence] = useState<Presence>("all");
+  const [isRebuildDialogOpen, setIsRebuildDialogOpen] = useState<boolean>(false);
+  const [isRebuilding, setIsRebuilding] = useState<boolean>(false);
 
   const { user } = useAuth();
   const currentUid = user?.id || firebaseAuth.currentUser?.uid;
+  const qc = useQueryClient();
 
-  const { data: courses, isLoading: coursesLoading } = useQuery({
+  const { data: courses } = useQuery({
     queryKey: ["courses-active", currentUid],
     queryFn: async () => {
       const uid = currentUid || firebaseAuth.currentUser?.uid;
@@ -96,18 +115,17 @@ function ReportsPage() {
     }
   }, [courses, courseId]);
 
-  const { data: raw, isLoading: rawLoading } = useQuery({
+  // Main Report Query: 1 read of course_attendance/<courseId>, plus students, regs, depts
+  const { data: raw } = useQuery({
     queryKey: ["report-data", courseId, currentUid],
     enabled: !!courseId && !!(currentUid || firebaseAuth.currentUser?.uid),
     queryFn: async () => {
       const uid = currentUid || firebaseAuth.currentUser?.uid;
-      if (!uid || !courseId) return { sessions: [], regs: [], records: [] };
+      if (!uid || !courseId) return null;
 
       try {
-        const [sessSnap, regsSnap, allStudSnap, deptsSnap] = await Promise.all([
-          getDocs(
-            query(collection(firestoreDb, "attendance_sessions"), where("owner_id", "==", uid)),
-          ),
+        const [summarySnap, regsSnap, allStudSnap, deptsSnap] = await Promise.all([
+          getDoc(doc(firestoreDb, "course_attendance", courseId)).catch(() => null),
           getDocs(
             query(
               collection(firestoreDb, "course_registrations"),
@@ -118,6 +136,19 @@ function ReportsPage() {
           getDocs(query(collection(firestoreDb, "students"), where("owner_id", "==", uid))),
           getDocs(query(collection(firestoreDb, "departments"), where("owner_id", "==", uid))),
         ]);
+
+        let summary: CourseAttendanceSummary | null = null;
+        if (summarySnap && summarySnap.exists()) {
+          summary = summarySnap.data() as CourseAttendanceSummary;
+        } else {
+          // Backfill: if course_attendance/<courseId> does not exist yet, build it ONCE
+          toast.info("Preparing this course's report for the first time…");
+          try {
+            summary = await rebuildCourseAttendanceSummary(courseId, uid);
+          } catch (backfillErr) {
+            console.warn("Backfill warning:", backfillErr);
+          }
+        }
 
         const deptMap = new Map<string, string>();
         deptsSnap.docs.forEach((d) => {
@@ -138,18 +169,9 @@ function ReportsPage() {
           studentMap.set(d.id, studObj);
           if (s.index_number) {
             studentMap.set(s.index_number.toString().trim().toUpperCase(), studObj);
+            studentMap.set(toIndexKey(s.index_number), studObj);
           }
         });
-
-        // Filter sessions for this course
-        const sessions = sessSnap.docs
-          .filter((d) => (d.data() as any).course_id === courseId)
-          .map((d) => ({
-            id: d.id,
-            title: (d.data() as any).title,
-            starts_at: (d.data() as any).starts_at,
-          }));
-        const sessionIds = new Set(sessions.map((s) => s.id));
 
         const regs = regsSnap.docs.map((d) => {
           const rData = d.data() as any;
@@ -160,65 +182,25 @@ function ReportsPage() {
           };
         });
 
-        let records: any[] = [];
-        if (sessionIds.size > 0) {
-          try {
-            const recSnap = await getDocs(
-              query(collection(firestoreDb, "attendance_records"), where("owner_id", "==", uid)),
-            );
-            records = recSnap.docs
-              .filter((d) => sessionIds.has((d.data() as any).session_id))
-              .map((d) => {
-                const data = d.data() as any;
-                const cleanIdx = data.index_number
-                  ? data.index_number.toString().trim().toUpperCase()
-                  : null;
-                return {
-                  id: d.id,
-                  student_id: data.student_id,
-                  index_number: data.index_number || null,
-                  session_id: data.session_id,
-                  session_date: data.session_date,
-                  check_in_at: data.check_in_at,
-                  status: data.status || "PRESENT",
-                  students:
-                    studentMap.get(data.student_id) ||
-                    (cleanIdx ? studentMap.get(cleanIdx) : null) ||
-                    null,
-                };
-              });
-          } catch (recErr) {
-            console.warn("Could not query records by owner_id, trying fallback:", recErr);
-          }
-        }
-
         return {
-          sessions,
+          summary,
           regs,
-          records,
           allStudents: Array.from(studentMap.values()),
           deptMap,
         };
       } catch (err: any) {
         console.error("Error fetching report data:", err);
         toast.error("Could not load report data: " + (err?.message || "Check network"));
-        return { sessions: [], regs: [], records: [], allStudents: [], deptMap: new Map() };
+        return null;
       }
     },
   });
 
-  // Every distinct class day that actually happened for this course
+  // Distinct class days built from summary.sessions
   const allDays = useMemo(() => {
-    const set = new Set<string>();
-    for (const r of raw?.records ?? [])
-      set.add(r.session_date ?? (r.check_in_at ? dayKey(r.check_in_at) : ""));
-    for (const s of raw?.sessions ?? []) {
-      if (s.starts_at) set.add(dayKey(s.starts_at));
-      else if (s.created_at) set.add(dayKey(s.created_at));
-    }
-    set.delete("");
-    return Array.from(set).sort();
-  }, [raw]);
+    if (!raw?.summary) return [];
+    return getDistinctClassDays(raw.summary);
+  }, [raw?.summary]);
 
   const sessionNumOfDay = (d: string) => {
     const idx = allDays.indexOf(d);
@@ -229,6 +211,30 @@ function ReportsPage() {
     if (mode === "daily") return day ? [day] : [];
     return allDays;
   }, [mode, day, allDays]);
+
+  // Daily Mode: query attendance_records for the chosen day ONLY (to obtain check-in timestamps)
+  const { data: dailyRecords } = useQuery({
+    queryKey: ["report-daily-records", courseId, day, currentUid],
+    enabled: mode === "daily" && !!day && !!courseId && !!currentUid,
+    queryFn: async () => {
+      const uid = currentUid || firebaseAuth.currentUser?.uid;
+      if (!uid || !courseId || !day) return [];
+      try {
+        const snap = await getDocs(
+          query(
+            collection(firestoreDb, "attendance_records"),
+            where("owner_id", "==", uid),
+            where("course_id", "==", courseId),
+            where("session_date", "==", day),
+          ),
+        );
+        return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      } catch (err) {
+        console.warn("Could not query daily records:", err);
+        return [];
+      }
+    },
+  });
 
   const report = useMemo(() => {
     if (!raw || !courseId) return null;
@@ -250,38 +256,21 @@ function ReportsPage() {
       }
     }
 
-    // 3. Include any student with historical records
-    for (const rec of raw.records) {
-      if (rec.students && !studentMap.has(rec.students.id)) {
-        studentMap.set(rec.students.id, rec.students);
-      }
-    }
-
-    // student -> set of days scanned
-    const scanned = new Map<string, Set<string>>();
-    for (const rec of raw.records) {
-      const d = rec.session_date ?? (rec.check_in_at ? dayKey(rec.check_in_at) : null);
-      if (!d) continue;
-
-      const idsToMark = new Set<string>();
-      if (rec.student_id) idsToMark.add(rec.student_id);
-      if (rec.students?.id) idsToMark.add(rec.students.id);
-      if (rec.index_number) idsToMark.add(rec.index_number.toString().trim().toUpperCase());
-      if (rec.students?.index_number)
-        idsToMark.add(rec.students.index_number.toString().trim().toUpperCase());
-
-      for (const id of idsToMark) {
-        if (!scanned.has(id)) scanned.set(id, new Set());
-        scanned.get(id)!.add(d);
+    // 3. Include any student mentioned in the summary's students map
+    if (raw.summary?.students) {
+      for (const indexKey of Object.keys(raw.summary.students)) {
+        const found = raw.allStudents.find((st: any) => toIndexKey(st.index_number) === indexKey);
+        if (found && !studentMap.has(found.id)) {
+          studentMap.set(found.id, found);
+        }
       }
     }
 
     const rows = Array.from(studentMap.values())
       .map((s: any) => {
         const cleanIdx = s.index_number ? s.index_number.toString().trim().toUpperCase() : "";
-        const cells = activeDays.map((d) =>
-          scanned.get(s.id)?.has(d) || (cleanIdx && scanned.get(cleanIdx)?.has(d)) ? 1 : 0,
-        );
+        const attendedDaysSet = getStudentAttendedDays(raw.summary, cleanIdx);
+        const cells = activeDays.map((d) => (attendedDaysSet.has(d) ? 1 : 0));
         const scans = cells.filter((v) => v === 1).length;
         const missed = cells.length - scans;
         const pct = cells.length ? Math.round((scans / cells.length) * 100) : 0;
@@ -314,7 +303,6 @@ function ReportsPage() {
 
   const [sessionDay, setSessionDay] = useState<string>("");
 
-  // Keep sessionDay updated if allDays changes
   useEffect(() => {
     if (allDays.length && (!sessionDay || !allDays.includes(sessionDay))) {
       setSessionDay(allDays[allDays.length - 1]);
@@ -329,7 +317,26 @@ function ReportsPage() {
   const presentCount = report?.rows.filter((r) => r.scans > 0).length ?? 0;
   const absentCount = (report?.rows.length ?? 0) - presentCount;
 
-  // Compilation export: spans all semester days and strictly respects active risk and presence filters
+  // On-demand rebuild totals handler
+  const handleRebuildTotals = async () => {
+    const uid = currentUid || firebaseAuth.currentUser?.uid;
+    if (!courseId || !uid) return;
+    setIsRebuilding(true);
+    try {
+      await rebuildCourseAttendanceSummary(courseId, uid);
+      await qc.invalidateQueries({ queryKey: ["report-data", courseId, uid] });
+      await qc.invalidateQueries({ queryKey: ["history-data-summaries", uid] });
+      toast.success("Attendance totals rebuilt successfully.");
+      setIsRebuildDialogOpen(false);
+    } catch (err: any) {
+      console.error("Rebuild failed:", err);
+      toast.error(err?.message || "Failed to rebuild attendance totals");
+    } finally {
+      setIsRebuilding(false);
+    }
+  };
+
+  // Whole-semester compilation export: strictly uses summary, not individual records
   const exportCompilation = async (fmt: "xlsx" | "csv" | "pdf") => {
     if (!courseId) {
       toast.error("Please pick a course first");
@@ -346,30 +353,10 @@ function ReportsPage() {
       return;
     }
 
-    // Build scan lookup map for all days
-    const scanned = new Map<string, Set<string>>();
-    for (const rec of raw?.records ?? []) {
-      const d = rec.session_date ?? (rec.check_in_at ? dayKey(rec.check_in_at) : null);
-      if (!d) continue;
-      const idsToMark = new Set<string>();
-      if (rec.student_id) idsToMark.add(rec.student_id);
-      if (rec.students?.id) idsToMark.add(rec.students.id);
-      if (rec.index_number) idsToMark.add(String(rec.index_number).trim().toUpperCase());
-      if (rec.students?.index_number)
-        idsToMark.add(String(rec.students.index_number).trim().toUpperCase());
-
-      for (const id of idsToMark) {
-        if (!scanned.has(id)) scanned.set(id, new Set());
-        scanned.get(id)!.add(d);
-      }
-    }
-
-    // Filter students by active presence & risk settings
     let studentsList = report.rows.map((s) => {
       const cleanIdx = s.index_number ? String(s.index_number).trim().toUpperCase() : "";
-      const cells = daysToUse.map((d) =>
-        scanned.get(s.id)?.has(d) || (cleanIdx && scanned.get(cleanIdx)?.has(d)) ? 1 : 0,
-      );
+      const attendedSet = getStudentAttendedDays(raw?.summary, cleanIdx);
+      const cells = daysToUse.map((d) => (attendedSet.has(d) ? 1 : 0));
       const totalScans = cells.filter((v) => v === 1).length;
       const totalMissed = cells.length - totalScans;
       const pct = cells.length ? Math.round((totalScans / cells.length) * 100) : 0;
@@ -446,9 +433,10 @@ function ReportsPage() {
     }
   };
 
-  // Specific session export: single class day with check-in timestamp and filter compliance
+  // Specific single session export: reads attendance_records for that one chosen day only
   const exportSpecificSession = async (fmt: "xlsx" | "csv" | "pdf") => {
-    const target = (mode === "daily" ? day : sessionDay) || (allDays.length ? allDays[allDays.length - 1] : "");
+    const target =
+      (mode === "daily" ? day : sessionDay) || (allDays.length ? allDays[allDays.length - 1] : "");
     if (!target) {
       toast.error("Please pick a session day to export");
       return;
@@ -459,21 +447,39 @@ function ReportsPage() {
       return;
     }
 
+    const uid = currentUid || firebaseAuth.currentUser?.uid;
     const dayIdx = allDays.indexOf(target);
 
-    // Map student_id / index_number -> check_in timestamp for this target day
+    // Query records for this ONE chosen day only (never whole semester)
+    let sessionRecords: any[] = dailyRecords && day === target ? dailyRecords : [];
+    if (!sessionRecords.length && uid) {
+      try {
+        const snap = await getDocs(
+          query(
+            collection(firestoreDb, "attendance_records"),
+            where("owner_id", "==", uid),
+            where("course_id", "==", courseId),
+            where("session_date", "==", target),
+          ),
+        );
+        sessionRecords = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      } catch (e) {
+        console.warn("Could not query session records for export:", e);
+      }
+    }
+
     const checkInMap = new Map<string, string>();
-    for (const rec of raw?.records ?? []) {
+    for (const rec of sessionRecords) {
       const d = rec.session_date ?? (rec.check_in_at ? dayKey(rec.check_in_at) : null);
       if (d === target) {
         const timeStr = rec.check_in_at
           ? new Date(rec.check_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
           : "Checked In";
         if (rec.student_id) checkInMap.set(rec.student_id, timeStr);
-        if (rec.students?.id) checkInMap.set(rec.students.id, timeStr);
-        if (rec.index_number) checkInMap.set(String(rec.index_number).trim().toUpperCase(), timeStr);
-        if (rec.students?.index_number)
-          checkInMap.set(String(rec.students.index_number).trim().toUpperCase(), timeStr);
+        if (rec.index_number) {
+          checkInMap.set(String(rec.index_number).trim().toUpperCase(), timeStr);
+          checkInMap.set(toIndexKey(rec.index_number), timeStr);
+        }
       }
     }
 
@@ -489,14 +495,17 @@ function ReportsPage() {
 
     let list = report.rows.map((s) => {
       const cleanIdx = s.index_number ? String(s.index_number).trim().toUpperCase() : "";
+      const indexKey = toIndexKey(s.index_number);
       const isPresent =
         (dayIdx >= 0 && s.cells[dayIdx] === 1) ||
         checkInMap.has(s.id) ||
-        (cleanIdx && checkInMap.has(cleanIdx));
+        (cleanIdx && checkInMap.has(cleanIdx)) ||
+        (indexKey && checkInMap.has(indexKey));
 
       const time =
         checkInMap.get(s.id) ||
         (cleanIdx ? checkInMap.get(cleanIdx) : null) ||
+        (indexKey ? checkInMap.get(indexKey) : null) ||
         (isPresent ? "Present" : "—");
 
       return {
@@ -554,7 +563,6 @@ function ReportsPage() {
     }
   };
 
-  // Direct export of the currently active table view (reflects exactly what is visible)
   const exportCurrentTableView = async (fmt: "xlsx" | "csv" | "pdf") => {
     if (!report || visibleRows.length === 0) {
       toast.warning("No data currently visible to export");
@@ -572,7 +580,9 @@ function ReportsPage() {
   return (
     <AppShell>
       <div className="mb-5">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight mb-1">Reports</h1>
+        <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight mb-1">
+          Reports
+        </h1>
         <p className="text-sm text-muted-foreground font-medium">
           Pick a course, then view a single class day or the combined semester total. <b>1</b> =
           scanned, <b>0</b> = did not scan.
@@ -673,12 +683,26 @@ function ReportsPage() {
       <div className="grid gap-4 md:grid-cols-2 mb-6">
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <FileSpreadsheet className="size-4 text-primary" />
-              Complete Attendance Compilation
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <FileSpreadsheet className="size-4 text-primary" />
+                Complete Attendance Compilation
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsRebuildDialogOpen(true)}
+                disabled={!courseId || isRebuilding}
+                className="h-7 text-xs font-medium cursor-pointer"
+                title="Reconstruct summary from records if totals need sync"
+              >
+                <RefreshCw className={`size-3 mr-1 ${isRebuilding ? "animate-spin" : ""}`} />
+                Rebuild totals
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
-              Download the entire semester attendance matrix across all lectures with attendance % and at-risk standing.
+              Download the entire semester attendance matrix across all lectures with attendance % and
+              at-risk standing.
             </p>
           </CardHeader>
           <CardContent className="pt-2 flex flex-wrap items-center gap-2">
@@ -916,10 +940,36 @@ function ReportsPage() {
           <FileSpreadsheet className="size-10 mx-auto mb-2 text-muted-foreground/60" />
           <h3 className="font-semibold text-base mb-1">Select a course to view reports</h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            Choose any course from the selector above to see full semester attendance records and individual session breakdowns.
+            Choose any course from the selector above to see full semester attendance records and
+            individual session breakdowns.
           </p>
         </Card>
       )}
+
+      {/* Confirmation modal for Rebuild Totals */}
+      <AlertDialog open={isRebuildDialogOpen} onOpenChange={setIsRebuildDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rebuild Attendance Totals</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will scan existing attendance sessions and records for this course to reconstruct
+              the summary document. Use this if totals ever get out of sync.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRebuilding}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleRebuildTotals();
+              }}
+              disabled={isRebuilding}
+            >
+              {isRebuilding ? "Rebuilding..." : "Confirm Rebuild"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }

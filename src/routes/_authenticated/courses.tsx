@@ -224,7 +224,10 @@ function CoursesPage() {
       return;
     try {
       await deleteDoc(doc(firestoreDb, "courses", id));
+      void deleteDoc(doc(firestoreDb, "course_attendance", id)).catch(() => {});
       qc.invalidateQueries({ queryKey: ["courses"] });
+      qc.invalidateQueries({ queryKey: ["report-data"] });
+      qc.invalidateQueries({ queryKey: ["history-data-summaries"] });
       toast.success("Course deleted");
     } catch (err: any) {
       toast.error(err?.message || "Failed to delete course");

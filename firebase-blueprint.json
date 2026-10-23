@@ -143,6 +143,19 @@
         "createdAt": { "type": "string" }
       },
       "required": ["userId", "title", "body"]
+    },
+    "CourseAttendance": {
+      "title": "CourseAttendance",
+      "description": "Per-course aggregated attendance summary storing session dates and student check-ins.",
+      "type": "object",
+      "properties": {
+        "owner_id": { "type": "string" },
+        "course_id": { "type": "string" },
+        "sessions": { "type": "object" },
+        "students": { "type": "object" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["owner_id", "course_id"]
     }
   },
   "firestore": {
@@ -170,6 +183,10 @@
       "schema": "AttendanceRecord",
       "description": "Recorded attendance logs per session."
     },
+    "/course_attendance/{courseId}": {
+      "schema": "CourseAttendance",
+      "description": "Per-course aggregated attendance summary."
+    },
     "/push_subscriptions/{subId}": {
       "schema": "PushSubscription",
       "description": "Registered browser push subscriptions."
@@ -180,3 +197,4 @@
     }
   }
 }
+

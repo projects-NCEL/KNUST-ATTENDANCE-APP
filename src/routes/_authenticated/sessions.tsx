@@ -15,6 +15,10 @@ import {
   query,
   where,
 } from "firebase/firestore";
+import {
+  updateCourseAttendanceSession,
+  deleteSessionFromSummary,
+} from "@/lib/course-attendance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -220,6 +224,14 @@ function SessionsPage() {
         auto_closes_at: nextMidnight?.toISOString() || null,
         timezone: tz,
       });
+      if (form.course_id && currentUid) {
+        await updateCourseAttendanceSession(
+          form.course_id,
+          currentUid,
+          docRef.id,
+          now.toISOString().slice(0, 10),
+        );
+      }
       toast.success(`Session ${successionNum} created`);
       const chosenCourse = courses?.find((c: any) => c.id === form.course_id);
       fetch("/api/push/send", {
@@ -279,9 +291,18 @@ function SessionsPage() {
         status: "OPEN",
         ends_at: null,
       });
+      const uid = currentUid || s.owner_id || firebaseAuth.currentUser?.uid;
+      if (s.course_id && uid) {
+        const sDate =
+          s.session_date ||
+          (s.starts_at ? s.starts_at.slice(0, 10) : "") ||
+          new Date().toISOString().slice(0, 10);
+        await updateCourseAttendanceSession(s.course_id, uid, s.id, sDate);
+      }
       toast.success(`Session reopened! Continuing roll call.`);
       qc.invalidateQueries({ queryKey: ["sessions"] });
       qc.invalidateQueries({ queryKey: ["open-sessions"] });
+      qc.invalidateQueries({ queryKey: ["report-data"] });
       window.location.href = `/scan?session=${s.id}`;
     } catch (err: any) {
       toast.error(err?.message || "Failed to reopen session");
@@ -324,6 +345,15 @@ function SessionsPage() {
         timezone: tz,
       });
 
+      if (s.course_id && uid) {
+        await updateCourseAttendanceSession(
+          s.course_id,
+          uid,
+          docRef.id,
+          now.toISOString().slice(0, 10),
+        );
+      }
+
       toast.success(`Session ${nextSessionNum} created for ${courseCode}! Opening scanner...`);
 
       // Dispatch push notification to students
@@ -348,6 +378,7 @@ function SessionsPage() {
 
       qc.invalidateQueries({ queryKey: ["sessions"] });
       qc.invalidateQueries({ queryKey: ["open-sessions"] });
+      qc.invalidateQueries({ queryKey: ["report-data"] });
       window.location.href = `/scan?session=${docRef.id}`;
     } catch (err: any) {
       toast.error(err?.message || "Failed to start new session");
@@ -358,9 +389,15 @@ function SessionsPage() {
     if (!deleting) return;
     try {
       await deleteDoc(doc(firestoreDb, "attendance_sessions", deleting.id));
+      const uid = currentUid || deleting.owner_id || firebaseAuth.currentUser?.uid;
+      if (deleting.course_id && uid) {
+        await deleteSessionFromSummary(deleting.course_id, uid, deleting.id);
+      }
       setDeleting(null);
       toast.success("Session deleted");
       qc.invalidateQueries({ queryKey: ["sessions"] });
+      qc.invalidateQueries({ queryKey: ["report-data"] });
+      qc.invalidateQueries({ queryKey: ["history-data"] });
     } catch (err: any) {
       toast.error(err?.message || "Failed to delete session");
     }

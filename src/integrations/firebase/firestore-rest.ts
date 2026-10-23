@@ -278,3 +278,89 @@ export async function queryCollectionRest(
 
   return results;
 }
+
+/**
+ * Update course_attendance summary via Firestore REST "documents:commit" endpoint.
+ * Writes with "update" (masked on owner_id, course_id, updated_at, sessions.<sessionId>)
+ * plus "updateTransforms" using "appendMissingElements" for students.<INDEX_KEY>.
+ */
+export async function updateCourseAttendanceRest(
+  courseId: string,
+  ownerId: string,
+  sessionId: string,
+  sessionDate: string,
+  indexNumber: string,
+): Promise<void> {
+  const cleanIndex = String(indexNumber || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_-]/g, "_");
+
+  if (!courseId || !sessionId || !cleanIndex) return;
+
+  const dateStr = sessionDate.slice(0, 10);
+  const nowIso = new Date().toISOString();
+  const docName = `projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents/course_attendance/${encodeURIComponent(courseId)}`;
+
+  // Wrap keys starting with a digit or containing special characters in backticks
+  const escapePathSegment = (seg: string) =>
+    /^[0-9]/.test(seg) || /[^a-zA-Z0-9_]/.test(seg) ? `\`${seg}\`` : seg;
+
+  const sessionFieldPath = `sessions.${escapePathSegment(sessionId)}`;
+  const studentFieldPath = `students.${escapePathSegment(cleanIndex)}`;
+
+  const body = {
+    writes: [
+      {
+        update: {
+          name: docName,
+          fields: {
+            owner_id: { stringValue: ownerId },
+            course_id: { stringValue: courseId },
+            updated_at: { stringValue: nowIso },
+            sessions: {
+              mapValue: {
+                fields: {
+                  [sessionId]: { stringValue: dateStr },
+                },
+              },
+            },
+          },
+        },
+        updateMask: {
+          fieldPaths: ["owner_id", "course_id", "updated_at", sessionFieldPath],
+        },
+        updateTransforms: [
+          {
+            fieldPath: studentFieldPath,
+            appendMissingElements: {
+              values: [{ stringValue: sessionId }],
+            },
+          },
+        ],
+      },
+    ],
+  };
+
+  const url = `${BASE_URL}:commit?key=${API_KEY}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const rawMsg = extractFirestoreErrorMessage(
+      err,
+      `Failed to update course_attendance for course ${courseId}`,
+    );
+    if (isFirestoreQuotaError(res.status, rawMsg)) {
+      throw new Error(`Firestore quota exceeded: Write failed due to project quota limit.`);
+    }
+    throw new Error(rawMsg);
+  }
+
+  invalidateCache("course_attendance");
+  docCache.delete(`course_attendance/${courseId}`);
+}

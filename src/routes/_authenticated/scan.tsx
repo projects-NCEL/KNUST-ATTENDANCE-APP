@@ -16,6 +16,10 @@ import {
   updateDoc,
   onSnapshot,
 } from "firebase/firestore";
+import {
+  updateCourseAttendanceSession,
+  recordStudentAttendanceInSummary,
+} from "@/lib/course-attendance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -552,6 +556,17 @@ function ScanPage() {
               ends_at: null,
             });
           }
+          const sDate =
+            todaysSession.session_date ||
+            todaysSession.starts_at?.slice(0, 10) ||
+            new Date().toISOString().slice(0, 10);
+          void updateCourseAttendanceSession(
+            targetCourseId,
+            currentUid,
+            todaysSession.id,
+            sDate,
+          ).catch((e) => console.warn("Summary session reopen warning:", e));
+
           toast.success(
             `Session ${todaysSession.session_number || ""} reopened. It stays the same until 12:00 AM midnight.`,
           );
@@ -560,6 +575,7 @@ function ScanPage() {
           qc.invalidateQueries({ queryKey: ["open-sessions"] });
           qc.invalidateQueries({ queryKey: ["sessions"] });
           qc.invalidateQueries({ queryKey: ["session", todaysSession.id] });
+          qc.invalidateQueries({ queryKey: ["report-data"] });
           return todaysSession.id;
         }
 
@@ -600,6 +616,13 @@ function ScanPage() {
           auto_closes_at: nextMidnight?.toISOString() || null,
           timezone: tz,
         });
+
+        void updateCourseAttendanceSession(
+          targetCourseId,
+          currentUid,
+          newSessionDoc.id,
+          now.toISOString().slice(0, 10),
+        ).catch((e) => console.warn("Summary session create warning:", e));
 
         toast.success(`Session ${nextNum} created for ${courseCode}! Ready for today's scans.`);
 
@@ -938,6 +961,16 @@ function ScanPage() {
 
           // The live listener picks up the new record; no need to re-read sessions and courses
           await addDoc(collection(firestoreDb, "attendance_records"), recordPayload);
+
+          if (sess.course_id) {
+            void recordStudentAttendanceInSummary(
+              sess.course_id,
+              safeOwnerId,
+              sess.id,
+              today,
+              recordPayload.index_number,
+            ).catch((err) => console.warn("Failed to update summary on scan:", err));
+          }
         } catch (saveErr) {
           console.error("Async attendance save error:", saveErr);
           scannedRecordsSet.current.delete(cleanUpper);

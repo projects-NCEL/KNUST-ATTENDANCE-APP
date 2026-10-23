@@ -4,6 +4,7 @@ import {
   setDocRest,
   queryCollectionRest,
   isFirestoreQuotaError,
+  updateCourseAttendanceRest,
 } from "@/integrations/firebase/firestore-rest";
 import { hasPassedLocalMidnight } from "@/lib/session-lifecycle";
 import { inferLevelFromCourse } from "@/lib/class-matching";
@@ -514,6 +515,23 @@ export const Route = createFileRoute("/api/public/student-auth")({
             };
 
             await setDocRest("attendance_records", recordDocId, recordPayload);
+
+            // Keep course_attendance summary up to date
+            const targetCourseId = sessionData.course_id || recordPayload.course_id;
+            const targetOwnerId = sessionData.owner_id || recordPayload.owner_id;
+            if (targetCourseId && targetOwnerId) {
+              try {
+                await updateCourseAttendanceRest(
+                  targetCourseId,
+                  targetOwnerId,
+                  session_id,
+                  today,
+                  upperIndex,
+                );
+              } catch (summaryErr) {
+                console.warn("[Student Auth] Course attendance summary update warning:", summaryErr);
+              }
+            }
 
             return Response.json({
               ok: true,
