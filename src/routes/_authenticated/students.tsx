@@ -15,6 +15,12 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
+import {
+  getLecturerRoster,
+  bumpRosterVersion,
+  addToRosterCache,
+  lookupSharedQrCodes,
+} from "@/lib/roster-cache";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -114,21 +120,9 @@ function StudentsPage() {
     queryKey: ["students", currentUid, depts],
     queryFn: async () => {
       if (!currentUid) return [];
-      const deptIds = new Set((depts ?? []).map((d: any) => d.id));
-      const [ownerSnap, univSnap] = await Promise.all([
-        getDocs(query(collection(firestoreDb, "students"), where("owner_id", "==", currentUid))),
-        getDocs(query(collection(firestoreDb, "students"), where("owner_id", "==", "universal"))),
-      ]);
       const deptMap = new Map((depts ?? []).map((d: any) => [d.id, d.name]));
-      const mergedMap = new Map<string, any>();
-      ownerSnap.docs.forEach((d) => mergedMap.set(d.id, { id: d.id, ...(d.data() as any) }));
-      univSnap.docs.forEach((d) => {
-        const dt = d.data() as any;
-        if (!dt.department_id || deptIds.has(dt.department_id) || deptIds.size === 0) {
-          mergedMap.set(d.id, { id: d.id, ...dt });
-        }
-      });
-      const list = Array.from(mergedMap.values()).map((data) => {
+      const rawStudents = await getLecturerRoster(currentUid);
+      const list = rawStudents.map((data) => {
         return {
           id: data.id,
           ...data,
@@ -273,12 +267,8 @@ function StudentsPage() {
     let existingQrUuid = "";
     const cleanIndex = form.index_number.trim();
     try {
-      const existingSnap = await getDocs(
-        query(collection(firestoreDb, "students"), where("index_number", "==", cleanIndex)),
-      );
-      if (!existingSnap.empty) {
-        existingQrUuid = (existingSnap.docs[0].data() as any)?.qr_uuid || "";
-      }
+      const sharedQrs = await lookupSharedQrCodes([cleanIndex]);
+      existingQrUuid = sharedQrs[cleanIndex.toUpperCase()] || "";
     } catch (err) {
       console.warn("Could not check existing student qr_uuid:", err);
     }
@@ -293,7 +283,9 @@ function StudentsPage() {
     if (!payload.department_id) delete payload.department_id;
     if (!payload.email) delete payload.email;
     try {
-      await addDoc(collection(firestoreDb, "students"), payload);
+      const docRef = await addDoc(collection(firestoreDb, "students"), payload);
+      await bumpRosterVersion(uid);
+      addToRosterCache(uid, { id: docRef.id, ...payload });
       toast.success("Student added");
       setForm({
         full_name: "",
@@ -316,6 +308,8 @@ function StudentsPage() {
     setStudentToDelete(null);
     try {
       await deleteDoc(doc(firestoreDb, "students", id));
+      const uid = firebaseAuth.currentUser?.uid;
+      if (uid) await bumpRosterVersion(uid);
       await qc.invalidateQueries({ queryKey: ["students"] });
       toast.success(`Student "${name}" deleted`);
     } catch (err: any) {
@@ -348,6 +342,11 @@ function StudentsPage() {
     };
     try {
       await updateDoc(doc(firestoreDb, "students", editing.id), payload);
+      const uid = firebaseAuth.currentUser?.uid;
+      if (uid) {
+        await bumpRosterVersion(uid);
+        addToRosterCache(uid, { id: editing.id, ...payload });
+      }
       toast.success("Updated");
       setEditing(null);
       qc.invalidateQueries({ queryKey: ["students"] });
@@ -445,6 +444,18 @@ function StudentsPage() {
         return;
       }
       toast.loading(`Importing ${prepared.length} students...`, { id: toastId });
+
+      // Look up shared QR codes across any lecturer for these index numbers
+      try {
+        const sharedQrs = await lookupSharedQrCodes(prepared.map((p) => p.index_number));
+        for (const p of prepared) {
+          const sQr = sharedQrs[p.index_number.toUpperCase()];
+          if (sQr) p.qr_uuid = sQr;
+        }
+      } catch (err) {
+        console.warn("Shared QR lookup warning:", err);
+      }
+
       const existingIndexes = new Set(
         (students ?? []).map((s: any) => String(s.index_number).trim().toLowerCase()),
       );
@@ -488,6 +499,11 @@ function StudentsPage() {
           await batch.commit();
         }
       }
+
+      if (currentUserId && inserted > 0) {
+        await bumpRosterVersion(currentUserId);
+      }
+
       qc.invalidateQueries({ queryKey: ["students"] });
       qc.invalidateQueries({ queryKey: ["departments"] });
       let msg = `Imported ${inserted} · ${dupes} already existed`;
@@ -570,6 +586,9 @@ function StudentsPage() {
           // ignore error
         }
       }
+      if (currentUserId && updated > 0) {
+        await bumpRosterVersion(currentUserId);
+      }
       qc.invalidateQueries({ queryKey: ["students"] });
       toast.success(
         `Updated ${updated} emails · ${skipped} already set · ${missing} name not in system`,
@@ -616,6 +635,10 @@ function StudentsPage() {
         await batch.commit();
       }
 
+      if (currentUid) {
+        await bumpRosterVersion(currentUid);
+      }
+
       await qc.invalidateQueries({ queryKey: ["students"] });
       toast.success(`Successfully deleted all ${allIds.length} students`, { id: toastId });
     } catch (err: any) {
@@ -625,6 +648,9 @@ function StudentsPage() {
         await Promise.allSettled(
           fallbackIds.map((id: string) => deleteDoc(doc(firestoreDb, "students", id))),
         );
+        if (currentUid) {
+          await bumpRosterVersion(currentUid);
+        }
         await qc.invalidateQueries({ queryKey: ["students"] });
         toast.success("Students deleted", { id: toastId });
       } catch (fallbackErr: any) {

@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { doc, writeBatch, collection, addDoc, getDocs, query, where } from "firebase/firestore";
 import { firestoreDb, firebaseAuth } from "@/integrations/firebase/config";
 import { useAuth } from "@/lib/auth";
+import { bumpRosterVersion } from "@/lib/roster-cache";
 
 interface StudentPromotionModalProps {
   open: boolean;
@@ -188,6 +189,10 @@ export function StudentPromotionModal({
           batch.update(ref, { level: nextLevel });
         });
         await batch.commit();
+      }
+
+      if (currentUid) {
+        await bumpRosterVersion(currentUid);
       }
 
       toast.success(

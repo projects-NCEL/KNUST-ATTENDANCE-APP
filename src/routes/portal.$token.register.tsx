@@ -1,17 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { firestoreDb } from "@/integrations/firebase/config";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  addDoc,
-  updateDoc,
-} from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,26 +83,23 @@ function RegisterPage() {
   useEffect(() => {
     (async () => {
       try {
-        const portalSnap = await getDocs(
-          query(
-            collection(firestoreDb, "student_portal_links"),
-            where("token", "==", token),
-            where("is_active", "==", true),
-          ),
-        );
-        if (portalSnap.empty) return;
-        const pOwnerId = (portalSnap.docs[0].data() as any)?.owner_id;
-        if (!pOwnerId) return;
-
-        const deptSnap = await getDocs(
-          query(collection(firestoreDb, "departments"), where("owner_id", "==", pOwnerId)),
-        );
-        const depts = deptSnap.docs.map((d) => ({
-          id: d.id,
-          name: (d.data() as any).name,
-        }));
-        depts.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-        setDepartments(depts);
+        const res = await fetch("/api/public/portal-link", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "info", token }),
+        });
+        const data = await res.json();
+        if (data.departments) {
+          const depts = data.departments;
+          depts.sort((a: any, b: any) => (a.name || "").localeCompare(b.name || ""));
+          setDepartments(depts);
+        }
+        if (data.levels && Array.isArray(data.levels) && data.levels.length > 0) {
+          setLevels(data.levels);
+          if (data.levels.length === 1) {
+            setLevel(data.levels[0]);
+          }
+        }
       } catch (err) {
         console.error("Failed to load departments", err);
       }
@@ -143,131 +129,34 @@ function RegisterPage() {
 
     setLoading(true);
     try {
-      // 1. Verify portal token
-      const portalSnap = await getDocs(
-        query(
-          collection(firestoreDb, "student_portal_links"),
-          where("token", "==", token),
-          where("is_active", "==", true),
-        ),
-      );
-
-      if (portalSnap.empty) {
-        throw new Error("Invalid or expired portal link");
-      }
-      const portalData = portalSnap.docs[0].data() as any;
-      const courseId = portalData.course_id;
-      const portalOwnerId = portalData.owner_id;
-
-      if (!portalOwnerId) {
-        throw new Error("This registration link is missing a valid lecturer association.");
-      }
-
-      // 2. Look up student strictly under this lecturer's system
-      const studQuery = query(
-        collection(firestoreDb, "students"),
-        where("owner_id", "==", portalOwnerId),
-        where("index_number", "==", cleanIndex),
-      );
-      const studSnap = await getDocs(studQuery);
-
-      let studentId: string;
-      let qrUuid: string;
-      let existed = false;
-      let deptName = program.trim() || "General";
-
-      if (departmentId) {
-        const found = departments.find((d) => d.id === departmentId);
-        if (found) deptName = found.name;
-      }
-
-      if (!studSnap.empty) {
-        // Student already exists under this lecturer
-        existed = true;
-        const studDoc = studSnap.docs[0];
-        studentId = studDoc.id;
-        const sData = studDoc.data() as any;
-        qrUuid =
-          sData.qr_uuid ||
-          (typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : Math.random().toString(36).substring(2, 18));
-
-        await updateDoc(doc(firestoreDb, "students", studentId), {
-          qr_uuid: qrUuid,
-          owner_id: portalOwnerId,
-          ...(cleanEmail && !sData.email ? { email: cleanEmail } : {}),
-          ...(level ? { level: Number(level) || 100 } : {}),
-          ...(departmentId ? { department_id: departmentId } : {}),
-          ...(program ? { program: program.trim() } : {}),
-          updated_at: new Date().toISOString(),
-        });
-      } else {
-        // Enforce max 400 students per class/level for this lecturer
-        const targetLevelNum = Number(level) || 100;
-        const countSnap = await getDocs(
-          query(
-            collection(firestoreDb, "students"),
-            where("owner_id", "==", portalOwnerId),
-            where("level", "==", targetLevelNum),
-          ),
-        );
-        if (countSnap.size >= 400) {
-          setLoading(false);
-          toast.error(
-            `Registration closed: Class Level ${targetLevelNum} has reached its maximum capacity of 400 students.`,
-          );
-          return;
-        }
-
-        // Create new student strictly tied to this lecturer's account
-        qrUuid =
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : Math.random().toString(36).substring(2, 18);
-
-        const newDoc = await addDoc(collection(firestoreDb, "students"), {
+      const res = await fetch("/api/public/portal-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "register",
+          token,
           full_name: cleanName,
-          index_number: cleanIndex,
-          email: cleanEmail || null,
-          level: Number(level) || 100,
-          department_id: departmentId || null,
-          program: program.trim() || null,
-          qr_uuid: qrUuid,
-          owner_id: portalOwnerId,
-          created_at: new Date().toISOString(),
-        });
-        studentId = newDoc.id;
-      }
+          index: cleanIndex,
+          email: cleanEmail,
+          level,
+          department_id: departmentId,
+          program: program.trim(),
+        }),
+      });
 
-      // 3. Register for the course if portal link is associated with a specific course
-      if (courseId) {
-        const regSnap = await getDocs(
-          query(
-            collection(firestoreDb, "course_registrations"),
-            where("owner_id", "==", portalOwnerId),
-            where("course_id", "==", courseId),
-            where("student_id", "==", studentId),
-          ),
-        );
-        if (regSnap.empty) {
-          await addDoc(collection(firestoreDb, "course_registrations"), {
-            course_id: courseId,
-            student_id: studentId,
-            owner_id: portalOwnerId,
-            created_at: new Date().toISOString(),
-          });
-        }
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Registration failed. Please try again.");
       }
 
       const row: Created = {
-        full_name: cleanName,
-        index_number: cleanIndex,
-        level: level || "100",
-        department: deptName,
-        qr_uuid: qrUuid,
-        pin: "",
-        existed,
+        full_name: data.student.full_name,
+        index_number: data.student.index_number,
+        level: data.student.level || level || "100",
+        department: data.student.department,
+        qr_uuid: data.student.qr_uuid,
+        pin: data.student.pin || "",
+        existed: Boolean(data.existed),
       };
 
       setCreated(row);

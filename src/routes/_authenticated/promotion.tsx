@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import { getLecturerRoster, bumpRosterVersion } from "@/lib/roster-cache";
 
 export const Route = createFileRoute("/_authenticated/promotion")({
   head: () => ({ meta: [{ title: "Student Promotion — Qmark" }] }),
@@ -90,16 +91,13 @@ function PromotionPage() {
 
   const firstLevel = levels[0] || "100";
 
-  // Fetch all students
+  // Fetch all students using device-cached roster (1 read)
   const { data: students, isLoading: loadingStudents } = useQuery({
     queryKey: ["students", currentUid],
     queryFn: async () => {
       if (!currentUid) return [];
-      const snap = await getDocs(
-        query(collection(firestoreDb, "students"), where("owner_id", "==", currentUid)),
-      );
-      const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-      return list.sort((a, b) => (a.full_name || "").localeCompare(b.full_name || ""));
+      const list = await getLecturerRoster(currentUid);
+      return (list as any[]).sort((a, b) => (a.full_name || "").localeCompare(b.full_name || ""));
     },
     enabled: !!currentUid,
   });
@@ -217,6 +215,10 @@ function PromotionPage() {
           batch.update(ref, { level: nextLevel });
         });
         await batch.commit();
+      }
+
+      if (currentUid) {
+        await bumpRosterVersion(currentUid);
       }
 
       toast.success(

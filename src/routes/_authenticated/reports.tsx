@@ -38,6 +38,7 @@ import {
   rebuildCourseAttendanceSummary,
   toIndexKey,
 } from "@/lib/course-attendance";
+import { getLecturerRoster } from "@/lib/roster-cache";
 
 export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({
@@ -124,7 +125,7 @@ function ReportsPage() {
       if (!uid || !courseId) return null;
 
       try {
-        const [summarySnap, regsSnap, allStudSnap, deptsSnap] = await Promise.all([
+        const [summarySnap, regsSnap, studentsList, deptsSnap] = await Promise.all([
           getDoc(doc(firestoreDb, "course_attendance", courseId)).catch(() => null),
           getDocs(
             query(
@@ -133,7 +134,7 @@ function ReportsPage() {
               where("course_id", "==", courseId),
             ),
           ),
-          getDocs(query(collection(firestoreDb, "students"), where("owner_id", "==", uid))),
+          getLecturerRoster(uid),
           getDocs(query(collection(firestoreDb, "departments"), where("owner_id", "==", uid))),
         ]);
 
@@ -156,17 +157,16 @@ function ReportsPage() {
         });
 
         const studentMap = new Map<string, any>();
-        allStudSnap.docs.forEach((d) => {
-          const s = d.data() as any;
+        studentsList.forEach((s) => {
           const studObj = {
-            id: d.id,
+            id: s.id,
             full_name: s.full_name,
             index_number: s.index_number,
             level: s.level,
             department_id: s.department_id || null,
             program: s.program || null,
           };
-          studentMap.set(d.id, studObj);
+          studentMap.set(s.id, studObj);
           if (s.index_number) {
             studentMap.set(s.index_number.toString().trim().toUpperCase(), studObj);
             studentMap.set(toIndexKey(s.index_number), studObj);

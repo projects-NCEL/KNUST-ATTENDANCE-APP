@@ -111,23 +111,24 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
-/** Fetch public VAPID key from server */
-export async function getVapidPublicKey(): Promise<string> {
-  const envKey = (import.meta as any).env?.VITE_VAPID_PUBLIC_KEY;
-  if (envKey) return envKey;
-
+function keysMatch(keyBuffer: ArrayBuffer | null | undefined, expectedBase64: string): boolean {
+  if (!keyBuffer || !expectedBase64) return false;
   try {
-    const res = await fetch("/api/push/vapid-key");
-    if (res.ok) {
-      const data = await res.json();
-      if (data.publicKey) return data.publicKey;
+    const expectedBytes = urlBase64ToUint8Array(expectedBase64);
+    const actualBytes = new Uint8Array(keyBuffer);
+    if (expectedBytes.length !== actualBytes.length) return false;
+    for (let i = 0; i < expectedBytes.length; i++) {
+      if (expectedBytes[i] !== actualBytes[i]) return false;
     }
-  } catch (err) {
-    console.warn("Failed to fetch VAPID key from server:", err);
+    return true;
+  } catch {
+    return false;
   }
+}
 
-  // Production fallback VAPID key generated for Qmark Attendance
-  return "BIJP2aHS8Vo_Ad4oZe17o13KZzLldZMjd8IuAchiMHtcpoinWpJTy813NUn-H3vyibfA7r1AyPsBikL0LZKJp1s";
+/** Fetch public VAPID key from environment */
+export function getVapidPublicKey(): string {
+  return (import.meta as any).env?.VITE_VAPID_PUBLIC_KEY || "";
 }
 
 /** Register or retrieve the Service Worker registration */
@@ -188,6 +189,15 @@ export async function subscribeDeviceToPush(userContext: PushUserContext): Promi
     };
   }
 
+  const publicKey = getVapidPublicKey();
+  if (!publicKey) {
+    return {
+      success: false,
+      status: "unsupported",
+      message: "Notifications are not set up on the server yet.",
+    };
+  }
+
   // 1. Request user permission
   const permission = await Notification.requestPermission();
   if (permission !== "granted") {
@@ -213,8 +223,19 @@ export async function subscribeDeviceToPush(userContext: PushUserContext): Promi
 
   // 3. Create or retrieve PushSubscription from PushManager
   let sub = await reg.pushManager.getSubscription();
+  if (sub) {
+    const existingKey = (sub as any).options?.applicationServerKey;
+    if (existingKey && !keysMatch(existingKey, publicKey)) {
+      try {
+        await sub.unsubscribe();
+        sub = null;
+      } catch (e) {
+        console.warn("Unsubscribing obsolete subscription:", e);
+      }
+    }
+  }
+
   if (!sub) {
-    const publicKey = await getVapidPublicKey();
     const appServerKey = urlBase64ToUint8Array(publicKey);
     sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
@@ -278,13 +299,27 @@ export async function syncPushSubscriptionIfGranted(
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return false;
   if (isIOS() && !isStandalone()) return false;
 
+  const publicKey = getVapidPublicKey();
+  if (!publicKey) return false;
+
   try {
     const reg = await registerPushServiceWorker();
     if (!reg) return false;
 
     let sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      const existingKey = (sub as any).options?.applicationServerKey;
+      if (existingKey && !keysMatch(existingKey, publicKey)) {
+        try {
+          await sub.unsubscribe();
+          sub = null;
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     if (!sub) {
-      const publicKey = await getVapidPublicKey();
       const appServerKey = urlBase64ToUint8Array(publicKey);
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,

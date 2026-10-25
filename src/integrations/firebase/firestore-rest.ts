@@ -1,10 +1,24 @@
 import firebaseConfig from "../../../firebase-applet-config.json";
+import { getServiceAccountToken } from "./service-account.server";
 
 const PROJECT_ID = firebaseConfig.projectId;
 const API_KEY = firebaseConfig.apiKey;
 const DATABASE_ID = firebaseConfig.firestoreDatabaseId || "(default)";
 
 const BASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents`;
+
+export async function authHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { ...(extra || {}) };
+  try {
+    const token = await getServiceAccountToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+  } catch (err) {
+    console.warn("[Firestore REST] Failed to get service account token:", err);
+  }
+  return headers;
+}
 
 /** Convert a JS value to Firestore REST Value format */
 export function toFirestoreValue(val: any): any {
@@ -68,6 +82,7 @@ interface CacheEntry<T> {
 }
 const queryCache = new Map<string, CacheEntry<any[]>>();
 const docCache = new Map<string, CacheEntry<any>>();
+const countCache = new Map<string, CacheEntry<number>>();
 
 export function extractFirestoreErrorMessage(errPayload: any, fallback: string): string {
   if (!errPayload) return fallback;
@@ -96,6 +111,11 @@ export function invalidateCache(collection: string) {
       queryCache.delete(key);
     }
   }
+  for (const key of countCache.keys()) {
+    if (key.startsWith(`${collection}:`)) {
+      countCache.delete(key);
+    }
+  }
 }
 
 /** Get a single document by collection and ID */
@@ -108,7 +128,9 @@ export async function getDocRest(collection: string, docId: string): Promise<any
   }
 
   const url = `${BASE_URL}/${collection}/${encodeURIComponent(docId)}?key=${API_KEY}`;
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    headers: await authHeaders(),
+  });
   if (res.status === 404) return null;
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -153,7 +175,7 @@ export async function setDocRest(
 
   const res = await fetch(url, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: await authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ fields }),
   });
 
@@ -180,7 +202,10 @@ export async function setDocRest(
 /** Delete a document */
 export async function deleteDocRest(collection: string, docId: string): Promise<boolean> {
   const url = `${BASE_URL}/${collection}/${encodeURIComponent(docId)}?key=${API_KEY}`;
-  const res = await fetch(url, { method: "DELETE" });
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: await authHeaders(),
+  });
   if (res.ok) {
     invalidateCache(collection);
     docCache.delete(`${collection}/${docId}`);
@@ -188,11 +213,27 @@ export async function deleteDocRest(collection: string, docId: string): Promise<
   return res.ok;
 }
 
+function buildFieldFilter(w: { field: string; op: "EQUAL" | "GREATER_THAN" | "LESS_THAN" | "IN"; value: any }) {
+  const valPayload =
+    w.op === "IN" && !Array.isArray(w.value)
+      ? { arrayValue: { values: [toFirestoreValue(w.value)] } }
+      : toFirestoreValue(w.value);
+
+  return {
+    fieldFilter: {
+      field: { fieldPath: w.field },
+      op: w.op,
+      value: valPayload,
+    },
+  };
+}
+
 /** Run a query against a collection */
 export async function queryCollectionRest(
   collectionId: string,
   options?: {
-    where?: Array<{ field: string; op: "EQUAL" | "GREATER_THAN" | "LESS_THAN"; value: any }>;
+    where?: Array<{ field: string; op: "EQUAL" | "GREATER_THAN" | "LESS_THAN" | "IN"; value: any }>;
+    orderBy?: { field: string; direction?: "ASCENDING" | "DESCENDING" };
     limit?: number;
   },
 ): Promise<any[]> {
@@ -209,28 +250,24 @@ export async function queryCollectionRest(
 
   if (options?.where && options.where.length > 0) {
     if (options.where.length === 1) {
-      const w = options.where[0];
-      structuredQuery.where = {
-        fieldFilter: {
-          field: { fieldPath: w.field },
-          op: w.op,
-          value: toFirestoreValue(w.value),
-        },
-      };
+      structuredQuery.where = buildFieldFilter(options.where[0]);
     } else {
       structuredQuery.where = {
         compositeFilter: {
           op: "AND",
-          filters: options.where.map((w) => ({
-            fieldFilter: {
-              field: { fieldPath: w.field },
-              op: w.op,
-              value: toFirestoreValue(w.value),
-            },
-          })),
+          filters: options.where.map(buildFieldFilter),
         },
       };
     }
+  }
+
+  if (options?.orderBy) {
+    structuredQuery.orderBy = [
+      {
+        field: { fieldPath: options.orderBy.field },
+        direction: options.orderBy.direction || "ASCENDING",
+      },
+    ];
   }
 
   if (options?.limit) {
@@ -240,7 +277,7 @@ export async function queryCollectionRest(
   const url = `${BASE_URL}:runQuery?key=${API_KEY}`;
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ structuredQuery }),
   });
 
@@ -277,6 +314,74 @@ export async function queryCollectionRest(
   queryCache.set(queryKey, { data: results, expiresAt: now + ttl });
 
   return results;
+}
+
+/** Count matching documents via Firestore runAggregationQuery (cached for 60s) */
+export async function countRest(
+  collectionId: string,
+  where?: Array<{ field: string; op: "EQUAL" | "GREATER_THAN" | "LESS_THAN" | "IN"; value: any }>,
+): Promise<number> {
+  const cacheKey = `${collectionId}:${JSON.stringify(where || [])}`;
+  const now = Date.now();
+  const cached = countCache.get(cacheKey);
+  if (cached && now < cached.expiresAt) {
+    return cached.data;
+  }
+
+  const structuredQuery: any = {
+    from: [{ collectionId }],
+  };
+
+  if (where && where.length > 0) {
+    if (where.length === 1) {
+      structuredQuery.where = buildFieldFilter(where[0]);
+    } else {
+      structuredQuery.where = {
+        compositeFilter: {
+          op: "AND",
+          filters: where.map(buildFieldFilter),
+        },
+      };
+    }
+  }
+
+  const url = `${BASE_URL}:runAggregationQuery?key=${API_KEY}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: await authHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({
+      structuredAggregationQuery: {
+        structuredQuery,
+        aggregations: [{ alias: "n", count: {} }],
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const rawMsg = extractFirestoreErrorMessage(err, `count on ${collectionId} failed`);
+    if (isFirestoreQuotaError(res.status, rawMsg)) {
+      if (cached) return cached.data;
+    }
+    // Fallback if aggregation fails
+    console.warn(`[countRest] Aggregation failed (${rawMsg}), falling back to query`);
+    try {
+      const docs = await queryCollectionRest(collectionId, { where, limit: 1000 });
+      const count = docs.length;
+      countCache.set(cacheKey, { data: count, expiresAt: now + 60000 });
+      return count;
+    } catch {
+      throw new Error(rawMsg);
+    }
+  }
+
+  const payload = await res.json();
+  let count = 0;
+  if (Array.isArray(payload) && payload[0]?.result?.aggregateFields?.n?.integerValue !== undefined) {
+    count = parseInt(payload[0].result.aggregateFields.n.integerValue, 10) || 0;
+  }
+  countCache.set(cacheKey, { data: count, expiresAt: now + 60000 });
+  return count;
 }
 
 /**
@@ -345,7 +450,7 @@ export async function updateCourseAttendanceRest(
   const url = `${BASE_URL}:commit?key=${API_KEY}`;
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
   });
 

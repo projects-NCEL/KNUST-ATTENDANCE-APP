@@ -11,6 +11,7 @@ import {
   getDistinctClassDays,
   getStudentAttendedDays,
 } from "@/lib/course-attendance";
+import { getLecturerRoster } from "@/lib/roster-cache";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,17 +124,15 @@ function HistoryPage() {
         };
       }
       try {
-        // Read courses, course_registrations, students, departments (no raw attendance queries)
-        const [coursesSnap, regsSnap, studSnap, deptsSnap] = await Promise.all([
+        // Read courses, course_registrations, cached students roster, departments (no raw attendance queries)
+        const [coursesSnap, regsSnap, studList, deptsSnap] = await Promise.all([
           getDocs(query(collection(firestoreDb, "courses"), where("owner_id", "==", uid))).catch(
             () => ({ docs: [] }) as any,
           ),
           getDocs(
             query(collection(firestoreDb, "course_registrations"), where("owner_id", "==", uid)),
           ).catch(() => ({ docs: [] }) as any),
-          getDocs(query(collection(firestoreDb, "students"), where("owner_id", "==", uid))).catch(
-            () => ({ docs: [] }) as any,
-          ),
+          getLecturerRoster(uid).catch(() => []),
           getDocs(
             query(collection(firestoreDb, "departments"), where("owner_id", "==", uid)),
           ).catch(() => ({ docs: [] }) as any),
@@ -145,10 +144,9 @@ function HistoryPage() {
         });
 
         const studentMap = new Map<string, any>();
-        studSnap.docs.forEach((d: any) => {
-          const s = d.data() as any;
-          studentMap.set(d.id, {
-            id: d.id,
+        studList.forEach((s: any) => {
+          studentMap.set(s.id, {
+            id: s.id,
             full_name: s.full_name,
             index_number: s.index_number,
             level: s.level,

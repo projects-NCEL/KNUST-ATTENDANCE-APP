@@ -10,23 +10,20 @@ import {
 } from "@/integrations/firebase/firestore-rest";
 import { normalizeLevel, inferLevelFromCourse } from "@/lib/class-matching";
 
-// VAPID Credentials configuration (Production keypair with fallback)
-export const VAPID_PUBLIC_KEY =
-  process.env.VAPID_PUBLIC_KEY ||
-  process.env.VITE_VAPID_PUBLIC_KEY ||
-  "BIJP2aHS8Vo_Ad4oZe17o13KZzLldZMjd8IuAchiMHtcpoinWpJTy813NUn-H3vyibfA7r1AyPsBikL0LZKJp1s";
-
-export const VAPID_PRIVATE_KEY =
-  process.env.VAPID_PRIVATE_KEY || "Cq_DUkdtJW0sstYIzXBWhSzy5plN8E5OeWkqS1JlYQY";
-
+// VAPID Credentials configuration
+export const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "";
+export const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
 export const VAPID_SUBJECT =
   process.env.VAPID_SUBJECT || "mailto:project1232026@gmail.com";
 
-// Initialize Web Push with VAPID credentials
-try {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-} catch (err) {
-  console.error("[WebPush] Initialization error:", err);
+let vapidConfigured = false;
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  try {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+    vapidConfigured = true;
+  } catch (err) {
+    console.error("[WebPush] Initialization error:", err);
+  }
 }
 
 export type NotificationType =
@@ -229,6 +226,9 @@ async function sendToSubscriptionRecord(
   sub: StoredPushSubscription,
   payload: NotificationPayload,
 ): Promise<{ success: boolean; expired?: boolean; error?: string; skippedDuplicate?: boolean }> {
+  if (!vapidConfigured || !VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    return { success: false, error: "VAPID keys are not configured" };
+  }
   cleanRecentDispatches();
 
   // Deduplication key: combination of endpoint and notification title + entityId

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { firestoreDb } from "@/integrations/firebase/config";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { hasPassedLocalMidnight } from "@/lib/session-lifecycle";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -193,11 +193,7 @@ function CheckInPage() {
         }
 
         const passedMidnight = hasPassedLocalMidnight(data);
-        if (passedMidnight && data.status === "OPEN") {
-          updateDoc(doc(firestoreDb, "attendance_sessions", sessDoc.id), {
-            status: "CLOSED",
-            ends_at: new Date().toISOString(),
-          }).catch(() => {});
+        if (passedMidnight) {
           data.status = "CLOSED";
         }
 
@@ -321,12 +317,6 @@ function CheckInPage() {
 
       // Verify midnight expiration and session status
       const passedMidnight = hasPassedLocalMidnight(sessData);
-      if (passedMidnight && sessData.status === "OPEN") {
-        updateDoc(sessionDocRef, {
-          status: "CLOSED",
-          ends_at: new Date().toISOString(),
-        }).catch(() => {});
-      }
       const isClosed = sessData.status === "CLOSED" || sessData.is_active === false || passedMidnight;
       if (isClosed) {
         throw new Error(

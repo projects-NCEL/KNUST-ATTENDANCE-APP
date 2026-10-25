@@ -12,6 +12,7 @@ import {
   setDoc,
   query,
   where,
+  limit,
   addDoc,
   updateDoc,
   onSnapshot,
@@ -20,6 +21,7 @@ import {
   updateCourseAttendanceSession,
   recordStudentAttendanceInSummary,
 } from "@/lib/course-attendance";
+import { getLecturerRoster, addToRosterCache } from "@/lib/roster-cache";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -291,20 +293,18 @@ function ScanPage() {
     scannedRecordsSet.current = new Set();
   }, [activeSession]);
 
-  // Pre-load student roster in-memory cache for instant sub-millisecond lookups
-  // Only this lecturer's own students are loaded, so the scanner can tell who is in the class
+  // Pre-load student roster in-memory cache using device-cached roster (1 read total)
   useEffect(() => {
     if (!currentUid) return;
     let active = true;
-    getDocs(query(collection(firestoreDb, "students"), where("owner_id", "==", currentUid)))
-      .then((snap) => {
+    getLecturerRoster(currentUid)
+      .then((students) => {
         if (!active) return;
         const cache = new Map<string, any>();
-        snap.docs.forEach((d) => {
-          const dt = { id: d.id, ...d.data() } as any;
-          cache.set(d.id.toUpperCase(), dt);
-          cache.set(d.id.toLowerCase(), dt);
-          const rawId = d.id.replace(/^stud_/i, "").toUpperCase();
+        students.forEach((dt) => {
+          cache.set(dt.id.toUpperCase(), dt);
+          cache.set(dt.id.toLowerCase(), dt);
+          const rawId = dt.id.replace(/^stud_/i, "").toUpperCase();
           cache.set(rawId, dt);
           if (dt.index_number) {
             const rawIdx = String(dt.index_number).trim();
@@ -443,13 +443,14 @@ function ScanPage() {
 
   // Real-time Firestore onSnapshot for Attendance Records in the Active Session
   useEffect(() => {
-    if (!activeSession) {
+    if (!activeSession || !currentUid) {
       setRecentRecords([]);
       return;
     }
 
     const q = query(
       collection(firestoreDb, "attendance_records"),
+      where("owner_id", "==", currentUid),
       where("session_id", "==", activeSession),
     );
 
@@ -497,7 +498,7 @@ function ScanPage() {
     );
 
     return () => unsubscribe();
-  }, [activeSession]);
+  }, [activeSession, currentUid]);
 
   // Start Next Sequential Session for a Course
   const handleStartNextSession = useCallback(
@@ -539,6 +540,7 @@ function ScanPage() {
         const existingSnap = await getDocs(
           query(
             collection(firestoreDb, "attendance_sessions"),
+            where("owner_id", "==", currentUid),
             where("course_id", "==", targetCourseId),
           ),
         );
@@ -849,6 +851,43 @@ function ScanPage() {
         studentRosterCache.current.get(`STUD_${sanitizedUpper}`) ||
         studentRosterCache.current.get(cleanUpper.replace(/[^a-zA-Z0-9]/g, ""));
 
+      // Fallback: If not in memory cache, look up ONLY among this lecturer's students (limit 1)
+      if (!studentData && currentUid) {
+        try {
+          const [qSnap, uuidSnap] = await Promise.all([
+            getDocs(
+              query(
+                collection(firestoreDb, "students"),
+                where("owner_id", "==", currentUid),
+                where("index_number", "==", cleanUpper),
+                limit(1)
+              )
+            ).catch(() => null),
+            getDocs(
+              query(
+                collection(firestoreDb, "students"),
+                where("owner_id", "==", currentUid),
+                where("qr_uuid", "==", code),
+                limit(1)
+              )
+            ).catch(() => null),
+          ]);
+          if (qSnap && !qSnap.empty) {
+            studentData = { id: qSnap.docs[0].id, ...(qSnap.docs[0].data() as any) };
+          } else if (uuidSnap && !uuidSnap.empty) {
+            studentData = { id: uuidSnap.docs[0].id, ...(uuidSnap.docs[0].data() as any) };
+          }
+          if (studentData) {
+            studentRosterCache.current.set(cleanUpper, studentData);
+            studentRosterCache.current.set(studentData.id, studentData);
+            if (studentData.qr_uuid) studentRosterCache.current.set(studentData.qr_uuid, studentData);
+            addToRosterCache(currentUid, studentData);
+          }
+        } catch (lookupErr) {
+          console.warn("Lecturer student lookup warning:", lookupErr);
+        }
+      }
+
       let studentId: string = studentData?.id || `stud_${sanitizedUpper}`;
       const resolvedName = studentData?.full_name || `Student (${cleanUpper})`;
       const resolvedIndex = studentData?.index_number || cleanUpper;
@@ -894,54 +933,9 @@ function ScanPage() {
       });
       setStatus(`✓ Recorded: ${resolvedName}`);
 
-      // 5. Asynchronous persistence & roster refinement in background without blocking video stream
+      // 5. Asynchronous persistence in background without blocking video stream
       (async () => {
         try {
-          if (!studentData) {
-            try {
-              const [directSnap, qSnap, uuidSnap] = await Promise.all([
-                getDoc(doc(firestoreDb, "students", `stud_${sanitizedUpper}`)).catch(() => null),
-                getDocs(
-                  query(
-                    collection(firestoreDb, "students"),
-                    where("index_number", "==", cleanUpper),
-                  ),
-                ).catch(() => null),
-                getDocs(
-                  query(collection(firestoreDb, "students"), where("qr_uuid", "==", code)),
-                ).catch(() => null),
-              ]);
-              if (directSnap && directSnap.exists()) {
-                studentId = directSnap.id;
-                studentData = directSnap.data();
-                studentRosterCache.current.set(cleanUpper, { id: directSnap.id, ...studentData });
-              } else if (qSnap && !qSnap.empty) {
-                studentId = qSnap.docs[0].id;
-                studentData = qSnap.docs[0].data();
-                studentRosterCache.current.set(cleanUpper, { id: qSnap.docs[0].id, ...studentData });
-              } else if (uuidSnap && !uuidSnap.empty) {
-                studentId = uuidSnap.docs[0].id;
-                studentData = uuidSnap.docs[0].data();
-                studentRosterCache.current.set(cleanUpper, {
-                  id: uuidSnap.docs[0].id,
-                  ...studentData,
-                });
-              } else {
-                const autoDoc = {
-                  full_name: resolvedName,
-                  index_number: cleanUpper,
-                  owner_id: sess.owner_id || currentUid || "universal",
-                  created_at: new Date().toISOString(),
-                };
-                void setDoc(doc(firestoreDb, "students", studentId), autoDoc, {
-                  merge: true,
-                }).catch(() => {});
-              }
-            } catch (err) {
-              console.warn("Background student lookup warning:", err);
-            }
-          }
-
           const safeOwnerId = sess.owner_id || currentUid || firebaseAuth.currentUser?.uid || "faculty";
           const safeScannedBy = currentUid || firebaseAuth.currentUser?.uid || "faculty";
 
@@ -959,8 +953,9 @@ function ScanPage() {
             created_at: new Date().toISOString(),
           };
 
-          // The live listener picks up the new record; no need to re-read sessions and courses
-          await addDoc(collection(firestoreDb, "attendance_records"), recordPayload);
+          const cleanIndexKey = (recordPayload.index_number || cleanUpper).replace(/[^a-zA-Z0-9_-]/g, "_");
+          const recordDocId = `rec_${sess.id}_${cleanIndexKey}`;
+          await setDoc(doc(firestoreDb, "attendance_records", recordDocId), recordPayload, { merge: true });
 
           if (sess.course_id) {
             void recordStudentAttendanceInSummary(

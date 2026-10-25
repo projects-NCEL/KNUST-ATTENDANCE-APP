@@ -3,6 +3,7 @@ import {
   getDocRest,
   setDocRest,
   queryCollectionRest,
+  countRest,
   isFirestoreQuotaError,
   updateCourseAttendanceRest,
 } from "@/integrations/firebase/firestore-rest";
@@ -301,6 +302,8 @@ export const Route = createFileRoute("/api/public/student-auth")({
                   owner_id: placement.ownerId,
                   department_id: placement.deptId,
                 });
+                // Bump lecturer's roster version
+                await setDocRest("users", placement.ownerId, { roster_version: Date.now() }, true).catch(() => {});
                 if (!newStudentDocId) newStudentDocId = docId;
               }
             } else {
@@ -462,16 +465,23 @@ export const Route = createFileRoute("/api/public/student-auth")({
             const studentFullName =
               rosterMatch.full_name || rosterMatch.name || `Student (${upperIndex})`;
 
-            // 3. Duplicate check for this session
-            const existingRecords = await queryCollectionRest("attendance_records", {
-              where: [{ field: "session_id", op: "EQUAL", value: session_id }],
-            });
+            // 3. Duplicate check for this session using deterministic doc ID
+            const cleanKey = upperIndex.replace(/[^A-Z0-9_-]/g, "_");
+            const recordDocId = sanitizeDocId(`rec_${session_id}_${cleanKey}`);
 
-            const alreadyMarked = existingRecords.find((r: any) => {
-              const rIndex = (r.index_number || "").toString().trim().toUpperCase();
-              const rStudentId = r.student_id;
-              return rIndex === upperIndex || rStudentId === studentDocId;
-            });
+            let alreadyMarked: any = await getDocRest("attendance_records", recordDocId).catch(() => null);
+            if (!alreadyMarked) {
+              const existingRecords = await queryCollectionRest("attendance_records", {
+                where: [
+                  { field: "session_id", op: "EQUAL", value: session_id },
+                  { field: "index_number", op: "EQUAL", value: upperIndex },
+                ],
+                limit: 1,
+              }).catch(() => []);
+              if (existingRecords.length > 0) {
+                alreadyMarked = existingRecords[0];
+              }
+            }
 
             const nowIso = new Date().toISOString();
             const today = nowIso.slice(0, 10);
@@ -493,8 +503,7 @@ export const Route = createFileRoute("/api/public/student-auth")({
               });
             }
 
-            // 4. Save new attendance record in Firestore
-            const recordDocId = sanitizeDocId(`rec_${session_id}_${upperIndex}`);
+            // 4. Save new attendance record in Firestore with deterministic ID
             const recordPayload = {
               session_id,
               student_id: studentDocId,
@@ -514,7 +523,7 @@ export const Route = createFileRoute("/api/public/student-auth")({
               created_at: nowIso,
             };
 
-            await setDocRest("attendance_records", recordDocId, recordPayload);
+            await setDocRest("attendance_records", recordDocId, recordPayload, true);
 
             // Keep course_attendance summary up to date
             const targetCourseId = sessionData.course_id || recordPayload.course_id;
@@ -846,22 +855,28 @@ export const Route = createFileRoute("/api/public/student-auth")({
             action === "get_notices" ||
             action === "get_assignments"
           ) {
-            if (account && account.password_hash && password) {
-              const { password_salt, password_hash } = account;
-              if (!verifyPassword(password, password_salt, password_hash)) {
-                return Response.json({ error: "Invalid credentials" }, { status: 401 });
-              }
+            if (!account || !account.password_hash) {
+              return Response.json(
+                { error: "Please activate your account first.", needs_password_setup: true },
+                { status: 401 },
+              );
+            }
+            if (!password || !verifyPassword(password, account.password_salt, account.password_hash)) {
+              return Response.json(
+                { error: "Invalid credentials" },
+                { status: 401 },
+              );
             }
 
-            // 1. Query course registrations specifically for THIS student (instead of reading the whole database)
+            const upperIndex = cleanIndex.toUpperCase();
+
+            // 1. Query course registrations specifically for THIS student
             let myRegistrations: any[] = [];
             try {
-              // Try indexed query by index_number first
               myRegistrations = await queryCollectionRest("course_registrations", {
-                where: [{ field: "index_number", op: "EQUAL", value: cleanIndex.toUpperCase() }],
+                where: [{ field: "index_number", op: "EQUAL", value: upperIndex }],
                 limit: 50,
               });
-              // Also query by student_id if index_number didn't yield all
               if (myRegistrations.length === 0 && studentId) {
                 myRegistrations = await queryCollectionRest("course_registrations", {
                   where: [{ field: "student_id", op: "EQUAL", value: studentId }],
@@ -869,13 +884,7 @@ export const Route = createFileRoute("/api/public/student-auth")({
                 });
               }
             } catch {
-              // Fallback to bounded read if filter fails
-              const partialRegistrations = await queryCollectionRest("course_registrations", { limit: 200 }).catch(() => []);
-              myRegistrations = partialRegistrations.filter((r: any) => {
-                if (allStudentIds.includes(r.student_id)) return true;
-                if (r.index_number && r.index_number.toUpperCase() === cleanIndex.toUpperCase()) return true;
-                return false;
-              });
+              myRegistrations = [];
             }
 
             // Class rule: a student only sees courses, announcements and assignments from
@@ -927,142 +936,144 @@ export const Route = createFileRoute("/api/public/student-auth")({
               enrolledCourseIds.map((cId) => coursesMap.get(cId)?.department_id),
             );
 
-            // 3. Fetch attendance records specifically for THIS student
+            // 3. Fetch latest 10 attendance records specifically for THIS student
             let myRecords: any[] = [];
             try {
               myRecords = await queryCollectionRest("attendance_records", {
-                where: [{ field: "index_number", op: "EQUAL", value: cleanIndex.toUpperCase() }],
-                limit: 100,
+                where: [{ field: "index_number", op: "EQUAL", value: upperIndex }],
+                orderBy: { field: "check_in_at", direction: "DESCENDING" },
+                limit: 10,
               });
-              if (myRecords.length === 0 && studentId) {
-                myRecords = await queryCollectionRest("attendance_records", {
-                  where: [{ field: "student_id", op: "EQUAL", value: studentId }],
-                  limit: 100,
-                });
-              }
             } catch {
-              // Never fall back to reading other students' records
-              myRecords = [];
-            }
-
-            // Collect only session IDs relevant to this student's attendance to avoid reading thousands of global sessions
-            const neededSessionIds = Array.from(new Set(myRecords.map((r: any) => r.session_id).filter(Boolean)));
-            const sessionsByCourse = await Promise.all(
-              enrolledCourseIds.map((cId) =>
-                queryCollectionRest("attendance_sessions", {
-                  where: [{ field: "course_id", op: "EQUAL", value: cId }],
-                  limit: 100,
-                }).catch(() => []),
-              ),
-            );
-            const allSessions: any[] = sessionsByCourse.flat();
-            const sessionMap = new Map<string, any>();
-            allSessions.forEach((s) => sessionMap.set(s.id, s));
-
-            // Include courses from attendance sessions as well
-            for (const r of myRecords) {
-              const sess = sessionMap.get(r.session_id);
-              if (
-                sess?.course_id &&
-                !enrolledCourseIds.includes(sess.course_id) &&
-                inMyClass(coursesMap.get(sess.course_id))
-              ) {
-                enrolledCourseIds.push(sess.course_id);
+              // Fallback if composite index is not yet built
+              try {
+                myRecords = await queryCollectionRest("attendance_records", {
+                  where: [{ field: "index_number", op: "EQUAL", value: upperIndex }],
+                  limit: 10,
+                });
+                myRecords.sort(
+                  (a, b) =>
+                    new Date(b.check_in_at || b.session_date || 0).getTime() -
+                    new Date(a.check_in_at || a.session_date || 0).getTime(),
+                );
+              } catch {
+                myRecords = [];
               }
             }
+
+            // Look up session documents only for those <= 10 session IDs
+            const neededSessionIds = Array.from(
+              new Set(myRecords.map((r: any) => r.session_id).filter(Boolean)),
+            );
+            const sessionMap = await getDocsByIds("attendance_sessions", neededSessionIds);
 
             // 4. Fetch users (lecturers) to associate course lecturer names
             const usersMap = await getDocsByIds("users", Array.from(myLecturerIds));
 
-            // 5. Enrich course attendance rows with Lecturer Name, Level, Department & Metrics
-            const enrichedCourses = enrolledCourseIds.map((cId) => {
-              const course = coursesMap.get(cId) || {
-                id: cId,
-                code: "Course",
-                title: "Enrolled Course",
-              };
+            // 5. Enrich course attendance rows using course_attendance summary
+            const indexKey = upperIndex.replace(/[^A-Z0-9_-]/g, "_");
 
-              // Identify course lecturer
-              const lecturerObj = course.owner_id ? usersMap.get(course.owner_id) : null;
-              const lecturerName =
-                course.lecturer_name ||
-                course.instructor_name ||
-                lecturerObj?.full_name ||
-                lecturerObj?.name ||
-                (lecturerObj?.email ? lecturerObj.email.split("@")[0] : "Course Lecturer");
-              const lecturerEmail = lecturerObj?.email || null;
+            const enrichedCourses = await Promise.all(
+              enrolledCourseIds.map(async (cId) => {
+                const course = coursesMap.get(cId) || {
+                  id: cId,
+                  code: "Course",
+                  title: "Enrolled Course",
+                };
 
-              const courseDept = course.department_id ? deptsMap.get(course.department_id) : null;
-              const deptName =
-                course.department_name ||
-                courseDept?.name ||
-                course.program ||
-                primaryStudent.program ||
-                "";
+                // Identify course lecturer
+                const lecturerObj = course.owner_id ? usersMap.get(course.owner_id) : null;
+                const lecturerName =
+                  course.lecturer_name ||
+                  course.instructor_name ||
+                  lecturerObj?.full_name ||
+                  lecturerObj?.name ||
+                  (lecturerObj?.email ? lecturerObj.email.split("@")[0] : "Course Lecturer");
+                const lecturerEmail = lecturerObj?.email || null;
 
-              // Sessions conducted for this course
-              const courseSessions = allSessions.filter((s: any) => s.course_id === cId);
-              const courseSessionIds = new Set(courseSessions.map((s: any) => s.id));
+                const courseDept = course.department_id ? deptsMap.get(course.department_id) : null;
+                const deptName =
+                  course.department_name ||
+                  courseDept?.name ||
+                  course.program ||
+                  primaryStudent.program ||
+                  "";
 
-              // Records for this course's sessions
-              const recordsForCourse = myRecords.filter((r: any) =>
-                courseSessionIds.has(r.session_id),
-              );
+                let sessionsTotal = 0;
+                let attendedCount = 0;
 
-              let attendedCount = 0;
-              let lateCount = 0;
+                // Try reading course_attendance summary first
+                const summaryDoc = await getDocRest("course_attendance", cId).catch(() => null);
 
-              for (const r of recordsForCourse) {
-                const st = (r.status || "").toUpperCase();
-                if (st === "PRESENT" || st === "ON_TIME" || st === "EXCUSED") {
-                  attendedCount++;
-                } else if (st === "LATE") {
-                  attendedCount++;
-                  lateCount++;
+                if (summaryDoc && summaryDoc.sessions) {
+                  const sessionDates = Object.values(summaryDoc.sessions || {}) as string[];
+                  const totalDates = new Set(sessionDates.filter(Boolean));
+                  sessionsTotal = totalDates.size;
+
+                  const attendedSessIds = (summaryDoc.students?.[indexKey] || []) as string[];
+                  const attendedDates = new Set<string>();
+                  for (const sId of attendedSessIds) {
+                    const d = summaryDoc.sessions[sId];
+                    if (d) attendedDates.add(d);
+                  }
+                  attendedCount = attendedDates.size;
+                } else {
+                  // Fallback to countRest
+                  try {
+                    sessionsTotal = await countRest("attendance_sessions", [
+                      { field: "course_id", op: "EQUAL", value: cId },
+                    ]);
+                    attendedCount = await countRest("attendance_records", [
+                      { field: "course_id", op: "EQUAL", value: cId },
+                      { field: "index_number", op: "EQUAL", value: upperIndex },
+                    ]);
+                  } catch {
+                    sessionsTotal = 0;
+                    attendedCount = 0;
+                  }
                 }
-              }
 
-              const sessionsTotal = courseSessions.length;
-              const missedCount = Math.max(0, sessionsTotal - attendedCount);
-              const percentage =
-                sessionsTotal > 0 ? Math.round((attendedCount / sessionsTotal) * 100) : 100;
+                const missedCount = Math.max(0, sessionsTotal - attendedCount);
+                const percentage =
+                  sessionsTotal > 0 ? Math.round((attendedCount / sessionsTotal) * 100) : 100;
 
-              // Risk flag calculation: 75% threshold
-              let riskLevel: "safe" | "warning" | "critical" = "safe";
-              let riskMessage = "Good attendance standing (Eligible for exams)";
-              if (sessionsTotal > 0 && percentage < 75) {
-                riskLevel = "critical";
-                riskMessage = `Below 75% threshold: Missed ${missedCount} of ${sessionsTotal} sessions. Exam eligibility at risk!`;
-              } else if (sessionsTotal > 0 && missedCount >= 3) {
-                riskLevel = "warning";
-                riskMessage = `Caution: Missed ${missedCount} sessions. Approaching risk threshold.`;
-              }
+                // Risk flag calculation: 75% threshold
+                let riskLevel: "safe" | "warning" | "critical" = "safe";
+                let riskMessage = "Good attendance standing (Eligible for exams)";
+                if (sessionsTotal > 0 && percentage < 75) {
+                  riskLevel = "critical";
+                  riskMessage = `Below 75% threshold: Missed ${missedCount} of ${sessionsTotal} sessions. Exam eligibility at risk!`;
+                } else if (sessionsTotal > 0 && missedCount >= 3) {
+                  riskLevel = "warning";
+                  riskMessage = `Caution: Missed ${missedCount} sessions. Approaching risk threshold.`;
+                }
 
-              const courseLevelDisplay = course.level
-                ? String(course.level).toUpperCase().startsWith("L")
-                  ? String(course.level).toUpperCase()
-                  : `L${course.level}`
-                : `L${level}`;
+                const courseLevelDisplay = course.level
+                  ? String(course.level).toUpperCase().startsWith("L")
+                    ? String(course.level).toUpperCase()
+                    : `L${course.level}`
+                  : `L${level}`;
 
-              return {
-                course_id: cId,
-                code: course.code || "Course",
-                title: course.title || "Untitled Course",
-                level: courseLevelDisplay,
-                department: deptName,
-                credit_hours: course.credit_hours || 2,
-                semester: course.semester || "Semester",
-                lecturer_name: lecturerName,
-                lecturer_email: lecturerEmail,
-                sessions_total: sessionsTotal,
-                attended: attendedCount,
-                missed: missedCount,
-                late: lateCount,
-                percentage,
-                risk_level: riskLevel,
-                risk_message: riskMessage,
-              };
-            });
+                return {
+                  course_id: cId,
+                  code: course.code || "Course",
+                  title: course.title || "Untitled Course",
+                  level: courseLevelDisplay,
+                  department: deptName,
+                  credit_hours: course.credit_hours || 2,
+                  semester: course.semester || "Semester",
+                  lecturer_name: lecturerName,
+                  lecturer_email: lecturerEmail,
+                  sessions_total: sessionsTotal,
+                  attended: attendedCount,
+                  missed: missedCount,
+                  late: 0,
+                  percentage,
+                  risk_level: riskLevel,
+                  risk_message: riskMessage,
+                };
+              }),
+            );
 
             // Sort courses alphabetically by code
             enrichedCourses.sort((a, b) => a.code.localeCompare(b.code));
@@ -1099,14 +1110,14 @@ export const Route = createFileRoute("/api/public/student-auth")({
                   new Date(a.check_in_at || a.session_date).getTime(),
               );
 
-            // Fetch announcements across all lecturers (bounded to recent 50)
+            // Fetch announcements across all lecturers (bounded to recent 10)
             const lecturerList = Array.from(myLecturerIds);
             const allNotices = (
               await Promise.all(
                 lecturerList.map((lecturerId) =>
                   queryCollectionRest("announcements", {
                     where: [{ field: "owner_id", op: "EQUAL", value: lecturerId }],
-                    limit: 30,
+                    limit: 10,
                   }).catch(() => []),
                 ),
               )
@@ -1147,13 +1158,13 @@ export const Route = createFileRoute("/api/public/student-auth")({
                   new Date(a.created_at || a.starts_on || 0).getTime(),
               );
 
-            // Fetch assignments across all lecturers for enrolled courses (bounded to recent 50)
+            // Fetch assignments across all lecturers for enrolled courses (bounded to recent 10)
             const allAssignments = (
               await Promise.all(
                 lecturerList.map((lecturerId) =>
                   queryCollectionRest("assignments", {
                     where: [{ field: "owner_id", op: "EQUAL", value: lecturerId }],
-                    limit: 30,
+                    limit: 10,
                   }).catch(() => []),
                 ),
               )

@@ -2,8 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import QRCode from "qrcode";
 import jsPDF from "jspdf";
-import { firestoreDb } from "@/integrations/firebase/config";
-import { collection, doc, getDoc, getDocs, query, where, updateDoc } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,67 +38,30 @@ function PortalPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      // 1. Verify active portal token
-      const portalSnap = await getDocs(
-        query(
-          collection(firestoreDb, "student_portal_links"),
-          where("token", "==", token),
-          where("is_active", "==", true),
-        ),
-      );
-      if (portalSnap.empty) {
-        toast.error("Invalid or expired portal link.");
-        return;
-      }
-      const portalData = portalSnap.docs[0].data() as any;
-      const portalOwnerId = portalData.owner_id;
+      const res = await fetch("/api/public/portal-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "lookup",
+          token,
+          index: index.trim().toUpperCase(),
+          email: email.trim().toLowerCase(),
+        }),
+      });
 
-      // 2. Find student (scoped to portal owner so other accounts' students are invisible)
-      const cleanIndex = index.trim().toUpperCase();
-      const cleanEmail = email.trim().toLowerCase();
-      const studQuery = portalOwnerId
-        ? query(
-            collection(firestoreDb, "students"),
-            where("owner_id", "==", portalOwnerId),
-            where("index_number", "==", cleanIndex),
-          )
-        : query(collection(firestoreDb, "students"), where("index_number", "==", cleanIndex));
-      const studSnap = await getDocs(studQuery);
-
-      if (studSnap.empty) {
-        toast.error("No match. Check your index number and email.");
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to retrieve QR");
         return;
       }
 
-      const studDoc = studSnap.docs[0];
-      const sData = studDoc.data() as any;
-
-      if (sData.email && cleanEmail && sData.email.toLowerCase() !== cleanEmail) {
-        toast.error("Email does not match our records for this index number.");
-        return;
-      }
-
-      let qrUuid = sData.qr_uuid;
-      if (!qrUuid) {
-        qrUuid =
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : Math.random().toString(36).substring(2, 18);
-        await updateDoc(doc(firestoreDb, "students", studDoc.id), { qr_uuid: qrUuid });
-      }
-
-      let deptName = sData.program || "General";
-      if (sData.department_id) {
-        const deptDoc = await getDoc(doc(firestoreDb, "departments", sData.department_id));
-        if (deptDoc.exists()) deptName = (deptDoc.data() as any).name || deptName;
-      }
-
+      const sData = data.student;
       const row: Student = {
         full_name: sData.full_name || "",
-        index_number: sData.index_number || cleanIndex,
+        index_number: sData.index_number || index.trim().toUpperCase(),
         level: sData.level ? String(sData.level) : "100",
-        department: deptName,
-        qr_uuid: qrUuid,
+        department: sData.department || "General",
+        qr_uuid: sData.qr_uuid,
         pin: sData.pin || "",
       };
 
