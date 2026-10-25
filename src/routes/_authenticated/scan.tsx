@@ -888,7 +888,7 @@ function ScanPage() {
         }
       }
 
-      let studentId: string = studentData?.id || `stud_${sanitizedUpper}`;
+      const studentId: string = studentData?.id || `stud_${sanitizedUpper}`;
       const resolvedName = studentData?.full_name || `Student (${cleanUpper})`;
       const resolvedIndex = studentData?.index_number || cleanUpper;
 
