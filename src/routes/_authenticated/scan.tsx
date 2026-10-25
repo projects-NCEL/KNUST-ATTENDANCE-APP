@@ -953,7 +953,7 @@ function ScanPage() {
             created_at: new Date().toISOString(),
           };
 
-          const cleanIndexKey = (recordPayload.index_number || cleanUpper).replace(/[^a-zA-Z0-9_-]/g, "_");
+          const cleanIndexKey = String(recordPayload.index_number || cleanUpper).trim().toUpperCase().replace(/[^a-zA-Z0-9_-]/g, "_");
           const recordDocId = `rec_${sess.id}_${cleanIndexKey}`;
           await setDoc(doc(firestoreDb, "attendance_records", recordDocId), recordPayload, { merge: true });
 

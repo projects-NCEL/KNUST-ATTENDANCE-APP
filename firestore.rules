@@ -1,5 +1,17 @@
-// Publish only after FIREBASE_SERVICE_ACCOUNT is set in Vercel and the new code is live.
 rules_version = '2';
+
+// Qmark — locked-down rules (October 2026)
+//
+// Who talks to the database:
+//  - Lecturers: in the browser, signed in with Google (Firebase Auth). They can only
+//    read and change documents they own (owner_id == their uid).
+//  - Students: never directly. Everything goes through the Vercel server, which signs in
+//    with a service account and is NOT subject to these rules.
+//  - The public check-in page only reads one session and one course by ID.
+//
+// IMPORTANT: publish these only AFTER FIREBASE_SERVICE_ACCOUNT is set in Vercel and the
+// new code is live, or student sign-in and check-in will stop working.
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -7,121 +19,145 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    function uid() {
+      return request.auth.uid;
     }
 
-    // Default deny catch-all
+    // Owned by the signed-in lecturer
+    function ownsExisting() {
+      return isSignedIn() && resource.data.owner_id == uid();
+    }
+
+    function ownsIncoming() {
+      return isSignedIn() && request.resource.data.owner_id == uid();
+    }
+
+    // Standard rules for a lecturer-owned collection
+    function ownerRead() {
+      return ownsExisting();
+    }
+
+    function ownerCreate() {
+      return ownsIncoming();
+    }
+
+    function ownerUpdate() {
+      return ownsExisting() && ownsIncoming();
+    }
+
+    // Default: nothing is readable or writable from a browser unless allowed below.
+    // Server-only collections (student_accounts, student_portal_links, push_subscriptions,
+    // in_app_notifications, notification_preferences, subscriptions, payment_events)
+    // fall under this and are therefore closed to browsers.
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Users collection
+    // Lecturer profile: only its owner
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create, update: if isOwner(userId);
-      allow delete: if false;
+      allow get, create, update: if isSignedIn() && uid() == userId;
     }
 
-    // Students collection — lecturers only (students use server API)
+    // Students: a lecturer's own students, plus unassigned self-registered students
+    // ("universal") so lecturers can find and add them
     match /students/{studentId} {
-      allow read, write: if isSignedIn() && (resource == null || resource.data.owner_id == request.auth.uid) && (request.resource == null || request.resource.data.owner_id == request.auth.uid);
+      allow read: if isSignedIn()
+        && (resource.data.owner_id == uid() || resource.data.owner_id == "universal");
+      allow create: if ownerCreate();
+      allow update: if isSignedIn()
+        && (
+          (resource.data.owner_id == uid() && request.resource.data.owner_id == uid())
+          || (resource.data.owner_id == "universal"
+              && request.resource.data.owner_id in [uid(), "universal"])
+        );
+      allow delete: if isSignedIn()
+        && (resource.data.owner_id == uid() || resource.data.owner_id == "universal");
     }
 
-    // Courses collection — public read for check-in by ID, lecturer write
+    // Courses and sessions: the public check-in page may read ONE document by its ID
     match /courses/{courseId} {
-      allow read: if true;
-      allow create, update, delete: if isSignedIn() && (resource == null || resource.data.owner_id == request.auth.uid) && (request.resource == null || request.resource.data.owner_id == request.auth.uid);
+      allow get: if true;
+      allow list: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
+      allow delete: if ownerRead();
     }
 
-    // Departments collection
-    match /departments/{deptId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isSignedIn() && (resource == null || resource.data.owner_id == request.auth.uid) && (request.resource == null || request.resource.data.owner_id == request.auth.uid);
-    }
-
-    // Attendance sessions — public read for check-in by ID, lecturer write
     match /attendance_sessions/{sessionId} {
-      allow read: if true;
-      allow create, update, delete: if isSignedIn() && (resource == null || resource.data.owner_id == request.auth.uid) && (request.resource == null || request.resource.data.owner_id == request.auth.uid);
+      allow get: if true;
+      allow list: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
+      allow delete: if ownerRead();
     }
 
-    // Attendance records — scanner creates and updates with merge
+    // Lecturer-owned collections
     match /attendance_records/{recordId} {
-      allow read, write: if isSignedIn() && (resource == null || resource.data.owner_id == request.auth.uid || resource.data.scanned_by == request.auth.uid) && (request.resource == null || request.resource.data.owner_id == request.auth.uid || request.resource.data.scanned_by == request.auth.uid);
+      allow read, delete: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
     }
 
-    // Course attendance summary (kept exactly as required)
+    // Per-course attendance summary (used by Reports and History). The server's
+    // self check-in updates it with the service account, which bypasses these rules.
     match /course_attendance/{courseId} {
-      allow read, delete: if request.auth != null && resource.data.owner_id == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.owner_id == request.auth.uid;
-      allow update: if request.auth != null && resource.data.owner_id == request.auth.uid
-                    && request.resource.data.owner_id == request.auth.uid;
+      // "resource == null" lets a lecturer find out a summary doesn't exist yet,
+      // so Reports can build it the first time instead of getting "permission denied"
+      allow get: if isSignedIn() && (resource == null || resource.data.owner_id == uid());
+      allow list, delete: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
     }
 
-    // Course registrations — lecturers only (portal uses server API)
     match /course_registrations/{regId} {
-      allow read, write: if isSignedIn() && (resource == null || resource.data.owner_id == request.auth.uid) && (request.resource == null || request.resource.data.owner_id == request.auth.uid);
+      allow read, delete: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
     }
 
-    // Academic terms & years
+    match /departments/{deptId} {
+      allow read, delete: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
+    }
+
     match /academic_terms/{termId} {
-      allow read, write: if isSignedIn() && (resource == null || resource.data.owner_id == request.auth.uid) && (request.resource == null || request.resource.data.owner_id == request.auth.uid);
+      allow read, delete: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
     }
 
     match /academic_years/{yearId} {
-      allow read, write: if isSignedIn() && (resource == null || resource.data.owner_id == request.auth.uid) && (request.resource == null || request.resource.data.owner_id == request.auth.uid);
+      allow read, delete: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
     }
 
-    // Class levels
     match /class_levels/{levelId} {
-      allow read, write: if isSignedIn() && (resource == null || resource.data.owner_id == request.auth.uid) && (request.resource == null || request.resource.data.owner_id == request.auth.uid);
+      allow read, delete: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
     }
 
-    // Announcements & Assignments — lecturers only (portal uses server API)
     match /announcements/{noticeId} {
-      allow read, write: if isSignedIn() && (resource == null || resource.data.owner_id == request.auth.uid) && (request.resource == null || request.resource.data.owner_id == request.auth.uid);
+      allow read, delete: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
     }
 
     match /assignments/{assignmentId} {
-      allow read, write: if isSignedIn() && (resource == null || resource.data.owner_id == request.auth.uid) && (request.resource == null || request.resource.data.owner_id == request.auth.uid);
+      allow read, delete: if ownerRead();
+      allow create: if ownerCreate();
+      allow update: if ownerUpdate();
     }
 
-    // Student portal links
-    match /student_portal_links/{linkId} {
-      allow read, write: if isSignedIn() && (resource == null || resource.data.owner_id == request.auth.uid) && (request.resource == null || request.resource.data.owner_id == request.auth.uid);
-    }
-
-    // User devices (device manager)
+    // Lecturer sign-in devices (device limit): only the lecturer's own devices
     match /user_devices/{deviceId} {
-      allow read, write: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid) && (request.resource == null || request.resource.data.userId == request.auth.uid);
-    }
-
-    // Student accounts — server-only (protect credentials)
-    match /student_accounts/{accountId} {
-      allow read, write: if false;
-    }
-
-    // Subscriptions & Payment events
-    match /subscriptions/{subId} {
-      allow read, write: if isSignedIn();
-    }
-
-    match /payment_events/{eventId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // Push subscriptions & In-app notifications — handled via server API
-    match /push_subscriptions/{subId} {
-      allow read, write: if false;
-    }
-
-    match /in_app_notifications/{notifId} {
-      allow read, write: if false;
-    }
-
-    match /notification_preferences/{prefId} {
-      allow read, write: if false;
+      allow read, delete: if isSignedIn() && resource.data.user_id == uid();
+      allow create: if isSignedIn() && request.resource.data.user_id == uid();
+      allow update: if isSignedIn()
+        && resource.data.user_id == uid()
+        && request.resource.data.user_id == uid();
     }
   }
 }
